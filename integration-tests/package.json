@@ -1,0 +1,12 @@
+{
+  "name": "hailstorm-integration-tests",
+  "version": "1.0.0",
+  "description": "Integration tests for Hailstorm",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.41.0"
+  }
+}

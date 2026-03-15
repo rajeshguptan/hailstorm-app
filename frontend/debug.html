@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Test</title>
+</head>
+<body>
+    <h1>Debug Test</h1>
+    <button id="testBtn">Test Delete</button>
+    <div id="output"></div>
+    
+    <script>
+        let collections = [
+            {id: '1', name: 'Collection 1'},
+            {id: '2', name: 'Collection 2'}
+        ];
+        
+        function deleteItem(type, id) {
+            console.log('deleteItem called with:', type, id);
+            if (!id || !type) {
+                console.log('Invalid params');
+                return;
+            }
+            
+            if (type === 'collection') {
+                console.log('Before filter:', collections.length);
+                collections = collections.filter(c => c.id !== id);
+                console.log('After filter:', collections.length);
+                console.log('Collections:', collections);
+            }
+        }
+        
+        document.getElementById('testBtn').addEventListener('click', function() {
+            alert('About to delete collection with id=1');
+            deleteItem('collection', '1');
+            alert('After delete: ' + JSON.stringify(collections));
+        });
+    </script>
+</body>
+</html>
