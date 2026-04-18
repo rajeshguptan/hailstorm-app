@@ -90,20 +90,37 @@ async function handleImport() {
 
 function importData(data: any) {
   if (!data) return;
+  const processItems = (items: any[]): any[] => {
+    return items.map((item: any) => {
+      const newItem = { ...item };
+      if (!newItem.id) {
+        newItem.id = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      }
+      if (newItem.item && Array.isArray(newItem.item)) {
+        newItem.items = processItems(newItem.item);
+        delete newItem.item;
+      }
+      return newItem;
+    });
+  };
+  const processCollection = (c: any) => ({
+    ...c,
+    items: processItems(c.items || [])
+  });
   if (data.collection) {
-    store.collections.push(data.collection);
+    store.collections.push(processCollection(data.collection));
     store.saveToLocalStorage();
   } else if (data.collections) {
-    store.collections.push(...data.collections);
+    store.collections.push(...data.collections.map(processCollection));
     store.saveToLocalStorage();
   } else if (Array.isArray(data)) {
-    store.collections.push(...data);
+    store.collections.push(...data.map(processCollection));
     store.saveToLocalStorage();
   } else if (data.info && data.item) {
     store.collections.push({
       id: `coll_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: data.info.name || 'Imported Collection',
-      items: data.item,
+      items: processItems(data.item),
       variables: []
     });
     store.saveToLocalStorage();

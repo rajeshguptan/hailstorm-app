@@ -60,7 +60,7 @@ export const useAppStore = defineStore('app', {
 
     selectedRequestId: null as string | null,
 
-    selectedUtilityId: null as string | null,
+selectedUtilityId: null as string | null,
 
     // Runner configurations
     runConfigs: [] as RunConfig[],
@@ -579,11 +579,55 @@ export const useAppStore = defineStore('app', {
     },
 
     saveRequest() {
-      const request = { ...this.currentRequest, id: this.generateId('req') };
+      const request = { 
+        ...this.currentRequest, 
+        id: this.currentRequest.id || this.generateId('req') 
+      };
       if (this.collections.length === 0) {
         this.addCollection();
       }
       this.collections[0].items.push(request);
+      this.currentRequest = { ...request };
+      this.selectedRequestId = request.id;
+      this.saveToLocalStorage();
+    },
+
+    updateCurrentRequest() {
+      if (!this.currentRequest.id) {
+        console.log('updateCurrentRequest: no id, cannot update');
+        return;
+      }
+      console.log('updateCurrentRequest: updating request with id:', this.currentRequest.id);
+      console.log('updateCurrentRequest: collections length:', this.collections.length);
+      if (this.collections.length > 0) {
+        console.log('updateCurrentRequest: first collection items count:', this.collections[0].items.length);
+      }
+      const updateInItems = (items: any[]): boolean => {
+        for (let i = 0; i < items.length; i++) {
+          console.log('updateCurrentRequest: checking item', i, 'id:', items[i].id);
+          if (items[i].id === this.currentRequest.id && 'method' in items[i]) {
+            console.log('updateCurrentRequest: found matching request at index', i);
+            items[i] = { ...this.currentRequest };
+            return true;
+          }
+          if ('items' in items[i] && items[i].items) {
+            console.log('updateCurrentRequest: checking nested items of item', i);
+            if (updateInItems(items[i].items)) {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+      for (const collection of this.collections) {
+        console.log('updateCurrentRequest: checking collection:', collection.name);
+        if (updateInItems(collection.items)) {
+          this.selectedRequestId = this.currentRequest.id;
+          console.log('updateCurrentRequest: found and updated!');
+          break;
+        }
+      }
+      console.log('updateCurrentRequest: after update, collections[0] items:', JSON.stringify(this.collections[0]?.items));
       this.saveToLocalStorage();
     },
     
@@ -838,7 +882,8 @@ export const useAppStore = defineStore('app', {
             auth: request.auth || { type: 'noauth', apikey: { key: '', value: '', in: 'header' } },
             preRequestScript: request.preRequestScript || '',
             testScript: request.testScript || '',
-            flavors: request.flavors || []
+            flavors: request.flavors || [],
+            variables: request.variables || []
           };
           // Convert headers to the expected format
           this.requestHeaders = request.headers ? request.headers.map(h => ({ ...h, enabled: h.enabled !== false })) : [];
@@ -854,7 +899,8 @@ export const useAppStore = defineStore('app', {
           url: '',
           headers: [],
           body: { type: 'none', content: '' },
-          auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' } }
+          auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' } },
+          variables: []
         };
         this.requestHeaders = [];
         this.urlParams = [];

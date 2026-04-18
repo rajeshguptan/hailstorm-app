@@ -8,7 +8,13 @@
       <button class="px-3 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm" :disabled="store.isLoading" @click="sendRequest">
         {{ store.isLoading ? 'Sending...' : 'Send' }}
       </button>
-      <button class="btn btn-sm border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="saveRequest">Save</button>
+      <div class="relative">
+        <button class="px-3 py-1.5 border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-sm" @click="toggleSaveMenu">Save ▾</button>
+        <div v-if="showSaveMenu" class="absolute right-0 mt-1 w-32 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded shadow-lg z-10">
+          <button class="block w-full text-left px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700" @click="saveRequest">Save</button>
+          <button class="block w-full text-left px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700" @click="saveNewRequest">Save New</button>
+        </div>
+      </div>
     </div>
     
     <div class="mb-2">
@@ -174,6 +180,11 @@ import { useAppStore } from '../stores/app';
 
 const store = useAppStore();
 const selectedDataset = ref<string>('');
+const showSaveMenu = ref<boolean>(false);
+
+function toggleSaveMenu() {
+  showSaveMenu.value = !showSaveMenu.value;
+}
 
 watch(
   () => store.currentRequest,
@@ -187,7 +198,7 @@ const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
 const method = computed({
   get: () => store.currentRequest.method,
-  set: (val) => { store.currentRequest.method = val; store.saveRequest(); }
+  set: (val) => { store.currentRequest.method = val; }
 });
 
 const url = computed({
@@ -198,6 +209,15 @@ const url = computed({
 const name = computed({
   get: () => store.currentRequest.name,
   set: (val) => { store.currentRequest.name = val; }
+});
+
+watch(() => store.selectedRequestId, () => {
+  if (store.selectedRequestId) {
+    const request = store.selectedRequest;
+    if (request) {
+      store.currentRequest.variables = request.variables || [];
+    }
+  }
 });
 
 const uniqueDatasets = computed(() => {
@@ -352,6 +372,16 @@ function removeVariable(index: number) {
 }
 
 function saveRequest() {
+  showSaveMenu.value = false;
+  if (store.currentRequest.id) {
+    store.updateCurrentRequest();
+  } else {
+    store.saveRequest();
+  }
+}
+
+function saveNewRequest() {
+  showSaveMenu.value = false;
   store.saveRequest();
 }
 </script>
