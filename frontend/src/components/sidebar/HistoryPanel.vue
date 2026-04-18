@@ -1,5 +1,8 @@
 <template>
-  <div class="history-panel items-start">
+  <div class="history-panel items-start p-2">
+    <div class="mb-3">
+      <button v-if="history.length > 0" class="w-full px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded text-sm font-medium cursor-pointer" @click="clearHistory">Clear History</button>
+    </div>
     <div v-if="history.length === 0" class="text-center text-zinc-400 dark:text-zinc-500 py-4">
       No requests yet
     </div>
@@ -19,14 +22,19 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useAppStore } from '../../stores/app';
 
 const store = useAppStore();
 
-const history = store.history;
+const history = computed(() => store.history);
 
 function getMethodClass(method: string): string {
   const m = method.toLowerCase();
   return m === 'get' ? 'bg-green-500' : m === 'post' ? 'bg-blue-500' : m === 'put' ? 'bg-yellow-500 text-black' : m === 'delete' ? 'bg-red-500' : 'bg-cyan-500';
+}
+
+function clearHistory() {
+  store.clearHistory();
 }
 </script>

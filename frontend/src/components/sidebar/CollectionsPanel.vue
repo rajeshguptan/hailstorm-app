@@ -14,52 +14,30 @@
           <span class="flex-1 text-zinc-900 dark:text-white">{{ coll.name }}</span>
         </div>
         <div v-if="expandedCollections.includes(coll.id)" class="ml-3 mt-1">
-          <div v-for="item in coll.items" :key="item.id">
-            <div class="request-item p-1 rounded cursor-pointer mb-1 flex items-center bg-zinc-100 dark:bg-zinc-800" :style="{ paddingLeft: '8px' }" @click="handleItemClick($event, item)" @contextmenu.prevent="store.showContextMenu($event, getItemType(item), item.id)" role="button" tabindex="0" @keydown.enter="handleItemClick($event, item)">
+          <template v-for="item in coll.items" :key="item.id">
+            <div class="request-item p-1 rounded cursor-pointer mb-1 flex items-center" :class="item.id === store.selectedRequestId ? 'bg-blue-200 dark:bg-blue-800' : 'bg-zinc-100 dark:bg-zinc-800'" :style="{ paddingLeft: '8px' }" @click="handleItemClick($event, item)" @contextmenu.prevent="store.showContextMenu($event, getItemType(item), item.id)" role="button" tabindex="0" @keydown.enter="handleItemClick($event, item)">
               <span v-if="hasMethod(item) && (item as Request).flavors?.length" class="mr-1 cursor-pointer text-blue-400" @click.stop="toggleFlavors(item.id)">{{ (item as Request).flavors?.length ? (expandedFlavors.includes(item.id) ? '▼' : '▶') : '+' }}</span>
               <span v-if="hasMethod(item)" class="badge mr-1" :class="getMethodClass(item)">{{ getMethod(item) }}</span>
               <span v-if="hasItems(item)" class="mr-1">{{ expandedFolders.includes(item.id) ? '📂' : '📁' }}</span>
               <span v-if="hasItems(item)" class="text-zinc-900 dark:text-white">{{ item.name }}</span>
               <span v-else class="text-sm text-zinc-700 dark:text-zinc-300">{{ item.name }}</span>
             </div>
-            <div v-if="hasItems(item) && expandedFolders.includes(item.id)" class="ml-3">
-              <div v-for="subItem in (item as Folder).items" :key="subItem.id" class="request-item p-1 rounded cursor-pointer mb-1 flex items-center bg-zinc-100 dark:bg-zinc-800" :style="{ paddingLeft: '8px' }" @click="handleItemClick($event, subItem)" @contextmenu.prevent="store.showContextMenu($event, getItemType(subItem), subItem.id)" role="button" tabindex="0" @keydown.enter="handleItemClick($event, subItem)">
+            <template v-if="hasItems(item) && expandedFolders.includes(item.id)">
+              <div v-for="subItem in (item as Folder).items" :key="subItem.id" class="ml-3 request-item p-1 rounded cursor-pointer mb-1 flex items-center" :class="subItem.id === store.selectedRequestId ? 'bg-blue-200 dark:bg-blue-800' : 'bg-zinc-100 dark:bg-zinc-800'" :style="{ paddingLeft: '8px' }" @click="handleItemClick($event, subItem)" @contextmenu.prevent="store.showContextMenu($event, getItemType(subItem), subItem.id)" role="button" tabindex="0" @keydown.enter="handleItemClick($event, subItem)">
                 <span v-if="hasMethod(subItem) && (subItem as Request).flavors?.length" class="mr-1 cursor-pointer text-blue-400" @click.stop="toggleFlavors(subItem.id)">{{ (subItem as Request).flavors?.length ? (expandedFlavors.includes(subItem.id) ? '▼' : '▶') : '+' }}</span>
                 <span v-if="hasMethod(subItem)" class="badge mr-1" :class="getMethodClass(subItem)">{{ getMethod(subItem) }}</span>
                 <span v-if="hasItems(subItem)" class="mr-1">{{ expandedFolders.includes(subItem.id) ? '📂' : '📁' }}</span>
                 <span v-if="hasItems(subItem)" class="text-zinc-900 dark:text-white">{{ subItem.name }}</span>
                 <span v-else class="text-sm text-zinc-700 dark:text-zinc-300">{{ subItem.name }}</span>
               </div>
-
-              <!-- Recursive rendering for deeper nested folders -->
-              <div v-for="subItem in (item as Folder).items" :key="`nested-${subItem.id}`">
-                <div v-if="hasItems(subItem) && expandedFolders.includes(subItem.id)" class="ml-3">
-                  <div v-for="nestedItem in (subItem as Folder).items" :key="nestedItem.id" class="request-item p-1 rounded cursor-pointer mb-1 flex items-center bg-zinc-100 dark:bg-zinc-800" :style="{ paddingLeft: '16px' }" @click="handleItemClick($event, nestedItem)" @contextmenu.prevent="store.showContextMenu($event, getItemType(nestedItem), nestedItem.id)" role="button" tabindex="0" @keydown.enter="handleItemClick($event, nestedItem)">
-                    <span v-if="hasMethod(nestedItem) && (nestedItem as Request).flavors?.length" class="mr-1 cursor-pointer text-blue-400" @click.stop="toggleFlavors(nestedItem.id)">{{ (nestedItem as Request).flavors?.length ? (expandedFlavors.includes(nestedItem.id) ? '▼' : '▶') : '+' }}</span>
-                    <span v-if="hasMethod(nestedItem)" class="badge mr-1" :class="getMethodClass(nestedItem)">{{ getMethod(nestedItem) }}</span>
-                    <span v-if="hasItems(nestedItem)" class="mr-1">{{ expandedFolders.includes(nestedItem.id) ? '📂' : '📁' }}</span>
-                    <span v-if="hasItems(nestedItem)" class="text-zinc-900 dark:text-white">{{ nestedItem.name }}</span>
-                    <span v-else class="text-sm text-zinc-700 dark:text-zinc-300">{{ nestedItem.name }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div v-for="subItem in (item as Folder).items" :key="subItem.id">
-                <div v-if="hasMethod(subItem) && expandedFlavors.includes(subItem.id) && (subItem as Request).flavors?.length" class="ml-6">
-                  <div v-for="flavor in (subItem as Request).flavors" :key="flavor.id" class="request-item p-1 rounded cursor-pointer mb-1 bg-zinc-100 dark:bg-zinc-800" :style="{ paddingLeft: '8px' }" @click.stop="store.openRequest(flavor)" @contextmenu.prevent="store.showContextMenu($event, 'flavor', flavor.id)">
-                    <span class="badge mr-1" :class="getMethodClass(flavor)">{{ flavor.method }}</span>
-                    <span class="text-sm text-blue-400">{{ flavor.name }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            </template>
             <div v-if="hasMethod(item) && expandedFlavors.includes(item.id) && (item as Request).flavors?.length" class="ml-6">
-              <div v-for="flavor in (item as Request).flavors" :key="flavor.id" class="request-item p-1 rounded cursor-pointer mb-1 bg-zinc-100 dark:bg-zinc-800" :style="{ paddingLeft: '8px' }" @click.stop="store.openRequest(flavor)" @contextmenu.prevent="store.showContextMenu($event, 'flavor', flavor.id)">
+              <div v-for="flavor in (item as Request).flavors" :key="flavor.id" class="request-item p-1 rounded cursor-pointer mb-1" :class="flavor.id === store.selectedRequestId ? 'bg-blue-200 dark:bg-blue-800' : 'bg-zinc-100 dark:bg-zinc-800'" :style="{ paddingLeft: '8px' }" @click.stop="store.openRequest(flavor)" @contextmenu.prevent="store.showContextMenu($event, 'flavor', flavor.id)">
                 <span class="badge mr-1" :class="getMethodClass(flavor)">{{ flavor.method }}</span>
                 <span class="text-sm text-blue-400">{{ flavor.name }}</span>
               </div>
             </div>
-          </div>
+          </template>
         </div>
       </div>
     </div>
@@ -150,7 +128,6 @@ function handleItemClick(event: MouseEvent, item: any) {
   if (hasItems(item)) {
     toggleFolder(item.id);
   } else {
-    // Handle nested request structure
     let requestItem = item;
     if ('request' in item) {
       console.log('Item has nested request, extracting');
@@ -162,8 +139,6 @@ function handleItemClick(event: MouseEvent, item: any) {
     store.selectRequest(requestItem.id);
   }
 }
-
-
 
 function toggleFolder(id: string) {
   const index = expandedFolders.value.indexOf(id);

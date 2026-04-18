@@ -284,7 +284,7 @@ const store = useAppStore();
 const activeRequestTab = ref<'params' | 'auth' | 'headers' | 'body' | 'variables' | 'scripts'>('params');
 
 const requestTabs = [
-  { id: 'params' as const, name: 'Params' },
+  { id: 'params' as const, name: 'Parameters' },
   { id: 'auth' as const, name: 'Auth' },
   { id: 'headers' as const, name: 'Headers' },
   { id: 'body' as const, name: 'Body' },
@@ -393,6 +393,29 @@ function saveRequest() {
   editingRequest.value.url = urlObj.toString();
   editingRequest.value.headers = [...requestHeaders.value];
   editingRequest.value.variables = [...requestVariables.value];
+
+  // Find and update the request in the collections
+  for (const collection of store.collections) {
+    const updateRequest = (items: any[]): boolean => {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].id === editingRequest.value.id && 'method' in items[i]) {
+          items[i] = { ...editingRequest.value };
+          return true;
+        }
+        if ('items' in items[i] && items[i].items) {
+          if (updateRequest(items[i].items)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+    if (updateRequest(collection.items)) {
+      break;
+    }
+  }
+
+  store.saveToLocalStorage();
 
   // Find and update the request in the collections
   for (const collection of store.collections) {

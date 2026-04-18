@@ -179,6 +179,52 @@ export const useAppStore = defineStore('app', {
       this.collections = this.collections.filter(c => c.id !== id);
       this.saveToLocalStorage();
     },
+
+    deleteRequest(id: string) {
+      const deleteFromItems = (items: any[]): boolean => {
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].id === id && 'method' in items[i]) {
+            items.splice(i, 1);
+            return true;
+          }
+          if ('items' in items[i] && items[i].items) {
+            if (deleteFromItems(items[i].items)) {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+      for (const collection of this.collections) {
+        if (deleteFromItems(collection.items)) {
+          this.saveToLocalStorage();
+          break;
+        }
+      }
+    },
+
+    deleteFolder(id: string) {
+      const deleteFromItems = (items: any[]): boolean => {
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].id === id && 'items' in items[i]) {
+            items.splice(i, 1);
+            return true;
+          }
+          if ('items' in items[i] && items[i].items) {
+            if (deleteFromItems(items[i].items)) {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+      for (const collection of this.collections) {
+        if (deleteFromItems(collection.items)) {
+          this.saveToLocalStorage();
+          break;
+        }
+      }
+    },
     
     addFolder(targetId: string, targetType: 'collection' | 'folder' = 'collection') {
       const folder: Folder = {
@@ -524,6 +570,20 @@ export const useAppStore = defineStore('app', {
       if (this.history.length > 100) {
         this.history = this.history.slice(0, 100);
       }
+      this.saveToLocalStorage();
+    },
+
+    clearHistory() {
+      this.history = [];
+      this.saveToLocalStorage();
+    },
+
+    saveRequest() {
+      const request = { ...this.currentRequest, id: this.generateId('req') };
+      if (this.collections.length === 0) {
+        this.addCollection();
+      }
+      this.collections[0].items.push(request);
       this.saveToLocalStorage();
     },
     

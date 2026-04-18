@@ -34,3 +34,20 @@ html.dark body {
   height: 100vh;
   width: 100vw;
 }
+
+.btn {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.btn-sm {
+  padding: 0.125rem 0.25rem;
+  font-size: 0.75rem;
+}
+
+.btn:hover {
+  opacity: 0.9;
+}

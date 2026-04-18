@@ -4,7 +4,7 @@
     <div v-if="store.contextMenu.type === 'collection'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('run-collection')">Run</div>
     <div v-if="store.contextMenu.type === 'collection' || store.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-request')">Add Request</div>
     <div v-if="store.contextMenu.type === 'collection' || store.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-folder')">Add Folder</div>
-    <div v-if="store.contextMenu.type === 'request'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-flavor')">Add Flavor</div>
+
     <div v-if="store.contextMenu.type === 'flavor'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('run')">Run</div>
     <div v-if="store.contextMenu.type === 'run-config'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('run')">Run</div>
     <div class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 text-red-500" @click="handleAction('delete')">Delete</div>
@@ -25,8 +25,10 @@ function handleAction(action: string) {
         store.deleteCollection(id);
       } else if (type === 'environment') {
         store.deleteEnvironment(id);
-      } else if (type === 'folder' || type === 'request') {
-        console.log('Delete folder/request not fully implemented yet');
+      } else if (type === 'request') {
+        store.deleteRequest(id);
+      } else if (type === 'folder') {
+        store.deleteFolder(id);
       }
       break;
     case 'rename':
