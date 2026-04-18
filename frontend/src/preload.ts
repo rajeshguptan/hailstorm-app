@@ -1,5 +1,4 @@
-import { contextBridge } from 'electron';
-import { createTRPCProxyClient, httpBatchLink } from '@trpc/client';
+import { contextBridge, ipcRenderer } from 'electron';
 
 console.log('[PRELOAD] Preload script loaded');
 
@@ -19,23 +18,48 @@ export interface ResponseData {
   error?: string;
 }
 
-const trpcClient = createTRPCProxyClient({
-  links: [
-    httpBatchLink({
-      url: 'http://127.0.0.1:3001/trpc',
-    }),
-  ],
-});
-
 const api = {
   makeRequest: async (options: RequestOptions): Promise<ResponseData> => {
     console.log('[PRELOAD] makeRequest called', { method: options.method, url: options.url });
     try {
-      const result = await trpcClient.makeRequest.mutate(options);
+      const result = await ipcRenderer.invoke('make-request', options);
       console.log('[PRELOAD] makeRequest succeeded', { status: result.status });
       return result;
     } catch (error) {
       console.error('[PRELOAD] makeRequest failed', error);
+      throw error;
+    }
+  },
+  runShell: async (command: string): Promise<{ output: string; error: string }> => {
+    console.log('[PRELOAD] runShell called', { command });
+    try {
+      const result = await ipcRenderer.invoke('run-shell', command);
+      console.log('[PRELOAD] runShell succeeded');
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] runShell failed', error);
+      throw error;
+    }
+  },
+  importCollection: async (): Promise<string | null> => {
+    console.log('[PRELOAD] importCollection called');
+    try {
+      const result = await ipcRenderer.invoke('import-collection');
+      console.log('[PRELOAD] importCollection result', result ? 'received content' : 'canceled');
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] importCollection failed', error);
+      throw error;
+    }
+  },
+  importEnvironment: async (): Promise<string | null> => {
+    console.log('[PRELOAD] importEnvironment called');
+    try {
+      const result = await ipcRenderer.invoke('import-environment');
+      console.log('[PRELOAD] importEnvironment result', result ? 'received content' : 'canceled');
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] importEnvironment failed', error);
       throw error;
     }
   },

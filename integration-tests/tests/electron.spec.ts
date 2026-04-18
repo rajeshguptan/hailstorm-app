@@ -7,7 +7,7 @@ test.describe('Electron App', () => {
     test('manual: app can be tested using npm run start in frontend', async () => {
       // To test the Electron app manually:
       // 1. cd frontend && npm run start
-      // 2. The app will launch with the backend server
+      // 2. The app will launch with all functionality in the main process
       expect(true).toBe(true);
     });
   });

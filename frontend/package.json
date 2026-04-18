@@ -1,11 +1,12 @@
 {
-  "name": "my-app",
-  "productName": "my-app",
+  "name": "hailstorm",
+  "productName": "Hailstorm",
   "version": "1.0.0",
-  "description": "My Electron application description",
+  "description": "API Client like Postman",
   "main": ".vite/build/main.js",
   "private": true,
   "scripts": {
+    "dev": "vite",
     "start": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
@@ -31,17 +32,20 @@
     "@types/electron-squirrel-startup": "^1.0.2",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
+    "@vitejs/plugin-vue": "^5.0.0",
+    "autoprefixer": "^10.4.27",
     "electron": "41.0.2",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.32.0",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^3.4.19",
     "typescript": "~4.5.4",
     "vite": "^5.4.21"
   },
   "dependencies": {
-    "@trpc/client": "^10.45.0",
-    "@trpc/react-query": "^10.45.0",
-    "@tanstack/react-query": "^4.36.1",
     "electron-squirrel-startup": "^1.0.1",
-    "zod": "^3.22.4"
+    "pinia": "^2.1.7",
+    "vue": "^3.4.0",
+    "vue-router": "^4.2.5"
   }
 }

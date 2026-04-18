@@ -1,0 +1,282 @@
+<template>
+  <div class="request-panel bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white p-3 border-b border-zinc-200 dark:border-zinc-700">
+    <div class="url-bar flex gap-2 mb-2">
+      <select v-model="method" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1" style="width: 100px;">
+        <option v-for="m in methods" :key="m" :value="m">{{ m }}</option>
+      </select>
+      <input v-model="url" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-3 py-1 flex-1" placeholder="Enter request URL" @keyup.enter="sendRequest" />
+      <button class="btn btn-sm bg-blue-500 text-white" :disabled="store.isLoading" @click="sendRequest">
+        {{ store.isLoading ? 'Sending...' : 'Send' }}
+      </button>
+      <button class="btn btn-sm border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="saveRequest">Save</button>
+    </div>
+    
+    <div class="mb-2">
+      <input v-model="name" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-3 py-1 w-full" placeholder="Request Name" />
+    </div>
+    
+    <ul class="flex border-b border-zinc-200 dark:border-zinc-700" role="tablist">
+      <li>
+        <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': store.activeRequestTab === 'params' }" @click="store.activeRequestTab = 'params'">Params</button>
+      </li>
+      <li>
+        <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': store.activeRequestTab === 'auth' }" @click="store.activeRequestTab = 'auth'">Auth</button>
+      </li>
+      <li>
+        <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': store.activeRequestTab === 'headers' }" @click="store.activeRequestTab = 'headers'">Headers</button>
+      </li>
+      <li>
+        <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': store.activeRequestTab === 'body' }" @click="store.activeRequestTab = 'body'">Body</button>
+      </li>
+      <li>
+        <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': store.activeRequestTab === 'scripts' }" @click="store.activeRequestTab = 'scripts'">Scripts</button>
+      </li>
+    </ul>
+    
+    <div class="tab-content p-2" style="max-height: 200px; overflow-y: auto;">
+      <div v-if="store.activeRequestTab === 'params'" class="key-value-editor">
+        <div class="flex gap-2 mb-2">
+          <span class="flex-1 text-sm text-zinc-500">Key</span>
+          <span class="flex-1 text-sm text-zinc-500">Value</span>
+          <span style="width: 30px;"></span>
+        </div>
+        <div v-for="(param, index) in store.urlParams" :key="index" class="flex gap-2 mb-1">
+          <input v-model="param.key" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="Key" @input="store.updateUrlFromParams()" />
+          <input v-model="param.value" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="Value" @input="store.updateUrlFromParams()" />
+          <button class="btn btn-sm border border-red-500 text-red-500 px-2" @click="store.removeParam(index)">×</button>
+        </div>
+        <button class="btn btn-sm border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 mt-2 hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="store.addParam()">+ Add Parameter</button>
+      </div>
+
+      <div v-if="store.activeRequestTab === 'auth'" class="auth-editor">
+        <div class="mb-4">
+          <label class="block text-sm text-zinc-500 mb-2">Type</label>
+          <select v-model="store.currentRequest.auth.type" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
+            <option value="noauth">No Auth</option>
+            <option value="bearer">Bearer Token</option>
+            <option value="basic">Basic Auth</option>
+            <option value="apikey">API Key</option>
+          </select>
+        </div>
+
+        <div v-if="store.currentRequest.auth.type === 'bearer'" class="mb-4">
+          <label class="block text-sm text-zinc-500 mb-2">Token</label>
+          <input v-model="store.currentRequest.auth.bearerToken" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-3 py-1 w-full" placeholder="Enter bearer token" />
+        </div>
+
+        <div v-if="store.currentRequest.auth.type === 'basic'" class="mb-4">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-sm text-zinc-500 mb-1">Username</label>
+              <input v-model="store.currentRequest.auth.username" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full" placeholder="Username" />
+            </div>
+            <div>
+              <label class="block text-sm text-zinc-500 mb-1">Password</label>
+              <input v-model="store.currentRequest.auth.password" type="password" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full" placeholder="Password" />
+            </div>
+          </div>
+        </div>
+
+        <div v-if="store.currentRequest.auth.type === 'apikey'" class="mb-4">
+          <div class="grid grid-cols-3 gap-2 mb-2">
+            <div>
+              <label class="block text-sm text-zinc-500 mb-1">Key</label>
+              <input v-model="store.currentRequest.auth.apikey.key" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full" placeholder="Key" />
+            </div>
+            <div>
+              <label class="block text-sm text-zinc-500 mb-1">Value</label>
+              <input v-model="store.currentRequest.auth.apikey.value" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full" placeholder="Value" />
+            </div>
+            <div>
+              <label class="block text-sm text-zinc-500 mb-1">Add to</label>
+              <select v-model="store.currentRequest.auth.apikey.in" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
+                <option value="header">Header</option>
+                <option value="query">Query Params</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="store.activeRequestTab === 'headers'" class="key-value-editor">
+        <div class="flex gap-2 mb-2">
+          <span class="flex-1 text-sm text-zinc-500">Key</span>
+          <span class="flex-1 text-sm text-zinc-500">Value</span>
+          <span style="width: 30px;"></span>
+        </div>
+        <div v-for="(header, index) in store.requestHeaders" :key="index" class="flex gap-2 mb-1">
+          <input v-model="header.key" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="Key" />
+          <input v-model="header.value" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="Value" />
+          <button class="btn btn-sm border border-red-500 text-red-500 px-2" @click="store.removeHeader(index)">×</button>
+        </div>
+        <button class="btn btn-sm border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 mt-2 hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="store.addHeader()">+ Add Header</button>
+      </div>
+      
+      <div v-if="store.activeRequestTab === 'body'">
+        <div class="mb-2">
+          <select v-model="store.currentRequest.body.type" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
+            <option value="none">None</option>
+            <option value="form-data">Form Data</option>
+            <option value="x-www-form-urlencoded">URL Encoded</option>
+            <option value="raw">Raw</option>
+            <option value="binary">Binary</option>
+          </select>
+        </div>
+        <div v-if="store.currentRequest.body.type !== 'none'" class="mt-2">
+          <textarea v-model="store.currentRequest.body.content" class="form-textarea bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded w-full" rows="5" placeholder='{"key": "value"}'></textarea>
+        </div>
+      </div>
+      
+      <div v-if="store.activeRequestTab === 'scripts'">
+        <div class="mb-2">
+          <label class="block text-sm text-zinc-500 mb-1">Pre-request Script</label>
+          <textarea v-model="store.currentRequest.preRequestScript" class="form-textarea bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded font-mono w-full" rows="3" placeholder="// Runs before request is sent"></textarea>
+        </div>
+        <div>
+          <label class="block text-sm text-zinc-500 mb-1">Test Script</label>
+          <textarea v-model="store.currentRequest.testScript" class="form-textarea bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded font-mono w-full" rows="3" placeholder="// Runs after response is received"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { watch, computed } from 'vue';
+import { useAppStore } from '../stores/app';
+
+const store = useAppStore();
+
+watch(
+  () => store.currentRequest,
+  (newVal) => {
+    console.log('RequestPanel watch: currentRequest changed:', newVal.name, newVal.url);
+  },
+  { deep: true, immediate: true }
+);
+
+const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
+
+const method = computed({
+  get: () => store.currentRequest.method,
+  set: (val) => { store.currentRequest.method = val; store.saveRequest(); }
+});
+
+const url = computed({
+  get: () => store.currentRequest.url,
+  set: (val) => { store.currentRequest.url = val; }
+});
+
+const name = computed({
+  get: () => store.currentRequest.name,
+  set: (val) => { store.currentRequest.name = val; }
+});
+
+async function sendRequest() {
+    store.isLoading = true;
+    const startTime = Date.now();
+    
+    try {
+        // Prepare request options for execution engine
+        const url = store.currentRequest.url;
+        const options = {
+            method: store.currentRequest.method,
+            url: url,
+            headers: {},
+            body: store.currentRequest.body.type !== 'none' && store.currentRequest.body.content 
+                ? store.currentRequest.body.content 
+                : undefined
+        };
+        
+        // Add auth headers/params
+        if (store.currentRequest.auth) {
+            const auth = store.currentRequest.auth;
+            if (auth.type === 'bearer' && auth.bearerToken) {
+                options.headers['Authorization'] = `Bearer ${auth.bearerToken}`;
+            } else if (auth.type === 'basic' && auth.username && auth.password) {
+                const credentials = btoa(`${auth.username}:${auth.password}`);
+                options.headers['Authorization'] = `Basic ${credentials}`;
+            } else if (auth.type === 'apikey' && auth.apikey) {
+                if (auth.apikey.in === 'header') {
+                    options.headers[auth.apikey.key] = auth.apikey.value;
+                } else if (auth.apikey.in === 'query') {
+                    const urlObj = new URL(options.url);
+                    urlObj.searchParams.set(auth.apikey.key, auth.apikey.value);
+                    options.url = urlObj.toString();
+                }
+            }
+        }
+
+        // Add headers
+        store.requestHeaders.forEach(h => {
+            if (h.key && h.enabled) {
+                options.headers[h.key] = h.value;
+            }
+        });
+        
+        // Set Content-Type based on body type
+        if (store.currentRequest.body.type === 'json' && options.body) {
+            options.headers['Content-Type'] = 'application/json';
+        } else if (store.currentRequest.body.type === 'x-www-form-urlencoded' && options.body) {
+            options.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        } else if (store.currentRequest.body.type === 'form-data' && options.body) {
+            options.headers['Content-Type'] = 'multipart/form-data';
+        }
+        
+        // Call execution engine via IPC
+        const result = await window.api.makeRequest(options);
+        const time = Date.now() - startTime;
+        
+        store.response = {
+            status: result.status,
+            statusText: result.statusText,
+            data: result.data,
+            time: result.time,
+            headers: result.headers,
+            error: result.error
+        };
+        
+        // Add to history
+        store.addToHistory({
+            id: Date.now(),
+            method: store.currentRequest.method,
+            url: store.currentRequest.url,
+            status: result.status,
+            time: result.time
+        });
+        
+        // Execute test script if exists (placeholder for future implementation)
+        if (store.currentRequest.testScript) {
+            try {
+                console.log('Test script execution:', store.currentRequest.testScript);
+                // TODO: Implement actual script execution via isolated VM
+                // For now, just show that tests would run here
+                store.testResults = `Test script would execute:\n${store.currentRequest.testScript}`;
+            } catch (scriptError) {
+                console.error('Test script error:', scriptError);
+                store.testResults = `Test script error: ${scriptError.message}`;
+            }
+        } else {
+            store.testResults = '';
+        }
+        
+        store.activeResponseTab = 'body';
+    } catch (err: any) {
+        store.response = {
+            status: 0,
+            statusText: 'Error',
+            data: err.message || 'Failed to make request',
+            time: Date.now() - startTime,
+            headers: {},
+            error: err.message
+        };
+        store.testResults = '';
+    } finally {
+        store.isLoading = false;
+    }
+}
+
+function saveRequest() {
+  store.saveRequest();
+}
+</script>

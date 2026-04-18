@@ -1,0 +1,107 @@
+<template>
+  <div class="secret-detail-panel h-full flex flex-col bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300">
+    <div v-if="!hasSalt" class="p-4 text-center">
+      <div class="text-yellow-500 mb-2">Set an encryption salt first in the sidebar to manage secrets.</div>
+    </div>
+    
+    <div v-else-if="selectedSecret" class="flex flex-col h-full">
+      <div class="p-3 border-b border-zinc-200 dark:border-zinc-700">
+        <input 
+          v-model="editingSecret.name" 
+          class="w-full text-lg font-semibold bg-transparent border-none text-zinc-900 dark:text-white focus:outline-none"
+          placeholder="Secret name"
+        >
+      </div>
+      
+      <div class="p-3 flex-1 overflow-auto">
+        <div class="mb-4">
+          <label class="block text-xs text-zinc-500 mb-1">Environment</label>
+          <select v-model="editingSecret.env" class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white">
+            <option value="">All Environments</option>
+            <option v-for="env in store.environments" :key="env.id" :value="env.id">{{ env.name }}</option>
+          </select>
+        </div>
+        
+        <div class="mb-4">
+          <label class="block text-xs text-zinc-500 mb-1">Value</label>
+          <div class="relative">
+            <input 
+              v-model="editingSecret.value" 
+              :type="showSecretValue ? 'text' : 'password'"
+              class="w-full px-3 py-2 pr-10 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-mono"
+              placeholder="Secret value"
+            >
+            <button 
+              @click="showSecretValue = !showSecretValue"
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-700"
+            >
+              {{ showSecretValue ? '🙈' : '👁️' }}
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <div class="p-3 border-t border-zinc-200 dark:border-zinc-700 flex gap-2">
+        <button @click="saveSecret" class="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded">Save</button>
+      </div>
+    </div>
+    
+    <div v-else class="p-4 text-center text-zinc-500">
+      Select a secret from the sidebar to view its details
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue';
+import { useAppStore } from '../stores/app';
+
+const store = useAppStore();
+
+const showSecretValue = ref(false);
+const editingSecret = ref<{ id: string; name: string; env: string; value: string }>({ id: '', name: '', env: '', value: '' });
+
+const hasSalt = computed(() => localStorage.getItem('hailstorm_salt') !== null);
+
+const selectedSecret = computed(() => {
+  if (!store.selectedSecretId) return null;
+  return store.secrets.find(s => s.id === store.selectedSecretId) || null;
+});
+
+watch(() => store.selectedSecretId, (newId) => {
+  if (newId) {
+    const secret = store.secrets.find(s => s.id === newId);
+    if (secret) {
+      editingSecret.value = { ...secret };
+    }
+  } else {
+    editingSecret.value = { id: '', name: '', env: '', value: '' };
+  }
+}, { immediate: true });
+
+function simpleEncrypt(text: string, saltVal: string): string {
+  if (!saltVal || !text) return text;
+  let result = '';
+  for (let i = 0; i < text.length; i++) {
+    const charCode = text.charCodeAt(i) ^ saltVal.charCodeAt(i % saltVal.length);
+    result += String.fromCharCode(charCode);
+  }
+  return btoa(result);
+}
+
+function saveSecret() {
+  if (!editingSecret.value.id) return;
+  
+  const index = store.secrets.findIndex(s => s.id === editingSecret.value.id);
+  if (index !== -1) {
+    store.secrets[index] = { ...editingSecret.value };
+  }
+  
+  const saltVal = localStorage.getItem('hailstorm_salt') || '';
+  const encryptedSecrets = store.secrets.map(s => ({
+    ...s,
+    value: simpleEncrypt(s.value, saltVal)
+  }));
+  localStorage.setItem('hailstorm_secrets', JSON.stringify(encryptedSecrets));
+}
+</script>
