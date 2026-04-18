@@ -302,6 +302,16 @@ selectedUtilityId: null as string | null,
     },
 
     renameItem(id: string, newName: string) {
+      // First check if it's a collection itself
+      for (const collection of this.collections) {
+        if (collection.id === id) {
+          collection.name = newName;
+          this.saveToLocalStorage();
+          return;
+        }
+      }
+
+      // Then search within collection items
       for (const collection of this.collections) {
         const findAndRename = (items: any[]): boolean => {
           for (const item of items) {
@@ -327,6 +337,16 @@ selectedUtilityId: null as string | null,
     
     findItemById(id: string): any {
       console.log('[STORE] findItemById searching for:', id);
+
+      // First check if it's a collection itself
+      for (const collection of this.collections) {
+        if (collection.id === id) {
+          console.log('[STORE] Found collection:', collection);
+          return collection;
+        }
+      }
+
+      // Then search within collection items
       for (const collection of this.collections) {
         console.log('[STORE] Searching in collection:', collection.name, 'items:', collection.items?.length);
         const findInItems = (items: any[]): any => {
