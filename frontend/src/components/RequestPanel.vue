@@ -202,8 +202,15 @@ const method = computed({
 });
 
 const url = computed({
-  get: () => store.currentRequest.url,
-  set: (val) => { store.currentRequest.url = val; }
+  get: () => {
+    const currentUrl = store.currentRequest.url;
+    console.log('[RequestPanel] url getter:', currentUrl);
+    return currentUrl;
+  },
+  set: (val) => {
+    console.log('[RequestPanel] url setter:', val);
+    store.currentRequest.url = val;
+  }
 });
 
 const name = computed({
@@ -212,9 +219,12 @@ const name = computed({
 });
 
 watch(() => store.selectedRequestId, () => {
+  console.log('[RequestPanel] selectedRequestId changed to:', store.selectedRequestId);
   if (store.selectedRequestId) {
     const request = store.selectedRequest;
+    console.log('[RequestPanel] selectedRequest:', request);
     if (request) {
+      console.log('[RequestPanel] Setting variables from request');
       store.currentRequest.variables = request.variables || [];
     }
   }
@@ -373,9 +383,12 @@ function removeVariable(index: number) {
 
 function saveRequest() {
   showSaveMenu.value = false;
+  console.log('saveRequest called, currentRequest.id:', store.currentRequest.id);
   if (store.currentRequest.id) {
+    console.log('Calling updateCurrentRequest');
     store.updateCurrentRequest();
   } else {
+    console.log('Calling saveRequest (new)');
     store.saveRequest();
   }
 }

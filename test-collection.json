@@ -1,0 +1,63 @@
+{
+  "info": {
+    "name": "Test Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Simple GET Request",
+      "request": {
+        "method": "GET",
+        "url": "https://api.example.com/users",
+        "headers": [
+          {
+            "key": "Authorization",
+            "value": "Bearer token123"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      }
+    },
+    {
+      "name": "POST with Body",
+      "request": {
+        "method": "POST",
+        "url": "https://api.example.com/users",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\": \"John Doe\", \"email\": \"john@example.com\"}"
+        }
+      }
+    },
+    {
+      "name": "POST with Form Data",
+      "request": {
+        "method": "POST",
+        "url": "https://api.example.com/upload",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": []
+            },
+            {
+              "key": "description",
+              "value": "Test upload"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

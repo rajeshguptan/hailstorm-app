@@ -88,18 +88,129 @@ async function handleImport() {
   }
 }
 
+function convertPostmanHeaders(postmanHeaders: any): Variable[] {
+  if (!Array.isArray(postmanHeaders)) {
+    return [];
+  }
+
+  return postmanHeaders
+    .filter((header: any) => header.key && header.value)
+    .map((header: any) => ({
+      key: header.key,
+      value: header.value,
+      enabled: !header.disabled && header.enabled !== false
+    }));
+}
+
+function convertPostmanUrl(postmanUrl: any): string {
+  if (typeof postmanUrl === 'string') {
+    return postmanUrl;
+  }
+
+  if (typeof postmanUrl === 'object' && postmanUrl.raw) {
+    return postmanUrl.raw;
+  }
+
+  if (Array.isArray(postmanUrl)) {
+    // Handle URL as array of path components
+    return postmanUrl.map((part: any) => {
+      if (typeof part === 'string') return part;
+      if (part.value) return part.value;
+      return '';
+    }).join('');
+  }
+
+  return '';
+}
+
+function convertPostmanBody(postmanBody: any): { type: string; content: string } {
+  if (!postmanBody || !postmanBody.mode) {
+    return { type: 'none', content: '' };
+  }
+
+  switch (postmanBody.mode) {
+    case 'raw':
+      return {
+        type: 'raw',
+        content: postmanBody.raw || ''
+      };
+    case 'urlencoded':
+      if (postmanBody.urlencoded && Array.isArray(postmanBody.urlencoded)) {
+        const params = postmanBody.urlencoded
+          .filter((param: any) => param.key && param.value)
+          .map((param: any) => `${encodeURIComponent(param.key)}=${encodeURIComponent(param.value)}`)
+          .join('&');
+        return {
+          type: 'urlencoded',
+          content: params
+        };
+      }
+      return { type: 'none', content: '' };
+    case 'formdata':
+      if (postmanBody.formdata && Array.isArray(postmanBody.formdata)) {
+        return {
+          type: 'formdata',
+          content: JSON.stringify(postmanBody.formdata)
+        };
+      }
+      return { type: 'none', content: '' };
+    case 'file':
+      return {
+        type: 'file',
+        content: JSON.stringify(postmanBody.file || {})
+      };
+    case 'graphql':
+      if (postmanBody.graphql) {
+        return {
+          type: 'graphql',
+          content: JSON.stringify(postmanBody.graphql)
+        };
+      }
+      return { type: 'none', content: '' };
+    default:
+      return { type: 'none', content: '' };
+  }
+}
+
 function importData(data: any) {
-  if (!data) return;
+  if (!data) {
+    console.log('[IMPORT] importData called with null/undefined data');
+    return;
+  }
+
+  console.log('[IMPORT] Starting import, data keys:', Object.keys(data));
+  if (data.info) {
+    console.log('[IMPORT] Postman collection:', data.info.name, 'with', data.item?.length || 0, 'items');
+  }
+
   const processItems = (items: any[]): any[] => {
     return items.map((item: any) => {
       const newItem = { ...item };
+
+      // Handle Postman format where request data is nested under 'request' property
+      if (newItem.request && typeof newItem.request === 'object') {
+        const requestData = newItem.request;
+        newItem.method = requestData.method || 'GET';
+        newItem.url = convertPostmanUrl(requestData.url) || '';
+        newItem.headers = convertPostmanHeaders(requestData.header) || [];
+        newItem.body = convertPostmanBody(requestData.body);
+        newItem.auth = requestData.auth;
+        newItem.preRequestScript = requestData.preRequestScript;
+        newItem.testScript = requestData.testScript;
+        newItem.variables = requestData.variables;
+        newItem.flavors = requestData.flavors;
+        delete newItem.request;
+      }
+
       if (!newItem.id) {
         newItem.id = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       }
+
       if (newItem.item && Array.isArray(newItem.item)) {
         newItem.items = processItems(newItem.item);
         delete newItem.item;
       }
+
       return newItem;
     });
   };
@@ -107,6 +218,7 @@ function importData(data: any) {
     ...c,
     items: processItems(c.items || [])
   });
+
   if (data.collection) {
     store.collections.push(processCollection(data.collection));
     store.saveToLocalStorage();
@@ -117,15 +229,17 @@ function importData(data: any) {
     store.collections.push(...data.map(processCollection));
     store.saveToLocalStorage();
   } else if (data.info && data.item) {
+    const processedItems = processItems(data.item);
     store.collections.push({
       id: `coll_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: data.info.name || 'Imported Collection',
-      items: processItems(data.item),
+      items: processedItems,
       variables: []
     });
+    console.log(`[IMPORT] Successfully imported Postman collection "${data.info.name}" with ${processedItems.length} requests`);
     store.saveToLocalStorage();
   } else {
-    console.log('Unknown data format:', Object.keys(data));
+    console.log('[IMPORT] Unknown collection format:', Object.keys(data));
   }
 }
 
@@ -145,15 +259,7 @@ function handleItemClick(event: MouseEvent, item: any) {
   if (hasItems(item)) {
     toggleFolder(item.id);
   } else {
-    let requestItem = item;
-    if ('request' in item) {
-      console.log('Item has nested request, extracting');
-      requestItem = item.request;
-    }
-    if (!requestItem.id) {
-      requestItem.id = store.generateId('req');
-    }
-    store.selectRequest(requestItem.id);
+    store.selectRequest(item.id);
   }
 }
 

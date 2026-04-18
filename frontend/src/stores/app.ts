@@ -122,7 +122,6 @@ selectedUtilityId: null as string | null,
 
       selectedRequest: (state) => {
         if (!state.selectedRequestId) return null;
-        console.log('selectedRequest getter called, searching for id:', state.selectedRequestId);
         // Find request recursively in all collections
         for (const collection of state.collections) {
           const findRequest = (items: any[]): any => {
@@ -131,9 +130,7 @@ selectedUtilityId: null as string | null,
               if ('request' in item) {
                 checkItem = item.request;
               }
-              console.log('checking item:', checkItem.id, 'type:', 'method' in checkItem ? 'request' : 'folder');
               if (String(checkItem.id) === String(state.selectedRequestId) && 'method' in checkItem) {
-                console.log('found matching request:', checkItem);
                 return checkItem;
               }
               if ('items' in item && item.items) {
@@ -146,7 +143,6 @@ selectedUtilityId: null as string | null,
           const request = findRequest(collection.items);
           if (request) return request;
         }
-        console.log('no request found for id:', state.selectedRequestId);
         return null;
       }
     },
@@ -329,12 +325,16 @@ selectedUtilityId: null as string | null,
       this.saveToLocalStorage();
     },
     
-    findItemById(id: string): { id: string; name: string } | null {
+    findItemById(id: string): any {
+      console.log('[STORE] findItemById searching for:', id);
       for (const collection of this.collections) {
-        const findInItems = (items: any[]): { id: string; name: string } | null => {
+        console.log('[STORE] Searching in collection:', collection.name, 'items:', collection.items?.length);
+        const findInItems = (items: any[]): any => {
           for (const item of items) {
+            console.log('[STORE] Checking item:', item.id, item.name, item.url);
             if (item.id === id) {
-              return { id: item.id, name: item.name };
+              console.log('[STORE] Found item:', item);
+              return item;
             }
             if ('items' in item && item.items) {
               const found = findInItems(item.items);
@@ -345,8 +345,12 @@ selectedUtilityId: null as string | null,
         };
 
         const result = findInItems(collection.items);
-        if (result) return result;
+        if (result) {
+          console.log('[STORE] findItemById returning:', result);
+          return result;
+        }
       }
+      console.log('[STORE] findItemById found nothing');
       return null;
     },
     
@@ -593,11 +597,11 @@ selectedUtilityId: null as string | null,
     },
 
     updateCurrentRequest() {
-      if (!this.currentRequest.id) {
-        console.log('updateCurrentRequest: no id, cannot update');
+      if (!this.selectedRequestId) {
+        console.log('updateCurrentRequest: no selectedRequestId, cannot update');
         return;
       }
-      console.log('updateCurrentRequest: updating request with id:', this.currentRequest.id);
+      console.log('updateCurrentRequest: updating item with id:', this.selectedRequestId);
       console.log('updateCurrentRequest: collections length:', this.collections.length);
       if (this.collections.length > 0) {
         console.log('updateCurrentRequest: first collection items count:', this.collections[0].items.length);
@@ -605,9 +609,13 @@ selectedUtilityId: null as string | null,
       const updateInItems = (items: any[]): boolean => {
         for (let i = 0; i < items.length; i++) {
           console.log('updateCurrentRequest: checking item', i, 'id:', items[i].id);
-          if (items[i].id === this.currentRequest.id && 'method' in items[i]) {
-            console.log('updateCurrentRequest: found matching request at index', i);
-            items[i] = { ...this.currentRequest };
+          if (items[i].id === this.selectedRequestId) {
+            console.log('updateCurrentRequest: found matching item at index', i);
+            if ('request' in items[i]) {
+              items[i].request = { ...this.currentRequest };
+            } else {
+              Object.assign(items[i], this.currentRequest);
+            }
             return true;
           }
           if ('items' in items[i] && items[i].items) {
@@ -622,7 +630,6 @@ selectedUtilityId: null as string | null,
       for (const collection of this.collections) {
         console.log('updateCurrentRequest: checking collection:', collection.name);
         if (updateInItems(collection.items)) {
-          this.selectedRequestId = this.currentRequest.id;
           console.log('updateCurrentRequest: found and updated!');
           break;
         }
@@ -659,27 +666,31 @@ selectedUtilityId: null as string | null,
     },
     
     saveToLocalStorage() {
-      const data = {
-        collections: this.collections,
-        environments: this.environments,
-        activeEnvironmentId: this.activeEnvironmentId,
-        history: this.history,
-        runConfigs: this.runConfigs,
-        selectedConfigId: this.selectedConfigId,
-        selectedUtilityId: this.selectedUtilityId,
-        selectedRequestId: this.selectedRequestId,
-        activeSidebar: this.activeSidebar,
-        sidebarTitle: this.sidebarTitle
-      };
-      localStorage.setItem('hailstorm_data', JSON.stringify(data));
+      try {
+        const data = JSON.stringify(this.$state);
+        localStorage.setItem('hailstorm-data', data);
+      } catch (err) {
+        console.error('Failed to save to localStorage:', err);
+      }
     },
     
     loadFromLocalStorage() {
-      const data = localStorage.getItem('hailstorm_data');
+      const data = localStorage.getItem('hailstorm-data');
       if (data) {
         try {
           const parsed = JSON.parse(data);
           this.collections = parsed.collections || [];
+          console.log('[STORE] Loaded collections from localStorage:', this.collections.map(c => ({
+            name: c.name,
+            itemsCount: c.items?.length || 0,
+            firstItem: c.items?.[0] ? {
+              name: c.items[0].name,
+              method: c.items[0].method,
+              url: c.items[0].url,
+              hasBody: !!c.items[0].body,
+              bodyType: c.items[0].body?.type
+            } : null
+          })));
           this.environments = parsed.environments || [];
           this.activeEnvironmentId = parsed.activeEnvironmentId || null;
           this.history = parsed.history || [];
@@ -689,7 +700,7 @@ selectedUtilityId: null as string | null,
           this.selectedRequestId = parsed.selectedRequestId || null;
           this.activeSidebar = parsed.activeSidebar || 'collections';
           this.sidebarTitle = parsed.sidebarTitle || 'Collections';
-          
+
           if (this.environments.length > 0) {
             const active = this.environments.find(e => e.active);
             if (active) {
@@ -700,7 +711,7 @@ selectedUtilityId: null as string | null,
           console.error('Failed to load from localStorage:', err);
         }
       }
-      
+
       if (this.tabs.length === 0) {
         this.addNewTab();
       }
@@ -864,17 +875,38 @@ selectedUtilityId: null as string | null,
     },
 
     selectRequest(id: string | null) {
-      console.log('selectRequest called with id:', id);
+      console.log('[STORE] selectRequest called with id:', id);
+      if (!id) {
+        console.log('[STORE] No id provided, resetting currentRequest');
+        this.selectedRequestId = null;
+        this.currentRequest = {
+          id: '',
+          name: '',
+          method: 'GET',
+          url: '',
+          headers: [],
+          body: { type: 'none', content: '' },
+          auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' } },
+          variables: []
+        };
+        return;
+      }
+
       this.selectedRequestId = id;
-      console.log('selectedRequestId set to:', this.selectedRequestId);
+      console.log('[STORE] selectedRequestId set to:', this.selectedRequestId);
 
       // Load the selected request into currentRequest for editing
       if (id) {
-        const request = this.selectedRequest;
-        if (request) {
+        console.log('[STORE] Loading request with id:', id);
+        const item = this.findItemById(id);
+        console.log('[STORE] Found item:', item);
+        if (item) {
+          const request = 'request' in item ? item.request : item;
+          console.log('[STORE] Using request data:', request);
+          console.log('[STORE] Request URL:', request.url, 'Body:', request.body);
           this.currentRequest = {
             id: request.id || '',
-            name: request.name || '',
+            name: item.name || request.name || '',
             method: request.method || 'GET',
             url: request.url || '',
             headers: request.headers || [],
@@ -885,6 +917,15 @@ selectedUtilityId: null as string | null,
             flavors: request.flavors || [],
             variables: request.variables || []
           };
+          console.log('[STORE] Set currentRequest:', {
+            id: this.currentRequest.id,
+            name: this.currentRequest.name,
+            method: this.currentRequest.method,
+            url: this.currentRequest.url,
+            body: this.currentRequest.body,
+            bodyType: this.currentRequest.body?.type,
+            bodyContent: this.currentRequest.body?.content?.substring(0, 50)
+          });
           // Convert headers to the expected format
           this.requestHeaders = request.headers ? request.headers.map(h => ({ ...h, enabled: h.enabled !== false })) : [];
           // Extract URL params
