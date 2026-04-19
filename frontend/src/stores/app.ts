@@ -387,6 +387,7 @@ selectedUtilityId: null as string | null,
     },
     
     selectEnvironment(id: string) {
+      console.log('[STORE] selectEnvironment called with id:', id);
       this.activeEnvironmentId = id;
       this.environments.forEach(e => e.active = e.id === id);
       this.saveToLocalStorage();
@@ -708,7 +709,9 @@ selectedUtilityId: null as string | null,
             } : null
           })));
           this.environments = parsed.environments || [];
+          console.log('[STORE] Loading activeEnvironmentId from localStorage:', parsed.activeEnvironmentId);
           this.activeEnvironmentId = parsed.activeEnvironmentId || null;
+          console.log('[STORE] Set activeEnvironmentId to:', this.activeEnvironmentId);
           this.history = parsed.history || [];
           this.runConfigs = parsed.runConfigs || [];
           this.selectedConfigId = parsed.selectedConfigId || null;
@@ -717,7 +720,8 @@ selectedUtilityId: null as string | null,
           this.activeSidebar = parsed.activeSidebar || 'collections';
           this.sidebarTitle = parsed.sidebarTitle || 'Collections';
 
-          if (this.environments.length > 0) {
+          // Fallback to legacy active property if activeEnvironmentId is not set
+          if (!this.activeEnvironmentId && this.environments.length > 0) {
             const active = this.environments.find(e => e.active);
             if (active) {
               this.activeEnvironmentId = active.id;

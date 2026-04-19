@@ -1,5 +1,12 @@
 <template>
   <div class="environments-panel items-start">
+    <div class="mb-3">
+      <label class="block text-sm text-zinc-600 dark:text-zinc-400 mb-1">Active Environment</label>
+      <select :value="activeEnvironmentId" @change="handleEnvironmentChange($event.target.value)" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
+        <option value="">No Environment</option>
+        <option v-for="env in environments" :key="env.id" :value="env.id">{{ env.name }}</option>
+      </select>
+    </div>
     <div class="flex gap-2 mb-2">
       <button class="btn btn-sm border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 flex-1 hover:bg-zinc-100 dark:hover:bg-zinc-800" @click="handleImport">Import</button>
       <button class="btn btn-sm bg-blue-500 text-white flex-1 hover:bg-blue-600" @click="store.addEnvironment()">+ Environment</button>
@@ -22,12 +29,50 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { computed, onMounted, watch, ref } from 'vue';
 import { useAppStore } from '../../stores/app';
 
 const store = useAppStore();
 const environments = computed(() => store.environments);
-const activeEnvironmentId = store.activeEnvironmentId;
+const activeEnvironmentId = ref(store.activeEnvironmentId || '');
+
+// Watch for changes to store.activeEnvironmentId and update the ref
+watch(() => store.activeEnvironmentId, (newId, oldId) => {
+  console.log('[EnvironmentsPanel] store.activeEnvironmentId changed from', oldId, 'to', newId);
+  console.log('[EnvironmentsPanel] Updating ref from', activeEnvironmentId.value, 'to', newId || '');
+  activeEnvironmentId.value = newId || '';
+});
+
+// Watch for environments changes and ensure active environment
+watch(() => environments.value, (newEnvs) => {
+  if (newEnvs.length > 0 && !store.activeEnvironmentId) {
+    ensureActiveEnvironment();
+  }
+}, { immediate: true });
+
+// Handle selection changes
+function handleEnvironmentChange(value: string) {
+  console.log('[EnvironmentsPanel] handleEnvironmentChange called with:', value);
+  store.selectEnvironment(value || null);
+}
+
+// Fallback: if no active environment but we have environments, check for legacy active flag
+function ensureActiveEnvironment() {
+  if (!store.activeEnvironmentId && environments.value.length > 0) {
+    const activeEnv = environments.value.find(env => env.active);
+    if (activeEnv) {
+      console.log('[EnvironmentsPanel] Found legacy active environment:', activeEnv.id);
+      store.selectEnvironment(activeEnv.id);
+    }
+  }
+}
+
+onMounted(() => {
+  console.log('[EnvironmentsPanel] Component mounted');
+
+  // Ensure we have an active environment
+  ensureActiveEnvironment();
+});
 
 async function handleImport() {
   try {

@@ -13,6 +13,11 @@
         >
       </div>
 
+      <div class="p-3 border-b border-zinc-200 dark:border-zinc-700 flex gap-2">
+        <button @click="saveEnvironment" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded">Save</button>
+        <button @click="cancelChanges" class="px-4 py-2 bg-zinc-300 hover:bg-zinc-400 dark:bg-zinc-600 dark:hover:bg-zinc-500 text-zinc-700 dark:text-zinc-300 rounded">Cancel</button>
+      </div>
+
       <div class="p-3 flex-1 overflow-auto">
         <div class="mb-4">
           <div class="flex justify-between items-center mb-2">
@@ -63,11 +68,6 @@
             </tbody>
           </table>
         </div>
-      </div>
-
-      <div class="p-3 border-t border-zinc-200 dark:border-zinc-700 flex gap-2">
-        <button @click="saveEnvironment" class="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded">Save</button>
-        <button @click="cancelChanges" class="px-4 py-2 bg-zinc-300 hover:bg-zinc-400 dark:bg-zinc-600 dark:hover:bg-zinc-500 text-zinc-700 dark:text-zinc-300 rounded">Cancel</button>
       </div>
     </div>
   </div>

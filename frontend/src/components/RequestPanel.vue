@@ -246,13 +246,30 @@ const filteredVariables = computed(() => {
 });
 
 function substituteVariables(text: string): string {
-  if (!text || !store.currentRequest.variables) return text;
-  const variables = selectedDataset.value
-    ? store.currentRequest.variables.filter(v => v.enabled && v.dataset === selectedDataset.value)
-    : store.currentRequest.variables.filter(v => v.enabled);
+  if (!text) return text;
+
   return text.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
-    const variable = variables.find(v => v.key === varName);
-    return variable ? variable.value : match;
+    // First check environment variables
+    if (store.activeEnvironment && store.activeEnvironment.variables) {
+      const envVar = store.activeEnvironment.variables.find(v => v.key === varName);
+      if (envVar) {
+        return envVar.value;
+      }
+    }
+
+    // Then check request variables
+    if (store.currentRequest.variables) {
+      const variables = selectedDataset.value
+        ? store.currentRequest.variables.filter(v => v.enabled && v.dataset === selectedDataset.value)
+        : store.currentRequest.variables.filter(v => v.enabled);
+      const reqVar = variables.find(v => v.key === varName);
+      if (reqVar) {
+        return reqVar.value;
+      }
+    }
+
+    // Return original match if no variable found
+    return match;
   });
 }
 
