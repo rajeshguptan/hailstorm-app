@@ -28,7 +28,7 @@
         >
           <div class="flex items-center justify-between">
             <span class="text-sm text-zinc-900 dark:text-white">{{ secret.name || 'Unnamed' }}</span>
-            <button @click.stop="deleteSecret(secret.id)" class="text-red-500 hover:text-red-700 text-xs">×</button>
+            <button @click.stop="deleteSecret(secret.id)" class="text-red-500 hover:text-red-700 text-xl">×</button>
           </div>
           <div class="text-xs text-zinc-500">{{ getEnvName(secret.env) }}</div>
         </div>

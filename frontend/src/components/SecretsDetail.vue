@@ -6,13 +6,18 @@
     
     <div v-else-if="selectedSecret" class="flex flex-col h-full">
       <div class="p-3 border-b border-zinc-200 dark:border-zinc-700">
-        <input 
-          v-model="editingSecret.name" 
+        <input
+          v-model="editingSecret.name"
           class="w-full text-lg font-semibold bg-transparent border-none text-zinc-900 dark:text-white focus:outline-none"
           placeholder="Secret name"
         >
       </div>
-      
+
+      <div class="p-3 border-b border-zinc-200 dark:border-zinc-700 flex gap-2">
+        <button @click="saveSecret" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded">Save</button>
+        <button @click="cancelEdit" class="px-4 py-2 bg-zinc-300 hover:bg-zinc-400 dark:bg-zinc-600 dark:hover:bg-zinc-500 text-zinc-700 dark:text-zinc-300 rounded">Cancel</button>
+      </div>
+
       <div class="p-3 flex-1 overflow-auto">
         <div class="mb-4">
           <label class="block text-xs text-zinc-500 mb-1">Environment</label>
@@ -21,17 +26,17 @@
             <option v-for="env in store.environments" :key="env.id" :value="env.id">{{ env.name }}</option>
           </select>
         </div>
-        
+
         <div class="mb-4">
           <label class="block text-xs text-zinc-500 mb-1">Value</label>
           <div class="relative">
-            <input 
-              v-model="editingSecret.value" 
+            <input
+              v-model="editingSecret.value"
               :type="showSecretValue ? 'text' : 'password'"
               class="w-full px-3 py-2 pr-10 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-mono"
               placeholder="Secret value"
             >
-            <button 
+            <button
               @click="showSecretValue = !showSecretValue"
               class="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-700"
             >
@@ -39,10 +44,6 @@
             </button>
           </div>
         </div>
-      </div>
-      
-      <div class="p-3 border-t border-zinc-200 dark:border-zinc-700 flex gap-2">
-        <button @click="saveSecret" class="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded">Save</button>
       </div>
     </div>
     
@@ -91,17 +92,24 @@ function simpleEncrypt(text: string, saltVal: string): string {
 
 function saveSecret() {
   if (!editingSecret.value.id) return;
-  
+
   const index = store.secrets.findIndex(s => s.id === editingSecret.value.id);
   if (index !== -1) {
-    store.secrets[index] = { ...editingSecret.value };
+    store.secrets.splice(index, 1, { ...editingSecret.value });
   }
-  
+
   const saltVal = localStorage.getItem('hailstorm_salt') || '';
   const encryptedSecrets = store.secrets.map(s => ({
     ...s,
     value: simpleEncrypt(s.value, saltVal)
   }));
   localStorage.setItem('hailstorm_secrets', JSON.stringify(encryptedSecrets));
+}
+
+function cancelEdit() {
+  const secret = store.secrets.find(s => s.id === editingSecret.value.id);
+  if (secret) {
+    editingSecret.value = { ...secret };
+  }
 }
 </script>
