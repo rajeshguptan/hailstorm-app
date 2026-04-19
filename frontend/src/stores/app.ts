@@ -509,9 +509,12 @@ selectedUtilityId: null as string | null,
       try {
         const urlObj = new URL(this.currentRequest.url);
         urlObj.search = '';
+        let query = '';
         this.urlParams.filter(p => p.enabled).forEach(p => {
-          urlObj.searchParams.append(p.key, p.value);
+          if (query) query += '&';
+          query += encodeURIComponent(p.key) + '=' + (p.value.includes('{{') ? p.value : encodeURIComponent(p.value));
         });
+        urlObj.search = query ? '?' + query : '';
         this.currentRequest.url = urlObj.toString();
       } catch {
       }
@@ -662,6 +665,9 @@ selectedUtilityId: null as string | null,
     loadFromHistory(item: HistoryItem) {
       // Load the request data into current request
       this.currentRequest = JSON.parse(JSON.stringify(item.request));
+
+      // Convert headers to the expected format
+      this.requestHeaders = item.request.headers ? item.request.headers.map(h => ({ ...h, enabled: h.enabled !== false })) : [];
 
       // Load the response data
       this.response = item.response;

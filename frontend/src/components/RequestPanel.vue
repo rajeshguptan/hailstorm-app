@@ -294,6 +294,32 @@ async function sendRequest() {
             headers: {},
             body: bodyContent
         };
+
+        // Create a substituted copy of the request for history
+        const substitutedRequest = JSON.parse(JSON.stringify(store.currentRequest));
+        substitutedRequest.url = url;
+        if (bodyContent !== undefined) {
+          substitutedRequest.body.content = bodyContent;
+        }
+        // Substitute auth fields
+        if (substitutedRequest.auth) {
+          const auth = substitutedRequest.auth;
+          if (auth.type === 'bearer' && auth.bearerToken) {
+            auth.bearerToken = substituteVariables(auth.bearerToken);
+          } else if (auth.type === 'basic') {
+            if (auth.username) auth.username = substituteVariables(auth.username);
+            if (auth.password) auth.password = substituteVariables(auth.password);
+          } else if (auth.type === 'apikey' && auth.apikey) {
+            auth.apikey.key = substituteVariables(auth.apikey.key);
+            auth.apikey.value = substituteVariables(auth.apikey.value);
+          }
+        }
+        // Substitute header values
+        if (substitutedRequest.headers) {
+          substitutedRequest.headers.forEach(h => {
+            if (h.value) h.value = substituteVariables(h.value);
+          });
+        }
         
         // Add auth headers/params
         if (store.currentRequest.auth) {
@@ -349,10 +375,10 @@ async function sendRequest() {
         store.addToHistory({
             id: Date.now(),
             method: store.currentRequest.method,
-            url: store.currentRequest.url,
+            url: options.url,
             status: result.status,
             time: result.time,
-            request: JSON.parse(JSON.stringify(store.currentRequest)), // Deep copy of request
+            request: substitutedRequest,
             response: store.response!
         });
         
