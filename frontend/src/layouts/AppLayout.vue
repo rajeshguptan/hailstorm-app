@@ -34,8 +34,8 @@
 
   <!-- Main content area -->
   <div class="main-content flex-1 flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
-    <!-- Request interface for collections -->
-    <div v-if="store.activeSidebar === 'collections'" class="flex flex-col h-full">
+    <!-- Request interface for collections and history -->
+    <div v-if="store.activeSidebar === 'collections' || store.activeSidebar === 'history'" class="flex flex-col h-full">
       <RequestPanel />
       <ResponsePanel />
     </div>

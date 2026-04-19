@@ -334,7 +334,9 @@ async function sendRequest() {
             method: store.currentRequest.method,
             url: store.currentRequest.url,
             status: result.status,
-            time: result.time
+            time: result.time,
+            request: JSON.parse(JSON.stringify(store.currentRequest)), // Deep copy of request
+            response: store.response!
         });
         
         // Execute test script if exists (placeholder for future implementation)

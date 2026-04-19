@@ -56,6 +56,8 @@ export interface HistoryItem {
   url: string;
   status: number;
   time: number;
+  request: Request;
+  response: Response;
 }
 
 export interface Tab {

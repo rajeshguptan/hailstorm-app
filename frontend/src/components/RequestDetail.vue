@@ -521,7 +521,9 @@ async function sendRequest() {
       method: editingRequest.value.method,
       url: editingRequest.value.url,
       status: result.status,
-      time: result.time
+      time: result.time,
+      request: JSON.parse(JSON.stringify(editingRequest.value)), // Deep copy of request
+      response: store.response!
     });
 
     store.activeResponseTab = 'body';

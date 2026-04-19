@@ -659,18 +659,14 @@ selectedUtilityId: null as string | null,
     },
     
     loadFromHistory(item: HistoryItem) {
-      const request: Request = {
-        id: this.generateId('req'),
-        name: 'From History',
-        method: item.method,
-        url: item.url,
-        headers: [],
-        body: { type: 'none', content: '' }
-      };
-      const tab: Tab = { id: this.generateId('tab'), request };
-      this.tabs.push(tab);
-      this.activeTabId = tab.id;
-      this.loadTabToCurrent(tab);
+      // Load the request data into current request
+      this.currentRequest = JSON.parse(JSON.stringify(item.request));
+
+      // Load the response data
+      this.response = item.response;
+
+      // Switch to body tab to show response
+      this.activeResponseTab = 'body';
     },
     
     showContextMenu(e: MouseEvent, type: string, id: string) {
