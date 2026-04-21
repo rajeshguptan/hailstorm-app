@@ -676,7 +676,8 @@ selectedUtilityId: null as string | null,
     
     saveToLocalStorage() {
       try {
-        const data = JSON.stringify(this.$state);
+        const { secrets, ...stateWithoutSecrets } = this.$state;
+        const data = JSON.stringify(stateWithoutSecrets);
         localStorage.setItem('hailstorm-data', data);
       } catch (err) {
         console.error('Failed to save to localStorage:', err);
@@ -714,10 +715,10 @@ selectedUtilityId: null as string | null,
           }));
           this.runConfigs = parsed.runConfigs || [];
           this.selectedConfigId = parsed.selectedConfigId || null;
-          this.selectedUtilityId = parsed.selectedUtilityId || null;
-          this.selectedRequestId = parsed.selectedRequestId || null;
-          this.activeSidebar = 'collections'; // Always start with collections for empty main content
-          this.sidebarTitle = 'Collections';
+           this.selectedUtilityId = parsed.selectedUtilityId || null;
+           this.activeSidebar = 'collections'; // Always start with collections for empty main content
+           this.sidebarTitle = 'Collections';
+           // Secrets are loaded separately in SecretsPanel onMounted
 
       // Clear selections on startup to ensure main-content is empty, but keep activeEnvironmentId for variable substitution
       this.clearSelections();

@@ -44,7 +44,10 @@ import { useAppStore } from '../../stores/app';
 const store = useAppStore();
 
 const salt = ref('');
-const secrets = store.secrets;
+const secrets = computed(() => {
+  console.log('[DEBUG] secrets computed, length:', store.secrets.length);
+  return store.secrets;
+});
 const hasSalt = computed(() => localStorage.getItem('hailstorm_salt') !== null);
 
 function getEnvName(envId: string): string {
@@ -122,18 +125,30 @@ function getSecretValue(id: string): string {
   return secret?.value || '';
 }
 
-onMounted(() => {
+function loadSecrets() {
   const saved = localStorage.getItem('hailstorm_secrets');
   const saltVal = localStorage.getItem('hailstorm_salt') || '';
+  console.log('[DEBUG] SecretsPanel loadSecrets, saved:', saved, 'saltVal:', !!saltVal);
   if (saved && saltVal) {
     try {
       const parsed = JSON.parse(saved);
+      console.log('[DEBUG] SecretsPanel loadSecrets, parsed secrets:', parsed.length);
       store.secrets = parsed.map((s: any) => ({
         ...s,
         value: simpleDecrypt(s.value, saltVal)
       }));
-    } catch {}
+      console.log('[DEBUG] SecretsPanel loadSecrets, set store.secrets to:', store.secrets.length);
+    } catch (e) {
+      console.error('[DEBUG] SecretsPanel loadSecrets, error parsing:', e);
+    }
   }
+}
+
+// Load secrets immediately
+loadSecrets();
+
+onMounted(() => {
+  // Already loaded
 });
 
 defineExpose({

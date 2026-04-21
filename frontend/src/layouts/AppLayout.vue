@@ -163,6 +163,7 @@ function navigate(id: SidebarView) {
     } else if (id === 'environments') {
       store.activeEnvironmentId = null;
     } else if (id === 'secrets') {
+      console.log('[DEBUG] navigate to secrets, setting selectedSecretId to null');
       store.selectedSecretId = null;
     } else if (id === 'utilities') {
       store.selectedUtilityId = store.utilities.length > 0 ? store.utilities[0].id : null;
