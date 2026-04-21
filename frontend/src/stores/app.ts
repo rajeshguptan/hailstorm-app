@@ -647,10 +647,21 @@ selectedUtilityId: null as string | null,
       // Load the response data
       this.response = item.response;
 
+      // Set selectedRequestId to enable showing the panels
+      this.selectedRequestId = item.id.toString();
+
       // Switch to body tab to show response
       this.activeResponseTab = 'body';
     },
-    
+
+    // Clear selections on startup to keep main content empty
+    clearSelections() {
+      this.selectedRequestId = null;
+      this.selectedSecretId = null;
+      this.selectedUtilityId = null;
+      // Keep activeEnvironmentId for variable substitution
+    },
+
     showContextMenu(e: MouseEvent, type: string, id: string) {
       this.contextMenu.show = true;
       this.contextMenu.x = e.clientX;
@@ -693,6 +704,9 @@ selectedUtilityId: null as string | null,
           console.log('[STORE] Loading activeEnvironmentId from localStorage:', parsed.activeEnvironmentId);
           this.activeEnvironmentId = parsed.activeEnvironmentId || null;
           console.log('[STORE] Set activeEnvironmentId to:', this.activeEnvironmentId);
+          if (this.activeEnvironmentId) {
+            console.log('[DEBUG] activeEnvironmentId is set on startup, environments:', this.environments.map(e => ({ id: e.id, name: e.name, active: e.active })));
+          }
           this.history = parsed.history || [];
           this.utilities = (parsed.utilities || defaultUtilities).map(u => ({
             ...u,
@@ -702,16 +716,11 @@ selectedUtilityId: null as string | null,
           this.selectedConfigId = parsed.selectedConfigId || null;
           this.selectedUtilityId = parsed.selectedUtilityId || null;
           this.selectedRequestId = parsed.selectedRequestId || null;
-          this.activeSidebar = parsed.activeSidebar || 'collections';
-          this.sidebarTitle = parsed.sidebarTitle || 'Collections';
+          this.activeSidebar = 'collections'; // Always start with collections for empty main content
+          this.sidebarTitle = 'Collections';
 
-          // Fallback to legacy active property if activeEnvironmentId is not set
-          if (!this.activeEnvironmentId && this.environments.length > 0) {
-            const active = this.environments.find(e => e.active);
-            if (active) {
-              this.activeEnvironmentId = active.id;
-            }
-          }
+      // Clear selections on startup to ensure main-content is empty, but keep activeEnvironmentId for variable substitution
+      this.clearSelections();
         } catch (err) {
           console.error('Failed to load from localStorage:', err);
         }

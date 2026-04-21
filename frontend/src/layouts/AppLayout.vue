@@ -35,7 +35,7 @@
   <!-- Main content area -->
   <div class="main-content flex-1 flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
     <!-- Request interface for collections and history -->
-    <div v-if="store.activeSidebar === 'collections' || store.activeSidebar === 'history'" class="flex flex-col h-full">
+    <div v-if="showRequestDetail" class="flex flex-col h-full">
       <RequestPanel />
       <ResponsePanel />
     </div>
@@ -43,8 +43,8 @@
     <SecretsDetail v-if="store.activeSidebar === 'secrets' && store.selectedSecretId !== null" />
     <!-- Environments detail when selected -->
     <EnvironmentsDetail v-if="store.activeSidebar === 'environments' && store.activeEnvironmentId !== null" />
-     <!-- Utility content when selected -->
-      <UtilityContent v-if="store.activeSidebar === 'utilities' && store.selectedUtilityId !== null" />
+      <!-- Utility content when selected -->
+       <UtilityContent v-if="store.activeSidebar === 'utilities' && store.selectedUtilityId !== null" />
      <!-- Other main content can go here -->
   </div>
 </div>
@@ -138,7 +138,7 @@ const showSidebarMain = computed(() => {
 });
 
 const showRequestDetail = computed(() => {
-  const shouldShow = store.activeSidebar === 'collections' && store.selectedRequestId !== null;
+  const shouldShow = (store.activeSidebar === 'collections' || store.activeSidebar === 'history') && store.selectedRequestId !== null;
   console.log('showRequestDetail computed:', shouldShow, 'activeSidebar:', store.activeSidebar, 'selectedRequestId:', store.selectedRequestId);
   return shouldShow;
 });

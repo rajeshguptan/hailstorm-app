@@ -90,12 +90,17 @@ const editingEnvironment = ref<Environment>({
 const activeEnvironment = computed(() => store.activeEnvironment);
 
 watch(() => store.activeEnvironmentId, (newId) => {
+  console.log('[DEBUG] EnvironmentsDetail watch triggered, newId:', newId, 'environments length:', store.environments.length);
   if (newId) {
     const env = store.environments.find(e => e.id === newId);
     if (env) {
+      console.log('[DEBUG] Found environment:', env.name, 'variables:', env.variables.length);
       editingEnvironment.value = { ...env, variables: [...env.variables] };
+    } else {
+      console.log('[DEBUG] Environment not found for id:', newId);
     }
   } else {
+    console.log('[DEBUG] No active environment, resetting editingEnvironment');
     editingEnvironment.value = {
       id: '',
       name: '',
