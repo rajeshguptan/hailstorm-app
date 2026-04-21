@@ -29,6 +29,8 @@ function handleAction(action: string) {
         store.deleteRequest(id);
       } else if (type === 'folder') {
         store.deleteFolder(id);
+      } else if (type === 'utility') {
+        store.deleteUtility(id);
       }
       break;
     case 'rename':

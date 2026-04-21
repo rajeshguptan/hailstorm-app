@@ -58,19 +58,7 @@
   </main>
 
   <!-- Context Menu -->
-  <div
-    v-if="store.contextMenu.show"
-    class="fixed z-50 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded shadow-lg py-1"
-    :style="{ left: store.contextMenu.x + 'px', top: store.contextMenu.y + 'px' }"
-  >
-    <button
-      v-if="store.contextMenu.type === 'utility'"
-      @click="deleteUtility"
-      class="w-full text-left px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700"
-    >
-      Delete Utility
-    </button>
-  </div>
+  <ContextMenu />
 
 </div>
 </template>
@@ -172,12 +160,7 @@ function navigate(id: SidebarView) {
     router.push(item.route);
   }
 
-  function deleteUtility() {
-    if (store.contextMenu.id) {
-      store.deleteUtility(store.contextMenu.id);
-      store.hideContextMenu();
-    }
-  }
+
 }
 </script>
 
