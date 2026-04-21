@@ -44,7 +44,7 @@
     <!-- Environments detail when selected -->
     <EnvironmentsDetail v-if="store.activeSidebar === 'environments' && store.activeEnvironmentId !== null" />
      <!-- Utility content when selected -->
-     <UtilityContent v-if="store.activeSidebar === 'utilities' && store.selectedUtilityId !== null" />
+      <UtilityContent v-if="store.activeSidebar === 'utilities' && store.selectedUtilityId !== null" />
      <!-- Other main content can go here -->
   </div>
 </div>
@@ -55,12 +55,24 @@
     <RouterView />
   </div>
 </div>
-</main>
-    
-    <ContextMenu />
-    <EnvModal />
-    <RenameModal />
+  </main>
+
+  <!-- Context Menu -->
+  <div
+    v-if="store.contextMenu.show"
+    class="fixed z-50 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded shadow-lg py-1"
+    :style="{ left: store.contextMenu.x + 'px', top: store.contextMenu.y + 'px' }"
+  >
+    <button
+      v-if="store.contextMenu.type === 'utility'"
+      @click="deleteUtility"
+      class="w-full text-left px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700"
+    >
+      Delete Utility
+    </button>
   </div>
+
+</div>
 </template>
 
 <script setup lang="ts">
@@ -153,10 +165,17 @@ function navigate(id: SidebarView) {
     } else if (id === 'secrets') {
       store.selectedSecretId = null;
     } else if (id === 'utilities') {
-      store.selectedUtilityId = 'shell';
+      store.selectedUtilityId = store.utilities.length > 0 ? store.utilities[0].id : null;
     }
 
     router.push(item.route);
+  }
+
+  function deleteUtility() {
+    if (store.contextMenu.id) {
+      store.deleteUtility(store.contextMenu.id);
+      store.hideContextMenu();
+    }
   }
 }
 </script>

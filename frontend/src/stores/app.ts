@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia';
-import type { 
-  Collection, 
-  Environment, 
-  HistoryItem, 
-  Tab, 
-  Request, 
+import type {
+  Collection,
+  Environment,
+  HistoryItem,
+  Tab,
+  Request,
   Response,
   Secret,
   TestStats,
@@ -15,23 +15,27 @@ import type {
   RunConfig,
   SettingsCategory,
   Setting,
-  SubSetting
+  SubSetting,
+  Utility
 } from '../types';
+import { defaultUtilities } from '../utilities';
 
 export const useAppStore = defineStore('app', {
   state: () => ({
     activeSidebar: 'collections' as SidebarView,
     sidebarTitle: 'Collections',
-    
+
     collections: [] as Collection[],
-    
+
     environments: [] as Environment[],
     activeEnvironmentId: null as string | null,
-    
+
     history: [] as HistoryItem[],
-    
+
     tabs: [] as Tab[],
     activeTabId: null as string | null,
+
+    utilities: [] as Utility[],
     
     currentRequest: {
       id: '',
@@ -62,10 +66,6 @@ export const useAppStore = defineStore('app', {
 
 selectedUtilityId: null as string | null,
 
-    // Runner configurations
-    runConfigs: [] as RunConfig[],
-    selectedConfigId: null as string | null,
-    
     contextMenu: {
       show: false,
       x: 0,
@@ -73,7 +73,7 @@ selectedUtilityId: null as string | null,
       type: '',
       id: ''
     },
-    
+
     // Runner configurations
     runConfigs: [] as RunConfig[],
     selectedConfigId: null as string | null,
@@ -460,23 +460,7 @@ selectedUtilityId: null as string | null,
         this.saveToLocalStorage();
       }
     },
-    
-    loadTabToCurrent(tab: Tab) {
-      console.log('[STORE] loadTabToCurrent called with tab:', tab.request.name);
-      const req = tab.request;
-      this.currentRequest.id = req.id;
-      this.currentRequest.name = req.name;
-      this.currentRequest.method = req.method;
-      this.currentRequest.url = req.url;
-      this.currentRequest.headers = req.headers.length > 0 ? [...req.headers] : [];
-      this.currentRequest.body = req.body ? { ...req.body } : { type: 'none', content: '' };
-      this.currentRequest.preRequestScript = req.preRequestScript || '';
-      this.currentRequest.testScript = req.testScript || '';
-      this.urlParams = this.extractParams(req.url);
-      this.requestHeaders = req.headers.length > 0 ? [...req.headers] : [];
-      console.log('[STORE] After loadTabToCurrent, currentRequest:', this.currentRequest.name, 'url:', this.currentRequest.url);
-    },
-    
+
     resetCurrentRequest() {
       this.currentRequest = {
         id: '',
@@ -539,16 +523,7 @@ selectedUtilityId: null as string | null,
       this.requestHeaders.splice(index, 1);
       this.currentRequest.headers = [...this.requestHeaders];
     },
-    
-    saveRequest() {
-      if (!this.currentRequest.id) return;
-      const tab = this.tabs.find(t => t.id === this.activeTabId);
-      if (tab) {
-        tab.request = { ...this.currentRequest };
-        this.saveToLocalStorage();
-      }
-    },
-    
+
     openRequest(item: Request | Folder) {
       console.log('openRequest called with:', item, 'keys:', Object.keys(item));
       let requestItem = item;
@@ -719,6 +694,10 @@ selectedUtilityId: null as string | null,
           this.activeEnvironmentId = parsed.activeEnvironmentId || null;
           console.log('[STORE] Set activeEnvironmentId to:', this.activeEnvironmentId);
           this.history = parsed.history || [];
+          this.utilities = (parsed.utilities || defaultUtilities).map(u => ({
+            ...u,
+            postProcessScript: u.postProcessScript || ''
+          }));
           this.runConfigs = parsed.runConfigs || [];
           this.selectedConfigId = parsed.selectedConfigId || null;
           this.selectedUtilityId = parsed.selectedUtilityId || null;
@@ -978,6 +957,34 @@ selectedUtilityId: null as string | null,
 
     selectUtility(id: string | null) {
       this.selectedUtilityId = id;
+      this.saveToLocalStorage();
+    },
+
+    addUtility() {
+      const utility: Utility = {
+        id: this.generateId('utility'),
+        name: 'New Utility',
+        icon: '🔧',
+        command: '',
+        postProcessScript: ''
+      };
+      this.utilities.push(utility);
+      this.saveToLocalStorage();
+    },
+
+    updateUtility(utility: Utility) {
+      const index = this.utilities.findIndex(u => u.id === utility.id);
+      if (index !== -1) {
+        this.utilities[index] = utility;
+        this.saveToLocalStorage();
+      }
+    },
+
+    deleteUtility(id: string) {
+      this.utilities = this.utilities.filter(u => u.id !== id);
+      if (this.selectedUtilityId === id) {
+        this.selectedUtilityId = null;
+      }
       this.saveToLocalStorage();
     },
     

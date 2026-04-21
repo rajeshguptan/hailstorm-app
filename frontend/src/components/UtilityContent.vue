@@ -1,122 +1,129 @@
 <template>
   <div class="utility-content h-full flex flex-col bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 overflow-auto p-4">
-    <template v-if="store.selectedUtilityId === 'shell'">
-      <div class="space-y-3">
-        <div>
-          <label class="block text-xs text-zinc-500 mb-1">Command</label>
-          <input
-            v-model="shellCommand"
-            @keyup.enter="runShell"
-            placeholder="Enter shell command (e.g., ls, dir, echo hello)"
-            class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-          >
-        </div>
-        <div class="flex gap-2">
-          <button @click="runShell" :disabled="isRunning" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded disabled:opacity-50">
-            {{ isRunning ? 'Running...' : 'Run' }}
-          </button>
-          <button @click="clearOutput" class="px-4 py-2 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded">
-            Clear
-          </button>
-        </div>
+    <div class="space-y-4">
+      <!-- Utility Name -->
+      <div>
+        <label class="block text-xs text-zinc-500 mb-1">Utility Name</label>
+        <input
+          v-model="currentUtilityName"
+          class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+        >
       </div>
-      <div v-if="shellOutput" class="mt-4">
+
+      <!-- Tool Selection -->
+      <div>
+        <label class="block text-xs text-zinc-500 mb-1">Tool</label>
+        <select
+          v-model="selectedTool"
+          class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+        >
+          <option value="shell">Execute Shell</option>
+        </select>
+      </div>
+
+      <!-- Command Input -->
+      <div>
+        <label class="block text-xs text-zinc-500 mb-1">Command</label>
+        <textarea
+          v-model="command"
+          placeholder="Enter command with {{variable}} substitution"
+          rows="3"
+          class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white resize-vertical"
+        ></textarea>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex gap-2">
+        <button @click="runCommand" :disabled="isRunning" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded disabled:opacity-50">
+          {{ isRunning ? 'Running...' : 'Run' }}
+        </button>
+        <button @click="saveUtility" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded">
+          Save
+        </button>
+        <button @click="clearOutput" class="px-4 py-2 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded">
+          Clear
+        </button>
+      </div>
+
+      <!-- Output -->
+      <div v-if="output">
         <h4 class="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Output</h4>
         <div class="p-3 bg-zinc-100 dark:bg-zinc-800 rounded border border-zinc-200 dark:border-zinc-700">
-          <pre class="text-sm font-mono text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{{ shellOutput }}</pre>
-        </div>
-      </div>
-    </template>
-
-    <template v-else-if="store.selectedUtilityId === 'az-token'">
-      <div class="space-y-4">
-        <div>
-          <label class="block text-xs text-zinc-500 mb-1">Azure Subscription (optional)</label>
-          <input
-            v-model="azSubscription"
-            placeholder="Leave empty for default subscription"
-            class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-          >
-        </div>
-        <div>
-          <label class="block text-xs text-zinc-500 mb-1">Resource (optional)</label>
-          <input
-            v-model="azResource"
-            placeholder="e.g., https://management.azure.com"
-            class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-          >
-        </div>
-        <div class="flex items-center gap-2">
-          <input v-model="azSubstituteVars" type="checkbox" id="azSubstituteVars" class="w-4 h-4">
-          <label for="azSubstituteVars" class="text-sm text-zinc-700 dark:text-zinc-300">Substitute variables in command</label>
-        </div>
-        <div class="flex items-center gap-2">
-          <input v-model="azParseOutput" type="checkbox" id="azParseOutput" class="w-4 h-4" @change="toggleAzParseOutput">
-          <label for="azParseOutput" class="text-sm text-zinc-700 dark:text-zinc-300">Parse output (extract token)</label>
-        </div>
-        <div v-if="azParseOutput" class="flex items-center gap-2">
-          <input v-model="azAddToEnv" type="checkbox" id="azAddToEnv" class="w-4 h-4">
-          <label for="azAddToEnv" class="text-sm text-zinc-700 dark:text-zinc-300">Add token to environment</label>
-        </div>
-        <div v-if="azAddToEnv" class="mt-2">
-          <label class="block text-xs text-zinc-500 mb-1">Variable Name</label>
-          <input
-            v-model="azEnvVarName"
-            placeholder="e.g., AZ_ACCESS_TOKEN"
-            class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-          >
-        </div>
-        <div class="flex gap-2">
-          <button @click="runAzToken" :disabled="isRunning" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded disabled:opacity-50">
-            {{ isRunning ? 'Running...' : 'Get Token' }}
-          </button>
-          <button @click="clearOutput" class="px-4 py-2 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded">
-            Clear
-          </button>
+          <pre class="text-sm font-mono text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{{ output }}</pre>
         </div>
       </div>
 
-      <div v-if="azOutput" class="mt-4">
-        <h4 class="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Output</h4>
-        <div class="p-3 bg-zinc-100 dark:bg-zinc-800 rounded border border-zinc-200 dark:border-zinc-700">
-          <pre class="text-sm font-mono text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{{ azOutput }}</pre>
-        </div>
+      <!-- Post-Processing Script -->
+      <div>
+        <h4 class="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Post-Processing Script</h4>
+        <textarea
+          v-model="postProcessScript"
+          rows="8"
+          class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white resize-vertical font-mono text-sm"
+          placeholder="Use hs.output for command output, hs.setEnv(key, value) to set environment variables. E.g.,&#10;let userId = hs.output.trim().split(/\s+/)[0];&#10;hs.setEnv('USER', userId);"
+        ></textarea>
       </div>
-
-      <div v-if="azParsedToken" class="mt-4">
-        <h4 class="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Parsed Token</h4>
-        <div class="p-3 bg-zinc-100 dark:bg-zinc-800 rounded border border-zinc-200 dark:border-zinc-700">
-          <pre class="text-sm font-mono text-green-600 dark:text-green-400 whitespace-pre-wrap">{{ azParsedToken }}</pre>
-        </div>
-      </div>
-    </template>
-
-    <template v-else>
-      <div class="text-center text-zinc-500 py-8">
-        Select a utility from the sidebar to view its content
-      </div>
-    </template>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useAppStore } from '../stores/app';
+import MonacoEditor from './MonacoEditor.vue';
 
 const store = useAppStore();
 
-const shellCommand = ref('');
-const shellOutput = ref('');
+const command = computed({
+  get: () => {
+    const utility = store.utilities.find(u => u.id === selectedUtilityId.value);
+    return utility?.command || '';
+  },
+  set: (value) => {
+    const utility = store.utilities.find(u => u.id === selectedUtilityId.value);
+    if (utility) {
+      utility.command = value;
+      store.updateUtility(utility);
+    }
+  }
+});
+const output = ref('');
 const isRunning = ref(false);
+const selectedTool = ref('shell');
 
-const azSubscription = ref('');
-const azResource = ref('');
-const azSubstituteVars = ref(true);
-const azParseOutput = ref(true);
-const azAddToEnv = ref(false);
-const azEnvVarName = ref('AZ_ACCESS_TOKEN');
-const azOutput = ref('');
-const azParsedToken = ref('');
+
+const postProcessScript = computed({
+  get: () => {
+    const utility = store.utilities.find(u => u.id === selectedUtilityId.value);
+    return utility?.postProcessScript || '';
+  },
+  set: (script) => {
+    const utility = store.utilities.find(u => u.id === selectedUtilityId.value);
+    if (utility) {
+      utility.postProcessScript = script;
+      store.updateUtility(utility);
+    }
+  }
+});
+
+const selectedUtilityId = computed({
+  get: () => store.selectedUtilityId,
+  set: (id) => store.selectUtility(id)
+});
+
+const currentUtilityName = computed({
+  get: () => {
+    const utility = store.utilities.find(u => u.id === selectedUtilityId.value);
+    return utility?.name || '';
+  },
+  set: (name) => {
+    const utility = store.utilities.find(u => u.id === selectedUtilityId.value);
+    if (utility) {
+      utility.name = name;
+      store.updateUtility(utility);
+    }
+  }
+});
 
 function substituteVariables(text: string): string {
   if (!text) return text;
@@ -128,104 +135,89 @@ function substituteVariables(text: string): string {
   });
 }
 
-async function runShell() {
-  if (!shellCommand.value || isRunning.value) return;
+async function runCommand() {
+  if (!command.value || isRunning.value) return;
 
   isRunning.value = true;
-  shellOutput.value = '';
+  output.value = '';
 
-  let command = shellCommand.value;
-  if (azSubstituteVars.value) {
-    command = substituteVariables(command);
-  }
+  let cmd = substituteVariables(command.value);
 
   try {
-    const result = await (window as any).api.runShell(command);
-    shellOutput.value = result.output || result.error || 'No output';
-  } catch (err: any) {
-    shellOutput.value = `Error: ${err.message}`;
-  } finally {
-    isRunning.value = false;
-  }
-}
+    const result = await (window as any).api.runShell(cmd);
+    const cmdOutput = result.output || result.error || 'No output';
+    output.value = cmdOutput;
 
-function toggleAzParseOutput() {
-  if (azParseOutput.value) {
-    azAddToEnv.value = true;
-  }
-}
-
-async function runAzToken() {
-  if (isRunning.value) return;
-
-  isRunning.value = true;
-  azOutput.value = '';
-  azParsedToken.value = '';
-
-  let command = 'az account get-access-token';
-  if (azSubscription.value) {
-    if (azSubstituteVars.value) {
-      const sub = substituteVariables(azSubscription.value);
-      command += ` --subscription "${sub}"`;
-    } else {
-      command += ` --subscription "${azSubscription.value}"`;
-    }
-  }
-  if (azResource.value) {
-    if (azSubstituteVars.value) {
-      const res = substituteVariables(azResource.value);
-      command += ` --resource "${res}"`;
-    } else {
-      command += ` --resource "${azResource.value}"`;
-    }
-  }
-  command += ' --output json';
-
-  try {
-    const result = await (window as any).api.runShell(command);
-    azOutput.value = result.output || result.error || 'No output';
-
-    if (azParseOutput.value && result.output) {
+    // Apply post-processing script
+    if (postProcessScript.value) {
       try {
-        const parsed = JSON.parse(result.output.trim());
-        azParsedToken.value = parsed.accessToken;
-
-        if (azAddToEnv.value && azParsedToken.value) {
-          addTokenToEnvironment(azParsedToken.value);
-        }
-      } catch {
-        azParsedToken.value = 'Failed to parse output';
+        const hs = {
+          output: cmdOutput,
+          setEnv: setVariable
+        };
+        const scriptFn = new Function('hs', postProcessScript.value);
+        scriptFn(hs);
+      } catch (err) {
+        console.error('Post-processing script error:', err);
       }
     }
   } catch (err: any) {
-    azOutput.value = `Error: ${err.message}`;
+    output.value = `Error: ${err.message}`;
   } finally {
     isRunning.value = false;
   }
 }
 
-function addTokenToEnvironment(token: string) {
-  if (!store.activeEnvironmentId || !azEnvVarName.value) return;
+function setVariable(key: string, value: string) {
+  if (!store.activeEnvironmentId) return;
 
   const envIndex = store.environments.findIndex(e => e.id === store.activeEnvironmentId);
   if (envIndex === -1) return;
 
   const env = store.environments[envIndex];
-  const existingVar = env.variables.find(v => v.key === azEnvVarName.value);
+  const existingVar = env.variables.find(v => v.key === key);
 
   if (existingVar) {
-    existingVar.value = token;
+    existingVar.value = value;
   } else {
-    env.variables.push({ key: azEnvVarName.value, value: token, enabled: true });
+    env.variables.push({ key, value, enabled: true });
   }
 
   store.saveToLocalStorage();
 }
 
+function saveUtility() {
+  // Command is auto-saved via computed setter
+  store.saveToLocalStorage();
+  alert('Utility saved!');
+}
+
 function clearOutput() {
-  shellCommand.value = '';
-  shellOutput.value = '';
-  azOutput.value = '';
-  azParsedToken.value = '';
+  output.value = '';
+}
+
+
+
+
+
+function editScript(rule: { variable: string; script: string }) {
+  editingScript.value = rule.script;
+  editingRuleIndex.value = postProcessRules.value.indexOf(rule);
+  showScriptModal.value = true;
+}
+
+function saveScript() {
+  if (editingRuleIndex.value >= 0) {
+    const rules = [...postProcessRules.value];
+    rules[editingRuleIndex.value].script = editingScript.value;
+    postProcessRules.value = rules;
+  }
+  closeScriptModal();
+}
+
+function closeScriptModal() {
+  showScriptModal.value = false;
+  editingScript.value = '';
+  editingRuleIndex.value = -1;
 }
 </script>

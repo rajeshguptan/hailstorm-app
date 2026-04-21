@@ -128,5 +128,13 @@ export interface SubSetting {
 
 export type SidebarView = 'collections' | 'environments' | 'history' | 'secrets' | 'stats' | 'utilities' | 'settings' | 'runner';
 
+export interface Utility {
+  id: string;
+  name: string;
+  icon: string;
+  command?: string;
+  postProcessScript?: string;
+}
+
 export type RequestTab = 'params' | 'auth' | 'headers' | 'body' | 'variables' | 'scripts';
 export type ResponseTab = 'body' | 'headers' | 'tests';

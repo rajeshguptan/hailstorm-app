@@ -1,26 +1,41 @@
 <template>
   <div class="utilities-list">
-    <div v-for="util in utilities" :key="util.id">
+    <div class="p-2 mb-2">
+      <button @click="addUtility" class="w-full text-xs px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded">Add Utility</button>
+    </div>
+    <div v-for="utility in store.utilities" :key="utility.id" class="mb-1">
       <div
-        class="flex items-center p-2 rounded cursor-pointer mb-1 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700"
-        :class="{ 'bg-zinc-300 dark:bg-zinc-600': store.selectedUtilityId === util.id }"
-        @click="store.selectUtility(util.id)"
+        class="flex items-center p-2 rounded cursor-pointer bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+        :class="{ 'bg-zinc-300 dark:bg-zinc-600': store.selectedUtilityId === utility.id }"
+        @click="store.selectUtility(utility.id)"
+        @contextmenu.prevent="showContextMenu($event, utility)"
       >
-        <span class="text-lg mr-2">{{ util.icon }}</span>
-        <span class="text-sm text-zinc-900 dark:text-white">{{ util.name }}</span>
+        <span class="text-lg mr-2">{{ utility.icon }}</span>
+        <span class="text-sm text-zinc-900 dark:text-white flex-1">{{ utility.name }}</span>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
 import { useAppStore } from '../../stores/app';
+import type { Utility } from '../../types';
 
 const store = useAppStore();
 
-const utilities = ref([
-  { id: 'shell', name: 'OS Command', icon: '💻' },
-  { id: 'az-token', name: 'Azure Token', icon: '☁️' },
-]);
+function addUtility() {
+  const utility: Utility = {
+    id: store.generateId('utility'),
+    name: 'New Utility',
+    icon: '🔧',
+    command: '',
+    postProcessScript: ''
+  };
+  store.utilities.push(utility);
+  store.saveToLocalStorage();
+}
+
+function showContextMenu(event: MouseEvent, utility: Utility) {
+  store.showContextMenu(event, 'utility', utility.id);
+}
 </script>
