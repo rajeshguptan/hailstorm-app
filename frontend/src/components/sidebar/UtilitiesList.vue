@@ -10,7 +10,6 @@
         @click="store.selectUtility(utility.id)"
         @contextmenu.prevent="showContextMenu($event, utility)"
       >
-        <span class="text-lg mr-2">{{ utility.icon }}</span>
         <span class="text-sm text-zinc-900 dark:text-white flex-1">{{ utility.name }}</span>
       </div>
     </div>

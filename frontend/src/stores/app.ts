@@ -1002,8 +1002,11 @@ selectedUtilityId: null as string | null,
       const index = this.runConfigs.findIndex(c => c.id === config.id);
       if (index !== -1) {
         this.runConfigs[index] = config;
-        this.saveToLocalStorage();
+      } else {
+        this.runConfigs.push(config);
+        this.selectedConfigId = config.id;
       }
+      this.saveToLocalStorage();
     },
     
     deleteRunConfig(id: string) {

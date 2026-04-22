@@ -31,6 +31,13 @@ function handleAction(action: string) {
         store.deleteFolder(id);
       } else if (type === 'utility') {
         store.deleteUtility(id);
+      } else if (type === 'run-config') {
+        store.deleteRunConfig(id);
+      }
+      break;
+    case 'run':
+      if (type === 'run-config') {
+        store.selectRunConfig(id);
       }
       break;
     case 'rename':

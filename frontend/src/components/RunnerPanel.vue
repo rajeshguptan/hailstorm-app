@@ -6,44 +6,53 @@
         <p class="text-sm">or create a new one</p>
       </div>
     </div>
-    <template v-else>
+    <div v-else class="flex-1 flex flex-col overflow-hidden">
       <div class="p-4 border-b border-zinc-200 dark:border-zinc-700">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-bold text-zinc-900 dark:text-white">Run: {{ selectedConfig.name }}</h3>
-          <div class="flex gap-2">
-            <button v-if="!isRunning" class="btn btn-sm bg-green-500 text-white" :disabled="selectedConfig.selectedRequests.length === 0" @click="runCollection">Run</button>
-            <button v-else class="btn btn-sm bg-red-500 text-white" @click="stopRun">Stop</button>
+        <div class="mb-4">
+          <h3 class="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+            <span v-if="!editMode">{{ selectedConfig?.name }}</span>
+            <span v-if="editMode" class="flex items-center gap-1">
+              <input v-model="editedName" class="bg-transparent border-b border-zinc-400 dark:border-zinc-600 focus:outline-none text-zinc-900 dark:text-white" />
+            </span>
+          </h3>
+          <div class="flex gap-2 mt-4">
+            <button class="btn bg-green-500 text-white" :disabled="isRunning || selectedRequests.length === 0" @click="runCollection">Run</button>
+            <button v-if="isRunning" class="btn bg-red-500 text-white" @click="stopRun">Stop</button>
+            <button class="btn bg-gray-500 text-white" :disabled="editMode" @click="startEdit">Edit</button>
+            <button class="btn bg-blue-500 text-white" :disabled="!editMode" @click="saveConfig">Save</button>
+            <button class="btn bg-purple-500 text-white" @click="duplicateConfig">Duplicate</button>
+            <button class="btn bg-gray-500 text-white" :disabled="!editMode" @click="cancelEdit">Cancel</button>
           </div>
         </div>
         
         <div class="flex gap-4 mb-4">
           <div class="flex-1">
             <label class="block text-sm text-zinc-600 dark:text-gray-400 mb-1">Collection</label>
-            <select v-model="selectedConfig.collectionId" class="form-select bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
+            <select v-model="currentCollectionId" :disabled="!editMode" class="form-select bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
               <option v-for="coll in collections" :key="coll.id" :value="coll.id">{{ coll.name }}</option>
             </select>
           </div>
           <div class="flex-1">
             <label class="block text-sm text-zinc-600 dark:text-gray-400 mb-1">Run Mode</label>
-            <select v-model="selectedConfig.runMode" class="form-select bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
+            <select v-model="currentRunMode" :disabled="!editMode" class="form-select bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
               <option value="parallel">Parallel</option>
               <option value="sequential">Sequential</option>
             </select>
           </div>
         </div>
-        
+
         <div class="flex gap-4 mb-4">
           <label class="flex items-center gap-2">
-            <input v-model="selectedConfig.runRepeated" type="checkbox" class="form-checkbox" />
+            <input v-model="currentRunRepeated" :disabled="!editMode" type="checkbox" class="form-checkbox" />
             <span>Run Repeated</span>
           </label>
-          <div v-if="selectedConfig.runRepeated" class="flex items-center gap-2">
-            <label class="text-sm text-gray-400">Iterations:</label>
-            <input v-model.number="selectedConfig.iterations" type="number" class="form-input bg-zinc-800 text-white border-zinc-600 rounded px-2 py-1" style="width: 80px;" />
+          <div v-if="currentRunRepeated" class="flex items-center gap-2">
+            <label class="text-sm text-zinc-600 dark:text-gray-400">Iterations:</label>
+            <input v-model.number="currentIterations" :disabled="!editMode" type="number" class="form-input bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1" style="width: 80px;" />
           </div>
-          <div v-if="selectedConfig.runMode === 'sequential'" class="flex items-center gap-2">
-            <label class="text-sm text-gray-400">Delay (ms):</label>
-            <input v-model.number="selectedConfig.delay" type="number" class="form-input bg-zinc-800 text-white border-zinc-600 rounded px-2 py-1" style="width: 80px;" />
+          <div v-if="currentRunMode === 'sequential'" class="flex items-center gap-2">
+            <label class="text-sm text-zinc-600 dark:text-gray-400">Delay (ms):</label>
+            <input v-model.number="currentDelay" :disabled="!editMode" type="number" class="form-input bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1" style="width: 80px;" />
           </div>
         </div>
       </div>
@@ -54,7 +63,7 @@
           <div class="border border-zinc-700 rounded max-h-48 overflow-auto">
             <div v-for="req in collectionRequests" :key="req.id" class="p-2 border-b border-zinc-700 hover:bg-zinc-800">
               <label class="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" :value="req.id" v-model="selectedConfig.selectedRequests" />
+                <input type="checkbox" :value="req.id" v-model="selectedRequests" />
                 <span class="badge mr-1" :class="getMethodClass(req)">{{ req.method }}</span>
                 <span>{{ req.name }}</span>
               </label>
@@ -77,12 +86,13 @@
           </div>
         </div>
       </div>
-    </template>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
+import type { RunConfig } from '../types';
 
 interface Variable {
   key: string;
@@ -155,6 +165,11 @@ const emit = defineEmits<{
 
 const isRunning = ref(false);
 const results = ref<RunResult[]>([]);
+const lastEmitted = ref<RunConfig | null>(null);
+const editMode = ref(false);
+const editingConfig = ref<RunConfig | null>(null);
+const editedName = ref('');
+const selectedRequests = ref<string[]>([]);
 
 const selectedConfig = computed(() => {
   return props.runConfigs.find(c => c.id === props.selectedConfigId) || null;
@@ -174,6 +189,51 @@ const collectionRequests = computed(() => {
   const requests: Request[] = [];
   collectRequests(currentCollection.value.items, requests);
   return requests;
+});
+
+const currentCollectionId = computed({
+  get: () => editMode.value ? editingConfig.value?.collectionId : selectedConfig.value?.collectionId,
+  set: (value: string) => {
+    if (editMode.value && editingConfig.value) {
+      editingConfig.value.collectionId = value;
+    }
+  }
+});
+
+const currentRunMode = computed({
+  get: () => editMode.value ? editingConfig.value?.runMode : selectedConfig.value?.runMode,
+  set: (value: 'parallel' | 'sequential') => {
+    if (editMode.value && editingConfig.value) {
+      editingConfig.value.runMode = value;
+    }
+  }
+});
+
+const currentRunRepeated = computed({
+  get: () => editMode.value ? editingConfig.value?.runRepeated : selectedConfig.value?.runRepeated,
+  set: (value: boolean) => {
+    if (editMode.value && editingConfig.value) {
+      editingConfig.value.runRepeated = value;
+    }
+  }
+});
+
+const currentIterations = computed({
+  get: () => editMode.value ? editingConfig.value?.iterations : selectedConfig.value?.iterations,
+  set: (value: number) => {
+    if (editMode.value && editingConfig.value) {
+      editingConfig.value.iterations = value;
+    }
+  }
+});
+
+const currentDelay = computed({
+  get: () => editMode.value ? editingConfig.value?.delay : selectedConfig.value?.delay,
+  set: (value: number) => {
+    if (editMode.value && editingConfig.value) {
+      editingConfig.value.delay = value;
+    }
+  }
 });
 
 function collectRequests(items: (Request | Folder)[], requests: Request[]) {
@@ -206,9 +266,14 @@ function substituteVariables(text: string): string {
 }
 
 async function runCollection() {
-  if (!selectedConfig.value) return;
+  console.log('[RUNNER_PANEL] runCollection called', { selectedConfig: selectedConfig.value, selectedRequests: selectedRequests.value });
+  if (!selectedConfig.value) {
+    console.log('[RUNNER_PANEL] No selected config');
+    return;
+  }
   
   const requests = collectionRequests.value.filter(r => selectedConfig.value!.selectedRequests.includes(r.id));
+  console.log('[RUNNER_PANEL] Requests to run:', requests.length, requests.map(r => r.name));
   if (requests.length === 0) return;
   
   isRunning.value = true;
@@ -286,9 +351,73 @@ function stopRun() {
   isRunning.value = false;
 }
 
-watch(() => selectedConfig.value, (config) => {
-  if (config) {
-    emit('update-run-config', { ...config });
+function startEdit() {
+  if (!selectedConfig.value) return;
+  editMode.value = true;
+  editingConfig.value = JSON.parse(JSON.stringify(selectedConfig.value));
+  editingConfig.value.selectedRequests = [...selectedRequests.value];
+  editedName.value = selectedConfig.value.name;
+}
+
+function saveConfig() {
+  if (!editingConfig.value) return;
+  editingConfig.value.name = editedName.value;
+  editingConfig.value.selectedRequests = [...selectedRequests.value];
+  lastEmitted.value = JSON.parse(JSON.stringify(editingConfig.value));
+  emit('update-run-config', editingConfig.value);
+  editMode.value = false;
+  editingConfig.value = null;
+}
+
+function duplicateConfig() {
+  const sourceConfig = editMode.value ? editingConfig.value : selectedConfig.value;
+  if (!sourceConfig) return;
+  
+  const newName = prompt('Enter name for new run config:', sourceConfig.name + ' Copy');
+  if (newName) {
+    const collection = props.collections.find(c => c.id === sourceConfig?.collectionId);
+    const newConfig: RunConfig = {
+      id: generateId('run'),
+      name: newName,
+      collectionId: sourceConfig?.collectionId || '',
+      collectionName: collection?.name || sourceConfig?.collectionName || '',
+      selectedRequests: [...selectedRequests.value],
+      runMode: sourceConfig?.runMode || 'sequential',
+      delay: sourceConfig?.delay || 1000,
+      runRepeated: sourceConfig?.runRepeated || false,
+      iterations: sourceConfig?.iterations || 1
+    };
+    emit('update-run-config', newConfig);
+    editMode.value = false;
+    editingConfig.value = null;
+  }
+}
+
+function generateId(prefix: string): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}
+
+function cancelEdit() {
+  editMode.value = false;
+  editingConfig.value = null;
+}
+
+watch(() => selectedConfig.value, (newConfig) => {
+  if (newConfig) {
+    selectedRequests.value = [...newConfig.selectedRequests];
+  } else {
+    selectedRequests.value = [];
+  }
+  // Reset editing when config changes
+  editMode.value = false;
+  editingConfig.value = null;
+});
+
+watch(selectedRequests, (newVal) => {
+  if (selectedConfig.value && JSON.stringify(newVal) !== JSON.stringify(lastEmitted.value?.selectedRequests)) {
+    const updated = { ...selectedConfig.value, selectedRequests: newVal };
+    lastEmitted.value = JSON.parse(JSON.stringify(updated));
+    emit('update-run-config', updated);
   }
 }, { deep: true });
 </script>

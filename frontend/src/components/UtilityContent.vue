@@ -37,8 +37,14 @@
         <button @click="runCommand" :disabled="isRunning" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded disabled:opacity-50">
           {{ isRunning ? 'Running...' : 'Run' }}
         </button>
+        <button @click="editUtility" class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded">
+          Edit
+        </button>
         <button @click="saveUtility" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded">
           Save
+        </button>
+        <button @click="saveAsUtility" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded">
+          Save As
         </button>
         <button @click="clearOutput" class="px-4 py-2 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded">
           Clear
@@ -136,6 +142,10 @@ function substituteVariables(text: string): string {
 }
 
 async function runCommand() {
+  if (!selectedUtilityId.value) {
+    output.value = 'Please select a utility first.';
+    return;
+  }
   if (!command.value || isRunning.value) return;
 
   isRunning.value = true;
@@ -146,7 +156,7 @@ async function runCommand() {
   try {
     const result = await (window as any).api.runShell(cmd);
     const cmdOutput = result.output || result.error || 'No output';
-    output.value = cmdOutput;
+    output.value = cmdOutput.replace(/^Run: /, '');
 
     // Apply post-processing script
     if (postProcessScript.value) {
@@ -184,6 +194,27 @@ function setVariable(key: string, value: string) {
   }
 
   store.saveToLocalStorage();
+}
+
+function editUtility() {
+  // Placeholder for edit functionality - perhaps toggle edit mode or open modal
+  alert('Edit functionality not implemented yet.');
+}
+
+function saveAsUtility() {
+  const newName = prompt('Enter name for new utility:', currentUtilityName.value + ' Copy');
+  if (newName) {
+    const newUtility = {
+      id: store.generateId('utility'),
+      name: newName,
+      icon: '🔧',
+      command: command.value,
+      postProcessScript: postProcessScript.value
+    };
+    store.utilities.push(newUtility);
+    store.saveToLocalStorage();
+    store.selectUtility(newUtility.id);
+  }
 }
 
 function saveUtility() {

@@ -45,6 +45,16 @@
     <EnvironmentsDetail v-if="store.activeSidebar === 'environments' && store.activeEnvironmentId !== null" />
       <!-- Utility content when selected -->
        <UtilityContent v-if="store.activeSidebar === 'utilities' && store.selectedUtilityId !== null" />
+    <!-- Runner panel -->
+    <RunnerPanel
+      v-if="store.activeSidebar === 'runner'"
+      :collections="store.collections"
+      :environments="store.environments"
+      :activeEnvironmentId="store.activeEnvironmentId"
+      :runConfigs="store.runConfigs"
+      :selectedConfigId="store.selectedConfigId"
+      @update-run-config="store.updateRunConfig"
+    />
      <!-- Other main content can go here -->
   </div>
 </div>
@@ -77,8 +87,8 @@ import ResponsePanel from '../components/ResponsePanel.vue';
 import SettingsContent from '../components/SettingsContent.vue';
 import SecretsDetail from '../components/SecretsDetail.vue';
 import EnvironmentsDetail from '../components/EnvironmentsDetail.vue';
-
 import UtilityContent from '../components/UtilityContent.vue';
+import RunnerPanel from '../components/RunnerPanel.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -99,11 +109,15 @@ watch(
       '/runner': 'runner',
       '/settings': 'settings'
     };
-    
+
     const sidebarId = routeToSidebar[to];
     if (sidebarId && store.activeSidebar !== sidebarId) {
       store.activeSidebar = sidebarId;
-      store.sidebarTitle = sidebarId.charAt(0).toUpperCase() + sidebarId.slice(1);
+      if (sidebarId === 'runner') {
+        store.sidebarTitle = 'Run Configs';
+      } else {
+        store.sidebarTitle = sidebarId.charAt(0).toUpperCase() + sidebarId.slice(1);
+      }
     }
   }
 );
@@ -143,7 +157,11 @@ function navigate(id: SidebarView) {
   const item = ribbonItems.find(i => i.id === id);
   if (item) {
     store.activeSidebar = id;
-    store.sidebarTitle = id.charAt(0).toUpperCase() + id.slice(1);
+    if (id === 'runner') {
+      store.sidebarTitle = 'Run Configs';
+    } else {
+      store.sidebarTitle = id.charAt(0).toUpperCase() + id.slice(1);
+    }
 
     // Clear selections when navigating to different views
     if (id === 'collections') {
@@ -155,6 +173,8 @@ function navigate(id: SidebarView) {
       store.selectedSecretId = null;
     } else if (id === 'utilities') {
       store.selectedUtilityId = store.utilities.length > 0 ? store.utilities[0].id : null;
+    } else if (id === 'runner') {
+      // Sidebar title is set in watch(route)
     }
 
     router.push(item.route);

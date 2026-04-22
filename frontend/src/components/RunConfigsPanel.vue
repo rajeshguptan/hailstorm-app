@@ -1,7 +1,7 @@
 <template>
   <div class="run-configs-panel items-start">
     <div class="flex gap-2 mb-2">
-      <button class="btn btn-sm bg-blue-500 text-white w-full hover:bg-blue-600" @click="$emit('add-run-config')">+ New Run</button>
+      <button class="btn btn-sm bg-blue-500 text-white w-full hover:bg-blue-600" @click="$emit('add-run-config')">+ New Config</button>
     </div>
     <div v-if="runConfigs.length === 0" class="text-center text-zinc-400 dark:text-zinc-500 py-4">
       No run configurations yet
