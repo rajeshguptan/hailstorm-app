@@ -61,7 +61,8 @@ export interface HistoryItem {
   method: string;
   url: string;
   status: number;
-  time: number;
+  time: number; // Response time in ms
+  timestamp: number; // Execution timestamp
   request: Request;
   response: Response;
 }

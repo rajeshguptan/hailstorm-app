@@ -741,7 +741,10 @@ selectedUtilityId: null as string | null,
           if (this.activeEnvironmentId) {
             console.log('[DEBUG] activeEnvironmentId is set on startup, environments:', this.environments.map(e => ({ id: e.id, name: e.name, active: e.active })));
           }
-          this.history = parsed.history || [];
+          this.history = (parsed.history || []).map((item: any) => ({
+            ...item,
+            timestamp: item.timestamp || item.id // Use existing id as fallback timestamp
+          }));
           this.utilities = (parsed.utilities || defaultUtilities).map(u => ({
             ...u,
             postProcessScript: u.postProcessScript || ''

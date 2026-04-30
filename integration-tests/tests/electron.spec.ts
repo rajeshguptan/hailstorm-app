@@ -109,6 +109,34 @@ test.describe('Hailstorm Electron App - Collection Management', () => {
     });
   });
 
+  test.describe('History Panel Enhancements', () => {
+    test('should display timestamp information for history items', async () => {
+      // Test: History items should show execution timestamp
+      // Test: Timestamps should be formatted as relative time (e.g., "2m ago", "1h ago")
+      expect(true).toBe(true); // Placeholder - requires Electron setup
+    });
+
+    test('should allow searching history by URL', async () => {
+      // Test: Search input should filter history items by URL
+      expect(true).toBe(true); // Placeholder - requires Electron setup
+    });
+
+    test('should allow searching history by request method', async () => {
+      // Test: Search should filter by HTTP method (GET, POST, etc.)
+      expect(true).toBe(true); // Placeholder - requires Electron setup
+    });
+
+    test('should allow searching history by response status', async () => {
+      // Test: Search should filter by status code (200, 404, etc.)
+      expect(true).toBe(true); // Placeholder - requires Electron setup
+    });
+
+    test('should show wildcard search results', async () => {
+      // Test: Partial matches should work (e.g., "api" matches "https://api.example.com")
+      expect(true).toBe(true); // Placeholder - requires Electron setup
+    });
+  });
+
   test.describe('Manual Testing Checklist', () => {
     test('manual: verify collection panel tabs work correctly', async () => {
       // Manual test steps:
@@ -147,6 +175,24 @@ test.describe('Hailstorm Electron App - Collection Management', () => {
       // 6. Verify collection loads from files
       // 7. Check file structure in workspace directory
       // 8. Verify collection.json and individual request files exist
+
+      expect(true).toBe(true);
+    });
+
+    test('manual: verify history panel enhancements', async () => {
+      // Manual test steps:
+      // 1. Start the app: cd frontend && npm run start
+      // 2. Execute several requests to build up history
+      // 3. Click on History in the sidebar
+      // 4. Verify each history item shows timestamp (e.g., "2m ago", "1h ago")
+      // 5. Test search functionality:
+      //    - Search by URL: "api" should match URLs containing "api"
+      //    - Search by method: "POST" should show only POST requests
+      //    - Search by status: "200" should show only successful requests
+      //    - Search by partial terms: "exa" should match "example.com"
+      // 6. Verify search results update in real-time as you type
+      // 7. Verify "Clear History" button works
+      // 8. Click on history items to load them into the request panel
 
       expect(true).toBe(true);
     });

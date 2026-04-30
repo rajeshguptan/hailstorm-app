@@ -388,6 +388,7 @@ async function sendRequest() {
             url: options.url,
             status: result.status,
             time: result.time,
+            timestamp: Date.now(),
             request: substitutedRequest,
             response: store.response!
         });

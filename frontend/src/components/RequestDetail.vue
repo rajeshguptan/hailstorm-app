@@ -532,6 +532,7 @@ async function sendRequest() {
       url: editingRequest.value.url,
       status: result.status,
       time: result.time,
+      timestamp: Date.now(),
       request: JSON.parse(JSON.stringify(editingRequest.value)), // Deep copy of request
       response: store.response!
     });
