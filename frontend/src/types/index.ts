@@ -35,6 +35,7 @@ export interface Request {
   testScript?: string;
   flavors?: Request[];
   variables?: RequestVariable[];
+  response?: Response;
 }
 
 export interface Folder {
@@ -48,6 +49,11 @@ export interface Collection {
   name: string;
   items: (Request | Folder)[];
   variables: Variable[];
+  description?: string;
+  workspaceLocation?: string;
+  preRequestScript?: string;
+  testScript?: string;
+  auth?: Auth;
 }
 
 export interface HistoryItem {
@@ -70,7 +76,7 @@ export interface Response {
   statusText: string;
   data: string;
   time: number;
-  headers: Record<string, string>;
+  headers: Record<string, string | string[]>;
 }
 
 export interface Secret {

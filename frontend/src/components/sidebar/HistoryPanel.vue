@@ -31,7 +31,7 @@ const history = computed(() => store.history);
 
 function getMethodClass(method: string): string {
   const m = method.toLowerCase();
-  return m === 'get' ? 'bg-green-500' : m === 'post' ? 'bg-blue-500' : m === 'put' ? 'bg-yellow-500 text-black' : m === 'delete' ? 'bg-red-500' : 'bg-cyan-500';
+  return m === 'get' ? 'text-green-800 dark:text-green-200 font-dancing font-bold text-xs' : m === 'post' ? 'text-blue-800 dark:text-blue-200 font-dancing font-bold text-xs' : m === 'put' ? 'text-amber-800 dark:text-amber-200 font-dancing font-bold text-xs' : m === 'delete' ? 'text-red-800 dark:text-red-200 font-dancing font-bold text-xs' : 'text-cyan-800 dark:text-cyan-200 font-dancing font-bold text-xs';
 }
 
 function clearHistory() {

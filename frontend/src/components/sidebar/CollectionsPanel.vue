@@ -250,6 +250,8 @@ function toggleCollection(id: string) {
   } else {
     expandedCollections.value.push(id);
   }
+  // Also select the collection to show details
+  store.selectCollection(id);
 }
 
 function handleItemClick(event: MouseEvent, item: any) {
@@ -308,6 +310,6 @@ function getItemType(item: any): string {
 
 function getMethodClass(item: any): string {
   const method = (('request' in item) ? item.request.method : item.method)?.toLowerCase() || 'get';
-  return method === 'get' ? 'bg-green-500' : method === 'post' ? 'bg-blue-500' : method === 'put' ? 'bg-yellow-500 text-black' : method === 'delete' ? 'bg-red-500' : 'bg-cyan-500';
+  return method === 'get' ? 'text-green-800 dark:text-green-200 font-dancing font-bold text-xs' : method === 'post' ? 'text-blue-800 dark:text-blue-200 font-dancing font-bold text-xs' : method === 'put' ? 'text-amber-800 dark:text-amber-200 font-dancing font-bold text-xs' : method === 'delete' ? 'text-red-800 dark:text-red-200 font-dancing font-bold text-xs' : 'text-cyan-800 dark:text-cyan-200 font-dancing font-bold text-xs';
 }
 </script>

@@ -22,22 +22,25 @@ test.describe('Collection CRUD Operations', () => {
   });
 
   test('should add a folder to a collection', async () => {
-    await collectionsPanel.addCollection('Test Collection');
-    await collectionsPanel.addFolderToCollection('Test Collection', 'Test Folder');
-    expect(await collectionsPanel.page.locator('text=Test Folder').isVisible()).toBe(true);
+    await collectionsPanel.addCollection();
+    await collectionsPanel.addFolderToCollection('New Collection');
+    await collectionsPanel.expandCollection('New Collection');
+    expect(await collectionsPanel.page.locator('text=New Folder').isVisible()).toBe(true);
   });
 
   test('should add a request to a collection', async () => {
-    await collectionsPanel.addCollection('Test Collection');
-    await collectionsPanel.addRequestToCollection('Test Collection', 'Test Request');
-    expect(await collectionsPanel.page.locator('text=Test Request').isVisible()).toBe(true);
+    await collectionsPanel.addCollection();
+    await collectionsPanel.addRequestToCollection('New Collection');
+    await collectionsPanel.expandCollection('New Collection');
+    expect(await collectionsPanel.page.locator('text=New Request').isVisible()).toBe(true);
   });
 
   test('should add a request to a folder', async () => {
-    await collectionsPanel.addCollection('Test Collection');
-    await collectionsPanel.addFolderToCollection('Test Collection', 'Test Folder');
-    await collectionsPanel.addRequestToFolder('Test Collection', 'Test Folder', 'Folder Request');
-    expect(await collectionsPanel.page.locator('text=Folder Request').isVisible()).toBe(true);
+    await collectionsPanel.addCollection();
+    await collectionsPanel.addFolderToCollection('New Collection');
+    await collectionsPanel.expandFolder('New Collection', 'New Folder');
+    await collectionsPanel.addRequestToFolder('New Collection', 'New Folder');
+    expect(await collectionsPanel.page.locator('text=New Request').isVisible()).toBe(true);
   });
 
   test('should rename a collection via context menu', async () => {

@@ -6,7 +6,11 @@ export default {
   ],
   darkMode: 'class',
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        'dancing': ['Dancing Script', 'cursive'],
+      },
+    },
   },
   plugins: [],
 }

@@ -63,6 +63,42 @@ const api = {
       throw error;
     }
   },
+
+  selectWorkspace: async (): Promise<string | null> => {
+    console.log('[PRELOAD] selectWorkspace called');
+    try {
+      const result = await ipcRenderer.invoke('select-workspace');
+      console.log('[PRELOAD] selectWorkspace result', result ? 'selected path' : 'canceled');
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] selectWorkspace failed', error);
+      throw error;
+    }
+  },
+
+  saveCollectionToFiles: async (collection: any, workspacePath: string): Promise<boolean> => {
+    console.log('[PRELOAD] saveCollectionToFiles called');
+    try {
+      const result = await ipcRenderer.invoke('save-collection-to-files', collection, workspacePath);
+      console.log('[PRELOAD] saveCollectionToFiles result:', result);
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] saveCollectionToFiles failed', error);
+      throw error;
+    }
+  },
+
+  loadCollectionFromFiles: async (collectionName: string, workspacePath: string): Promise<any> => {
+    console.log('[PRELOAD] loadCollectionFromFiles called');
+    try {
+      const result = await ipcRenderer.invoke('load-collection-from-files', collectionName, workspacePath);
+      console.log('[PRELOAD] loadCollectionFromFiles result:', result ? 'loaded collection' : 'failed');
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] loadCollectionFromFiles failed', error);
+      throw error;
+    }
+  },
 };
 
 contextBridge.exposeInMainWorld('api', api);

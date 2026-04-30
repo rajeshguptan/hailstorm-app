@@ -43,6 +43,8 @@
     <SecretsDetail v-if="store.activeSidebar === 'secrets' && store.selectedSecretId !== null" />
     <!-- Environments detail when selected -->
     <EnvironmentsDetail v-if="store.activeSidebar === 'environments' && store.activeEnvironmentId !== null" />
+    <!-- Collection detail when selected (but not when a request is selected) -->
+    <CollectionPanel v-if="store.activeSidebar === 'collections' && store.selectedCollectionId !== null && store.selectedRequestId === null" />
       <!-- Utility content when selected -->
        <UtilityContent v-if="store.activeSidebar === 'utilities' && store.selectedUtilityId !== null" />
     <!-- Runner panel -->
@@ -87,6 +89,7 @@ import ResponsePanel from '../components/ResponsePanel.vue';
 import SettingsContent from '../components/SettingsContent.vue';
 import SecretsDetail from '../components/SecretsDetail.vue';
 import EnvironmentsDetail from '../components/EnvironmentsDetail.vue';
+import CollectionPanel from '../components/CollectionPanel.vue';
 import UtilityContent from '../components/UtilityContent.vue';
 import RunnerPanel from '../components/RunnerPanel.vue';
 

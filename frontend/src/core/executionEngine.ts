@@ -5,6 +5,7 @@ import https from 'node:https';
 import { URL } from 'node:url';
 import { exec } from 'child_process';
 import fs from 'fs';
+import os from 'node:os';
 
 export function initializeExecutionEngine() {
   console.log('[EXECUTION_ENGINE] Initializing core execution engine...');
@@ -88,6 +89,126 @@ export function initializeExecutionEngine() {
       return null;
     }
   });
+
+  ipcMain.handle('select-workspace', async () => {
+    console.log('[EXECUTION_ENGINE] selectWorkspace called');
+    try {
+      const result = await dialog.showOpenDialog({
+        properties: ['openDirectory'],
+        title: 'Select Workspace Directory'
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        console.log('[EXECUTION_ENGINE] selectWorkspace canceled');
+        return null;
+      }
+
+      const workspacePath = result.filePaths[0];
+      console.log('[EXECUTION_ENGINE] selectWorkspace selected:', workspacePath);
+      return workspacePath;
+    } catch (err) {
+      console.error('[EXECUTION_ENGINE] selectWorkspace error:', err);
+      return null;
+    }
+  });
+
+  ipcMain.handle('save-collection-to-files', async (_event, collection, workspacePath) => {
+    console.log('[EXECUTION_ENGINE] saveCollectionToFiles called for collection:', collection.name, 'workspace:', workspacePath);
+    try {
+      const collectionDir = path.join(workspacePath, sanitizeFilename(collection.name));
+      await fs.promises.mkdir(collectionDir, { recursive: true });
+
+      // Save collection metadata
+      const collectionMeta = {
+        id: collection.id,
+        name: collection.name,
+        description: collection.description,
+        workspaceLocation: collection.workspaceLocation,
+        preRequestScript: collection.preRequestScript,
+        testScript: collection.testScript,
+        auth: collection.auth,
+        variables: collection.variables
+      };
+
+      const metaPath = path.join(collectionDir, 'collection.json');
+      await fs.promises.writeFile(metaPath, JSON.stringify(collectionMeta, null, 2), 'utf-8');
+
+      // Save requests recursively
+      const saveItems = async (items, currentPath) => {
+        for (const item of items) {
+          if (item.method) {
+            // It's a request
+            const requestPath = path.join(currentPath, `${sanitizeFilename(item.name)}.json`);
+            await fs.promises.writeFile(requestPath, JSON.stringify(item, null, 2), 'utf-8');
+          } else {
+            // It's a folder
+            const folderPath = path.join(currentPath, sanitizeFilename(item.name));
+            await fs.promises.mkdir(folderPath, { recursive: true });
+            if (item.items) {
+              await saveItems(item.items, folderPath);
+            }
+          }
+        }
+      };
+
+      if (collection.items) {
+        await saveItems(collection.items, collectionDir);
+      }
+
+      console.log('[EXECUTION_ENGINE] saveCollectionToFiles completed');
+      return true;
+    } catch (err) {
+      console.error('[EXECUTION_ENGINE] saveCollectionToFiles error:', err);
+      return false;
+    }
+  });
+
+  ipcMain.handle('load-collection-from-files', async (_event, collectionName, workspacePath) => {
+    console.log('[EXECUTION_ENGINE] loadCollectionFromFiles called for:', collectionName, 'workspace:', workspacePath);
+    try {
+      const collectionDir = path.join(workspacePath, sanitizeFilename(collectionName));
+
+      // Load collection metadata
+      const metaPath = path.join(collectionDir, 'collection.json');
+      const metaContent = await fs.promises.readFile(metaPath, 'utf-8');
+      const collection = JSON.parse(metaContent);
+
+      // Load requests recursively
+      const loadItems = async (currentPath) => {
+        const items = [];
+        const entries = await fs.promises.readdir(currentPath, { withFileTypes: true });
+
+        for (const entry of entries) {
+          const fullPath = path.join(currentPath, entry.name);
+
+          if (entry.isDirectory()) {
+            // It's a folder
+            const folderItems = await loadItems(fullPath);
+            const folder = {
+              id: generateId('fol'),
+              name: entry.name.replace(/[^a-zA-Z0-9\s\-_]/g, ''), // Clean folder name
+              items: folderItems
+            };
+            items.push(folder);
+          } else if (entry.name.endsWith('.json') && entry.name !== 'collection.json') {
+            // It's a request file
+            const content = await fs.promises.readFile(fullPath, 'utf-8');
+            const request = JSON.parse(content);
+            items.push(request);
+          }
+        }
+
+        return items;
+      };
+
+      collection.items = await loadItems(collectionDir);
+      console.log('[EXECUTION_ENGINE] loadCollectionFromFiles completed, loaded', collection.items.length, 'items');
+      return collection;
+    } catch (err) {
+      console.error('[EXECUTION_ENGINE] loadCollectionFromFiles error:', err);
+      return null;
+    }
+  });
 }
 
 function makeHttpRequest(options: { method: string; url: string; headers: Record<string, string>; body?: string }): Promise<{ status: number; statusText: string; headers: Record<string, string | string[]>; data: string; time: number; error?: string }> {
@@ -160,4 +281,12 @@ function makeHttpRequest(options: { method: string; url: string; headers: Record
 
     request.end();
   });
+}
+
+function sanitizeFilename(name: string): string {
+  return name.replace(/[<>:"/\\|?*]/g, '_').trim();
+}
+
+function generateId(prefix: string): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }

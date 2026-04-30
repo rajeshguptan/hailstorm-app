@@ -515,6 +515,16 @@ async function sendRequest() {
       error: result.error
     };
 
+    // Associate response with current request
+    store.currentRequest.response = store.response;
+
+    // Save the response with the current request to localStorage
+    if (!store.selectedRequestId) {
+      store.saveRequest();
+    } else {
+      store.updateCurrentRequest();
+    }
+
     // Add to history
     store.addToHistory({
       id: Date.now(),

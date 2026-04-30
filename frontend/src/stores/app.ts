@@ -64,6 +64,8 @@ export const useAppStore = defineStore('app', {
 
     selectedRequestId: null as string | null,
 
+    selectedCollectionId: null as string | null,
+
 selectedUtilityId: null as string | null,
 
     contextMenu: {
@@ -104,7 +106,11 @@ selectedUtilityId: null as string | null,
       activeEnvironment: (state) => {
         return state.environments.find(e => e.id === state.activeEnvironmentId) || null;
       },
-      
+
+      selectedCollection: (state) => {
+        return state.collections.find(c => c.id === state.selectedCollectionId) || null;
+      },
+
       selectedSetting: (state) => {
         if (!state.selectedSettingId) return null;
         // Find setting across all categories
@@ -684,14 +690,41 @@ selectedUtilityId: null as string | null,
       }
     },
     
-    loadFromLocalStorage() {
+    async loadFromLocalStorage() {
       const data = localStorage.getItem('hailstorm-data');
       if (data) {
         try {
           const parsed = JSON.parse(data);
-          this.collections = parsed.collections || [];
-          console.log('[STORE] Loaded collections from localStorage:', this.collections.map(c => ({
+          const collectionsData = parsed.collections || [];
+
+          // Load collections, checking for file-based ones
+          this.collections = [];
+          for (const coll of collectionsData) {
+            if (coll.workspaceLocation) {
+              try {
+                // Load from files
+                const loadedCollection = await window.api.loadCollectionFromFiles(coll.name, coll.workspaceLocation);
+                if (loadedCollection) {
+                  this.collections.push(loadedCollection);
+                  console.log('[STORE] Loaded collection from files:', coll.name);
+                } else {
+                  // Fallback to localStorage data
+                  this.collections.push(coll);
+                  console.log('[STORE] Failed to load from files, using localStorage data for:', coll.name);
+                }
+              } catch (error) {
+                console.error('[STORE] Error loading collection from files:', coll.name, error);
+                this.collections.push(coll);
+              }
+            } else {
+              // Load from localStorage
+              this.collections.push(coll);
+            }
+          }
+
+          console.log('[STORE] Loaded collections:', this.collections.map(c => ({
             name: c.name,
+            workspace: c.workspaceLocation || 'localStorage',
             itemsCount: c.items?.length || 0,
             firstItem: c.items?.[0] ? {
               name: c.items[0].name,
@@ -732,8 +765,8 @@ selectedUtilityId: null as string | null,
       }
     },
     
-    init() {
-      this.loadFromLocalStorage();
+    async init() {
+      await this.loadFromLocalStorage();
       document.addEventListener('click', () => {
         this.contextMenu.show = false;
       });
@@ -930,7 +963,8 @@ selectedUtilityId: null as string | null,
             preRequestScript: request.preRequestScript || '',
             testScript: request.testScript || '',
             flavors: request.flavors || [],
-            variables: request.variables || []
+            variables: request.variables || [],
+            response: request.response
           };
           console.log('[STORE] Set currentRequest:', {
             id: this.currentRequest.id,
@@ -941,6 +975,8 @@ selectedUtilityId: null as string | null,
             bodyType: this.currentRequest.body?.type,
             bodyContent: this.currentRequest.body?.content?.substring(0, 50)
           });
+          // Set response if available
+          this.response = request.response || null;
           // Convert headers to the expected format
           this.requestHeaders = request.headers ? request.headers.map(h => ({ ...h, enabled: h.enabled !== false })) : [];
           // Extract URL params
@@ -967,6 +1003,15 @@ selectedUtilityId: null as string | null,
 
     selectUtility(id: string | null) {
       this.selectedUtilityId = id;
+      this.saveToLocalStorage();
+    },
+
+    selectCollection(id: string | null) {
+      this.selectedCollectionId = id;
+      // Clear request selection when selecting a collection
+      if (id !== null) {
+        this.selectedRequestId = null;
+      }
       this.saveToLocalStorage();
     },
 
