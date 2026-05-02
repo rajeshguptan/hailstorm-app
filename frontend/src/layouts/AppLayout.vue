@@ -14,10 +14,13 @@
       </div>
     </div>
     
-<main class="flex-1 flex">
-<!-- Settings view (full width) -->
+ <main class="flex-1 flex">
+<!-- Full width views -->
   <div v-if="uiStore.activeSidebar === 'settings'" class="main-content flex-1 flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
   <SettingsContent />
+</div>
+<div v-else-if="uiStore.activeSidebar === 'stats'" class="main-content flex-1 flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
+  <StatsPanel />
 </div>
 
 <!-- Sidebar + main content layout -->
@@ -110,6 +113,7 @@ import EnvironmentsDetail from '../components/EnvironmentsDetail.vue';
 import CollectionPanel from '../components/CollectionPanel.vue';
 import UtilityContent from '../components/UtilityContent.vue';
 import RunnerPanel from '../components/RunnerPanel.vue';
+import StatsPanel from '../components/StatsPanel.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -161,7 +165,7 @@ const ribbonItems = computed(() => [
   { id: 'settings' as SidebarView, icon: '⚙️', label: 'Settings', route: '/settings' },
 ]);
 
-const sidebarPanels: SidebarView[] = ['collections', 'environments', 'history', 'secrets', 'utilities', 'runner', 'settings'];
+const sidebarPanels: SidebarView[] = ['collections', 'environments', 'history', 'secrets', 'utilities', 'runner'];
 
 const showSidebarMain = computed(() => {
   return sidebarPanels.includes(uiStore.activeSidebar);

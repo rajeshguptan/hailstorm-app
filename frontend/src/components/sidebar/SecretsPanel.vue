@@ -23,7 +23,11 @@
           </div>
         </div>
 
-        <button @click="addSecret" class="w-full text-xs px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded mb-2" v-if="secretsStore.isUnlocked">+ Add Secret</button>
+        <div class="flex gap-2 mb-2" v-if="secretsStore.isUnlocked">
+          <button @click="addSecret" class="flex-1 text-xs px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded">+ Add</button>
+          <button @click="importSecrets" class="flex-1 text-xs px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded">Import</button>
+          <button @click="exportSecrets" class="flex-1 text-xs px-3 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded">Export</button>
+        </div>
         
         <div v-if="filteredSecrets.length === 0" class="text-center text-zinc-500 py-4 text-sm">
           {{ searchQuery ? 'No matching secrets found' : 'No secrets defined' }}
@@ -92,6 +96,161 @@ function addSecret() {
   appStore.secrets.push(newSecret);
   appStore.selectedSecretId = newSecret.id;
   saveSecrets();
+}
+
+async function importSecrets() {
+  if (!secretsStore.isUnlocked) return;
+
+  try {
+    // Open file dialog to select JSON file with path selection
+    const result = await window.api.importSecretsDialog();
+    if (!result) return; // User cancelled
+
+    const { filePath, content } = result;
+
+    console.log('Importing from file:', filePath);
+    console.log('File content length:', content.length);
+
+    // Check if file content is empty
+    if (!content || content.trim().length === 0) {
+      alert('The selected file is empty. Please select a valid secrets JSON file.');
+      return;
+    }
+
+    // Try to parse and validate the JSON
+    let importedSecrets;
+    try {
+      importedSecrets = JSON.parse(content);
+      console.log('Parsed secrets:', importedSecrets);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      alert(`Invalid JSON file: ${parseError.message}\n\nPlease ensure the file contains valid JSON.`);
+      return;
+    }
+
+    // Validate structure - should be array of objects with name, env, value (all unencrypted)
+    if (!Array.isArray(importedSecrets)) {
+      alert('Invalid secrets file format. Expected an array of secret objects.\n\nExample format:\n[\n  {\n    "name": "API_KEY",\n    "env": "production",\n    "value": "secret-value"\n  }\n]');
+      return;
+    }
+
+    if (importedSecrets.length === 0) {
+      alert('The file contains an empty array. No secrets to import.');
+      return;
+    }
+
+    console.log(`Processing ${importedSecrets.length} secrets from file`);
+
+    let importedCount = 0;
+    let skippedCount = 0;
+    let errorMessages = [];
+
+    for (let i = 0; i < importedSecrets.length; i++) {
+      const secret = importedSecrets[i];
+
+      // Validate that the secret has required fields
+      if (!secret || typeof secret !== 'object') {
+        errorMessages.push(`Entry ${i + 1}: Not a valid object`);
+        skippedCount++;
+        continue;
+      }
+
+      if (!secret.name || typeof secret.name !== 'string' || secret.name.trim().length === 0) {
+        errorMessages.push(`Entry ${i + 1}: Missing or invalid 'name' field (must be non-empty string)`);
+        skippedCount++;
+        continue;
+      }
+
+      // Check for duplicate names
+      const existingSecret = appStore.secrets.find(s => s.name === secret.name.trim());
+      if (existingSecret) {
+        if (confirm(`A secret with name "${secret.name}" already exists. Overwrite it?\n\nExisting value: ${existingSecret.value ? '[HIDDEN]' : '[EMPTY]'}\nNew value: ${secret.value ? '[HIDDEN]' : '[EMPTY]'}`)) {
+          existingSecret.value = secret.value || '';
+          existingSecret.env = secret.env || '';
+          importedCount++;
+          console.log(`Overwrote existing secret: ${secret.name}`);
+        } else {
+          skippedCount++;
+          console.log(`Skipped duplicate secret: ${secret.name}`);
+        }
+      } else {
+        const newSecret = {
+          id: generateId(),
+          name: secret.name.trim(),
+          env: secret.env || '',
+          value: secret.value || ''
+        };
+        appStore.secrets.push(newSecret);
+        importedCount++;
+        console.log(`Added new secret: ${secret.name}`);
+      }
+    }
+
+    if (importedCount > 0) {
+      saveSecrets();
+      let message = `Successfully imported ${importedCount} secrets from:\n\n${filePath}`;
+      if (skippedCount > 0) {
+        message += `\n\nSkipped ${skippedCount} entries (duplicates or invalid data)`;
+      }
+      if (errorMessages.length > 0 && errorMessages.length <= 3) {
+        message += '\n\nErrors:\n' + errorMessages.slice(0, 3).join('\n');
+      }
+      alert(message);
+    } else {
+      let errorMsg = 'No valid secrets could be imported.';
+      if (errorMessages.length > 0) {
+        errorMsg += '\n\nFirst few errors:\n' + errorMessages.slice(0, 3).join('\n');
+      }
+      alert(errorMsg);
+    }
+  } catch (error) {
+    console.error('Error importing secrets:', error);
+    alert(`Error importing secrets: ${error.message}\n\nPlease check the file and try again.`);
+  }
+}
+
+async function exportSecrets() {
+  if (!secretsStore.isUnlocked) return;
+
+  try {
+    if (appStore.secrets.length === 0) {
+      alert('No secrets to export.');
+      return;
+    }
+
+    // Ensure secrets are loaded and decrypted
+    if (appStore.secrets.length === 0 || !appStore.secrets[0].value) {
+      // Try to reload secrets if not loaded
+      loadSecrets();
+      if (appStore.secrets.length === 0) {
+        alert('No secrets available. Please ensure secrets are properly loaded.');
+        return;
+      }
+    }
+
+    // Prepare export data (exclude internal IDs and ensure env/value are unencrypted)
+    // Note: env field is never encrypted, value field is decrypted in memory
+    const exportData = appStore.secrets.map(secret => ({
+      name: secret.name,
+      env: secret.env, // Always unencrypted
+      value: secret.value // Decrypted in memory from localStorage
+    }));
+
+    const jsonContent = JSON.stringify(exportData, null, 2);
+
+    // Open save dialog to choose export location
+    const savedFilePath = await window.api.exportSecretsDialog(jsonContent);
+
+    if (savedFilePath) {
+      alert(`Successfully exported ${appStore.secrets.length} unencrypted secrets to:\n\n${savedFilePath}\n\nNote: Both 'env' and 'value' fields are exported in plain text.`);
+    } else {
+      // User cancelled the save dialog
+      console.log('Export cancelled by user');
+    }
+  } catch (error) {
+    console.error('Error exporting secrets:', error);
+    alert('Error exporting secrets. Please try again.');
+  }
 }
 
 

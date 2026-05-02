@@ -6,6 +6,349 @@ import { URL } from 'node:url';
 import { exec } from 'child_process';
 import fs from 'fs';
 import os from 'node:os';
+import * as zlib from 'zlib';
+
+// Load Testing Service - Simple JSON file-based storage
+class LoadTestingService {
+  private dataDir: string = '';
+  private runs: any[] = [];
+  private runMetrics: any[] = [];
+  private requestIndex: any[] = [];
+  private detailChunks: any[] = [];
+  private isInitialized = false;
+
+  async initialize() {
+    if (this.isInitialized) return;
+
+    try {
+      const userDataPath = process.env.NODE_ENV === 'development'
+        ? path.join(process.cwd(), 'data')
+        : path.join(os.homedir(), '.hailstorm');
+
+      this.dataDir = path.join(userDataPath, 'load-tests');
+
+      if (!fs.existsSync(this.dataDir)) {
+        fs.mkdirSync(this.dataDir, { recursive: true });
+      }
+
+      // Load existing data
+      await this.loadData();
+
+      this.isInitialized = true;
+      console.log('[LOAD_TESTING] Initialized successfully');
+    } catch (error) {
+      console.error('[LOAD_TESTING] Failed to initialize:', error);
+      throw error;
+    }
+  }
+
+  private async loadData() {
+    try {
+      const runsPath = path.join(this.dataDir, 'runs.json');
+      const metricsPath = path.join(this.dataDir, 'run_metrics.json');
+      const indexPath = path.join(this.dataDir, 'request_index.json');
+      const chunksPath = path.join(this.dataDir, 'detail_chunks.json');
+
+      if (fs.existsSync(runsPath)) {
+        this.runs = JSON.parse(fs.readFileSync(runsPath, 'utf-8'));
+      }
+
+      if (fs.existsSync(metricsPath)) {
+        this.runMetrics = JSON.parse(fs.readFileSync(metricsPath, 'utf-8'));
+      }
+
+      if (fs.existsSync(indexPath)) {
+        this.requestIndex = JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
+      }
+
+      if (fs.existsSync(chunksPath)) {
+        this.detailChunks = JSON.parse(fs.readFileSync(chunksPath, 'utf-8'));
+      }
+    } catch (error) {
+      console.error('[LOAD_TESTING] Failed to load data:', error);
+      // Initialize empty arrays if loading fails
+      this.runs = [];
+      this.runMetrics = [];
+      this.requestIndex = [];
+      this.detailChunks = [];
+    }
+  }
+
+  private async saveData() {
+    try {
+      fs.writeFileSync(path.join(this.dataDir, 'runs.json'), JSON.stringify(this.runs, null, 2));
+      fs.writeFileSync(path.join(this.dataDir, 'run_metrics.json'), JSON.stringify(this.runMetrics, null, 2));
+      fs.writeFileSync(path.join(this.dataDir, 'request_index.json'), JSON.stringify(this.requestIndex, null, 2));
+      fs.writeFileSync(path.join(this.dataDir, 'detail_chunks.json'), JSON.stringify(this.detailChunks, null, 2));
+    } catch (error) {
+      console.error('[LOAD_TESTING] Failed to save data:', error);
+    }
+  }
+
+
+
+  async startRun(runConfig: any) {
+    if (!this.isInitialized) throw new Error('Load testing service not initialized');
+
+    const run = {
+      ...runConfig,
+      id: this.generateId('run'),
+      startTime: Date.now(),
+      status: 'running',
+      totalRequests: 0,
+      completedRequests: 0,
+      failedRequests: 0
+    };
+
+    this.runs.push(run);
+    await this.saveData();
+
+    return run;
+  }
+
+  async recordRequest(runId: string, requestData: any) {
+    if (!this.isInitialized) throw new Error('Load testing service not initialized');
+
+    const isError = requestData.status >= 500;
+    const sequenceNumber = this.getNextSequenceNumber(runId);
+    const requestIndexId = this.generateId('req');
+    const urlHash = this.hashString(requestData.url);
+
+    // Update run counters
+    const runIndex = this.runs.findIndex(r => r.id === runId);
+    if (runIndex !== -1) {
+      if (isError) {
+        this.runs[runIndex].failedRequests++;
+      } else {
+        this.runs[runIndex].completedRequests++;
+      }
+      this.runs[runIndex].totalRequests++;
+    }
+
+    // Add to request index
+    const requestRecord = {
+      id: requestIndexId,
+      runId,
+      requestId: requestData.requestId,
+      requestName: requestData.requestName,
+      method: requestData.method,
+      url: requestData.url,
+      urlHash,
+      status: requestData.status,
+      latency: requestData.latency,
+      responseSize: requestData.responseSize,
+      error: isError,
+      timestamp: requestData.timestamp,
+      sequenceNumber
+    };
+
+    this.requestIndex.push(requestRecord);
+
+    // Handle full request/response details
+    if (requestData.shouldCaptureFullDetail && requestData.requestDetail) {
+      await this.storeRequestDetail(requestIndexId, runId, requestData.requestDetail);
+    }
+
+    // Save data periodically (every 100 requests)
+    if (sequenceNumber % 100 === 0) {
+      await this.saveData();
+    }
+  }
+
+  async storeRequestDetail(requestIndexId: string, runId: string, detail: any) {
+    const runDir = path.join(this.dataDir, runId);
+    if (!fs.existsSync(runDir)) {
+      fs.mkdirSync(runDir, { recursive: true });
+    }
+
+    const detailFile = path.join(runDir, `${requestIndexId}.json.gz`);
+    const detailData = JSON.stringify(detail) + '\n';
+
+    const compressed = zlib.gzipSync(Buffer.from(detailData));
+    fs.writeFileSync(detailFile, compressed);
+
+    const chunkId = this.generateId('chunk');
+    const chunkRecord = {
+      id: chunkId,
+      runId,
+      filePath: detailFile,
+      startSequence: 1,
+      endSequence: 1,
+      recordCount: 1,
+      compressedSize: compressed.length,
+      createdAt: Date.now()
+    };
+
+    this.detailChunks.push(chunkRecord);
+
+    // Update request index with chunk reference
+    const requestIndex = this.requestIndex.find(r => r.id === requestIndexId);
+    if (requestIndex) {
+      requestIndex.detailChunkId = chunkId;
+    }
+  }
+
+  async endRun(runId: string) {
+    if (!this.isInitialized) throw new Error('Load testing service not initialized');
+
+    const endTime = Date.now();
+    const runIndex = this.runs.findIndex(r => r.id === runId);
+    if (runIndex !== -1) {
+      this.runs[runIndex].endTime = endTime;
+      this.runs[runIndex].status = 'completed';
+    }
+
+    await this.saveData();
+
+    return this.runs[runIndex];
+  }
+
+  async getRunStats(runId: string) {
+    if (!this.isInitialized) throw new Error('Load testing service not initialized');
+
+    const run = this.runs.find(r => r.id === runId);
+    if (!run) return null;
+
+    const runRequests = this.requestIndex.filter(r => r.runId === runId);
+    const totalRequests = runRequests.length;
+    const successfulRequests = runRequests.filter(r => !r.error).length;
+    const failedRequests = runRequests.filter(r => r.error).length;
+
+    const latencies = runRequests.map(r => r.latency);
+    const avgResponseTime = latencies.length > 0 ? latencies.reduce((a, b) => a + b, 0) / latencies.length : 0;
+    const minResponseTime = latencies.length > 0 ? Math.min(...latencies) : 0;
+    const maxResponseTime = latencies.length > 0 ? Math.max(...latencies) : 0;
+
+    const duration = run.endTime ? run.endTime - run.startTime : Date.now() - run.startTime;
+
+    return {
+      runId,
+      totalRequests,
+      successfulRequests,
+      failedRequests,
+      errorRate: totalRequests > 0 ? (failedRequests / totalRequests) * 100 : 0,
+      avgResponseTime,
+      minResponseTime,
+      maxResponseTime,
+      p50ResponseTime: 0, // Would need to calculate percentiles
+      p95ResponseTime: 0,
+      p99ResponseTime: 0,
+      requestsPerSecond: duration > 0 ? (totalRequests / duration) * 1000 : 0,
+      startTime: run.startTime,
+      endTime: run.endTime || Date.now(),
+      duration
+    };
+  }
+
+  async getTimeSeriesData(runId: string, startTime?: number, endTime?: number) {
+    if (!this.isInitialized) throw new Error('Load testing service not initialized');
+
+    // Simple implementation - group by minute buckets
+    const runRequests = this.requestIndex.filter(r => r.runId === runId);
+
+    if (startTime) {
+      runRequests.filter(r => r.timestamp >= startTime);
+    }
+    if (endTime) {
+      runRequests.filter(r => r.timestamp <= endTime);
+    }
+
+    const buckets: { [key: number]: { requests: number; errors: number; totalLatency: number } } = {};
+
+    runRequests.forEach(req => {
+      const bucket = Math.floor(req.timestamp / 60000) * 60000; // 1-minute buckets
+      if (!buckets[bucket]) {
+        buckets[bucket] = { requests: 0, errors: 0, totalLatency: 0 };
+      }
+      buckets[bucket].requests++;
+      if (req.error) buckets[bucket].errors++;
+      buckets[bucket].totalLatency += req.latency;
+    });
+
+    return Object.entries(buckets).map(([timestamp, data]) => ({
+      timestamp: parseInt(timestamp),
+      requests: data.requests,
+      errors: data.errors,
+      avgResponseTime: data.requests > 0 ? data.totalLatency / data.requests : 0
+    })).sort((a, b) => a.timestamp - b.timestamp);
+  }
+
+  async exportRunData(runId: string, format = 'json') {
+    if (!this.isInitialized) throw new Error('Load testing service not initialized');
+
+    const run = this.runs.find(r => r.id === runId);
+    if (!run) return null;
+
+    const stats = await this.getRunStats(runId);
+    const timeSeries = await this.getTimeSeriesData(runId);
+
+    const exportData = {
+      run,
+      stats,
+      timeSeries,
+      exportedAt: Date.now()
+    };
+
+    if (format === 'json') {
+      return JSON.stringify(exportData, null, 2);
+    } else {
+      let csv = 'timestamp,requests,errors,avgResponseTime\n';
+      csv += timeSeries.map((point: any) =>
+        `${point.timestamp},${point.requests},${point.errors},${point.avgResponseTime}`
+      ).join('\n');
+      return csv;
+    }
+  }
+
+  async getCompletedRuns() {
+    if (!this.isInitialized) throw new Error('Load testing service not initialized');
+
+    return this.runs
+      .filter(r => r.status === 'completed')
+      .sort((a, b) => b.startTime - a.startTime);
+  }
+
+  async deleteRun(runId: string) {
+    if (!this.isInitialized) throw new Error('Load testing service not initialized');
+
+    // Remove from arrays
+    this.runs = this.runs.filter(r => r.id !== runId);
+    this.runMetrics = this.runMetrics.filter(m => m.runId !== runId);
+    this.requestIndex = this.requestIndex.filter(r => r.runId !== runId);
+    this.detailChunks = this.detailChunks.filter(c => c.runId !== runId);
+
+    // Delete data directory
+    const runDir = path.join(this.dataDir, runId);
+    if (fs.existsSync(runDir)) {
+      fs.rmSync(runDir, { recursive: true, force: true });
+    }
+
+    await this.saveData();
+  }
+
+  private getNextSequenceNumber(runId: string): number {
+    const runRequests = this.requestIndex.filter(r => r.runId === runId);
+    const maxSeq = runRequests.length > 0 ? Math.max(...runRequests.map(r => r.sequenceNumber)) : 0;
+    return maxSeq + 1;
+  }
+
+  private generateId(prefix: string): string {
+    return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  }
+
+  private hashString(str: string): string {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return hash.toString(36);
+  }
+}
+
+// Global instance
+const loadTestingService = new LoadTestingService();
 
 export function initializeExecutionEngine() {
   console.log('[EXECUTION_ENGINE] Initializing core execution engine...');
@@ -164,49 +507,197 @@ export function initializeExecutionEngine() {
   });
 
   ipcMain.handle('load-collection-from-files', async (_event, collectionName, workspacePath) => {
-    console.log('[EXECUTION_ENGINE] loadCollectionFromFiles called for:', collectionName, 'workspace:', workspacePath);
+    console.log('[EXECUTION_ENGINE] loadCollectionFromFiles received', { collectionName, workspacePath });
+
     try {
-      const collectionDir = path.join(workspacePath, sanitizeFilename(collectionName));
+      const collectionPath = path.join(workspacePath, 'collections', `${collectionName}.json`);
+      if (!fs.existsSync(collectionPath)) {
+        console.log('[EXECUTION_ENGINE] Collection file not found, returning null:', collectionPath);
+        return null;
+      }
 
-      // Load collection metadata
-      const metaPath = path.join(collectionDir, 'collection.json');
-      const metaContent = await fs.promises.readFile(metaPath, 'utf-8');
-      const collection = JSON.parse(metaContent);
+      const collectionData = fs.readFileSync(collectionPath, 'utf-8');
+      const collection = JSON.parse(collectionData);
 
-      // Load requests recursively
-      const loadItems = async (currentPath) => {
-        const items = [];
-        const entries = await fs.promises.readdir(currentPath, { withFileTypes: true });
+      // Load associated files if they exist
+      const filesDir = path.join(workspacePath, 'files');
+      if (fs.existsSync(filesDir)) {
+        // Load files referenced in the collection
+        // This would need more implementation for full file loading
+      }
 
-        for (const entry of entries) {
-          const fullPath = path.join(currentPath, entry.name);
-
-          if (entry.isDirectory()) {
-            // It's a folder
-            const folderItems = await loadItems(fullPath);
-            const folder = {
-              id: generateId('fol'),
-              name: entry.name.replace(/[^a-zA-Z0-9\s\-_]/g, ''), // Clean folder name
-              items: folderItems
-            };
-            items.push(folder);
-          } else if (entry.name.endsWith('.json') && entry.name !== 'collection.json') {
-            // It's a request file
-            const content = await fs.promises.readFile(fullPath, 'utf-8');
-            const request = JSON.parse(content);
-            items.push(request);
-          }
-        }
-
-        return items;
-      };
-
-      collection.items = await loadItems(collectionDir);
-      console.log('[EXECUTION_ENGINE] loadCollectionFromFiles completed, loaded', collection.items.length, 'items');
+      console.log('[EXECUTION_ENGINE] loadCollectionFromFiles completed');
       return collection;
-    } catch (err) {
-      console.error('[EXECUTION_ENGINE] loadCollectionFromFiles error:', err);
+    } catch (error: any) {
+      console.error('[EXECUTION_ENGINE] loadCollectionFromFiles error:', error.message);
+      // Return null instead of throwing to allow graceful fallback
       return null;
+    }
+  });
+
+  // Load Testing IPC Handlers
+  ipcMain.handle('initialize-load-testing', async () => {
+    console.log('[EXECUTION_ENGINE] initializeLoadTesting called');
+    try {
+      await loadTestingService.initialize();
+      console.log('[EXECUTION_ENGINE] initializeLoadTesting completed');
+    } catch (error: any) {
+      console.error('[EXECUTION_ENGINE] initializeLoadTesting error:', error.message);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('start-load-test-run', async (_event, runConfig) => {
+    console.log('[EXECUTION_ENGINE] startLoadTestRun called', runConfig);
+    try {
+      const run = await loadTestingService.startRun(runConfig);
+      console.log('[EXECUTION_ENGINE] startLoadTestRun completed', run.id);
+      return run;
+    } catch (error: any) {
+      console.error('[EXECUTION_ENGINE] startLoadTestRun error:', error.message);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('record-load-test-request', async (_event, runId, requestData) => {
+    try {
+      await loadTestingService.recordRequest(runId, requestData);
+    } catch (error: any) {
+      console.error('[EXECUTION_ENGINE] recordLoadTestRequest error:', error.message);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('end-load-test-run', async (_event, runId) => {
+    console.log('[EXECUTION_ENGINE] endLoadTestRun called', runId);
+    try {
+      const run = await loadTestingService.endRun(runId);
+      console.log('[EXECUTION_ENGINE] endLoadTestRun completed', runId);
+      return run;
+    } catch (error: any) {
+      console.error('[EXECUTION_ENGINE] endLoadTestRun error:', error.message);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('get-load-test-run-stats', async (_event, runId) => {
+    try {
+      const stats = await loadTestingService.getRunStats(runId);
+      return stats;
+    } catch (error: any) {
+      console.error('[EXECUTION_ENGINE] getLoadTestRunStats error:', error.message);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('get-load-test-time-series-data', async (_event, runId, startTime, endTime) => {
+    try {
+      const data = await loadTestingService.getTimeSeriesData(runId, startTime, endTime);
+      return data;
+    } catch (error: any) {
+      console.error('[EXECUTION_ENGINE] getLoadTestTimeSeriesData error:', error.message);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('export-load-test-run-data', async (_event, runId, format) => {
+    console.log('[EXECUTION_ENGINE] exportLoadTestRunData called', runId, format);
+    try {
+      const data = await loadTestingService.exportRunData(runId, format);
+      console.log('[EXECUTION_ENGINE] exportLoadTestRunData completed');
+      return data;
+    } catch (error: any) {
+      console.error('[EXECUTION_ENGINE] exportLoadTestRunData error:', error.message);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('get-completed-load-test-runs', async () => {
+    try {
+      const runs = await loadTestingService.getCompletedRuns();
+      return runs;
+    } catch (error: any) {
+      console.error('[EXECUTION_ENGINE] getCompletedLoadTestRuns error:', error.message);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('delete-load-test-run', async (_event, runId) => {
+    console.log('[EXECUTION_ENGINE] deleteLoadTestRun called', runId);
+    try {
+      await loadTestingService.deleteRun(runId);
+      console.log('[EXECUTION_ENGINE] deleteLoadTestRun completed');
+    } catch (error: any) {
+      console.error('[EXECUTION_ENGINE] deleteLoadTestRun error:', error.message);
+      throw error;
+    }
+  });
+
+  // Secrets Import/Export with file path selection
+  ipcMain.handle('export-secrets-dialog', async (_event, secretsData) => {
+    console.log('[EXECUTION_ENGINE] exportSecretsDialog requested');
+
+    try {
+      const result = await dialog.showSaveDialog({
+        title: 'Export Secrets',
+        defaultPath: `secrets_${new Date().toISOString().split('T')[0]}.json`,
+        filters: [
+          { name: 'JSON Files', extensions: ['json'] },
+          { name: 'All Files', extensions: ['*'] }
+        ],
+        properties: ['createDirectory', 'showOverwriteConfirmation']
+      });
+
+      if (result.canceled || !result.filePath) {
+        return null;
+      }
+
+      // Write the secrets data to the selected file
+      const fs = require('fs');
+      fs.writeFileSync(result.filePath, secretsData, 'utf-8');
+
+      console.log('[EXECUTION_ENGINE] exportSecretsDialog completed, saved to:', result.filePath);
+      return result.filePath;
+    } catch (error: any) {
+      console.error('[EXECUTION_ENGINE] exportSecretsDialog error:', error.message);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('import-secrets-dialog', async () => {
+    console.log('[EXECUTION_ENGINE] importSecretsDialog requested');
+
+    try {
+      const result = await dialog.showOpenDialog({
+        title: 'Import Secrets',
+        filters: [
+          { name: 'JSON Files', extensions: ['json'] },
+          { name: 'All Files', extensions: ['*'] }
+        ],
+        properties: ['openFile']
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return null;
+      }
+
+      const filePath = result.filePaths[0];
+      const fs = require('fs');
+
+      if (!fs.existsSync(filePath)) {
+        throw new Error(`File not found: ${filePath}`);
+      }
+
+      const fileContent = fs.readFileSync(filePath, 'utf-8');
+
+      console.log('[EXECUTION_ENGINE] importSecretsDialog completed, loaded from:', filePath);
+      return {
+        filePath,
+        content: fileContent
+      };
+    } catch (error: any) {
+      console.error('[EXECUTION_ENGINE] importSecretsDialog error:', error.message);
+      throw error;
     }
   });
 }

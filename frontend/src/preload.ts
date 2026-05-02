@@ -99,6 +99,129 @@ const api = {
       throw error;
     }
   },
+
+  // Load Testing API
+  initializeLoadTesting: async (): Promise<void> => {
+    console.log('[PRELOAD] initializeLoadTesting called');
+    try {
+      await ipcRenderer.invoke('initialize-load-testing');
+      console.log('[PRELOAD] initializeLoadTesting succeeded');
+    } catch (error) {
+      console.error('[PRELOAD] initializeLoadTesting failed', error);
+      throw error;
+    }
+  },
+
+  startLoadTestRun: async (runConfig: any): Promise<any> => {
+    console.log('[PRELOAD] startLoadTestRun called');
+    try {
+      const result = await ipcRenderer.invoke('start-load-test-run', runConfig);
+      console.log('[PRELOAD] startLoadTestRun succeeded');
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] startLoadTestRun failed', error);
+      throw error;
+    }
+  },
+
+  recordLoadTestRequest: async (runId: string, requestData: any): Promise<void> => {
+    try {
+      await ipcRenderer.invoke('record-load-test-request', runId, requestData);
+    } catch (error) {
+      console.error('[PRELOAD] recordLoadTestRequest failed', error);
+      throw error;
+    }
+  },
+
+  endLoadTestRun: async (runId: string): Promise<any> => {
+    console.log('[PRELOAD] endLoadTestRun called');
+    try {
+      const result = await ipcRenderer.invoke('end-load-test-run', runId);
+      console.log('[PRELOAD] endLoadTestRun succeeded');
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] endLoadTestRun failed', error);
+      throw error;
+    }
+  },
+
+  getLoadTestRunStats: async (runId: string): Promise<any> => {
+    try {
+      const result = await ipcRenderer.invoke('get-load-test-run-stats', runId);
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] getLoadTestRunStats failed', error);
+      throw error;
+    }
+  },
+
+  getLoadTestTimeSeriesData: async (runId: string, startTime?: number, endTime?: number): Promise<any[]> => {
+    try {
+      const result = await ipcRenderer.invoke('get-load-test-time-series-data', runId, startTime, endTime);
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] getLoadTestTimeSeriesData failed', error);
+      throw error;
+    }
+  },
+
+  exportLoadTestRunData: async (runId: string, format?: string): Promise<string> => {
+    console.log('[PRELOAD] exportLoadTestRunData called');
+    try {
+      const result = await ipcRenderer.invoke('export-load-test-run-data', runId, format);
+      console.log('[PRELOAD] exportLoadTestRunData succeeded');
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] exportLoadTestRunData failed', error);
+      throw error;
+    }
+  },
+
+  getCompletedLoadTestRuns: async (): Promise<any[]> => {
+    try {
+      const result = await ipcRenderer.invoke('get-completed-load-test-runs');
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] getCompletedLoadTestRuns failed', error);
+      throw error;
+    }
+  },
+
+  deleteLoadTestRun: async (runId: string): Promise<void> => {
+    console.log('[PRELOAD] deleteLoadTestRun called');
+    try {
+      await ipcRenderer.invoke('delete-load-test-run', runId);
+      console.log('[PRELOAD] deleteLoadTestRun succeeded');
+    } catch (error) {
+      console.error('[PRELOAD] deleteLoadTestRun failed', error);
+      throw error;
+    }
+  },
+
+  // Secrets Import/Export with file path selection
+  exportSecretsDialog: async (secretsData: string): Promise<string | null> => {
+    console.log('[PRELOAD] exportSecretsDialog called');
+    try {
+      const result = await ipcRenderer.invoke('export-secrets-dialog', secretsData);
+      console.log('[PRELOAD] exportSecretsDialog result:', result);
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] exportSecretsDialog failed', error);
+      throw error;
+    }
+  },
+
+  importSecretsDialog: async (): Promise<{ filePath: string; content: string } | null> => {
+    console.log('[PRELOAD] importSecretsDialog called');
+    try {
+      const result = await ipcRenderer.invoke('import-secrets-dialog');
+      console.log('[PRELOAD] importSecretsDialog result:', result ? 'file loaded' : 'cancelled');
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] importSecretsDialog failed', error);
+      throw error;
+    }
+  },
 };
 
 contextBridge.exposeInMainWorld('api', api);

@@ -1,0 +1,72 @@
+[
+  {
+    "id": "chunk_1777738570006_5skvoj0",
+    "runId": "run_1777738561489_w84praz",
+    "filePath": "/Users/rajeshguptan/workspace/hailstorm/frontend/data/load-tests/run_1777738561489_w84praz/req_1777738570002_uxo30dm.json.gz",
+    "startSequence": 1,
+    "endSequence": 1,
+    "recordCount": 1,
+    "compressedSize": 829,
+    "createdAt": 1777738570006
+  },
+  {
+    "id": "chunk_1777738571558_lj9cfox",
+    "runId": "run_1777738561489_w84praz",
+    "filePath": "/Users/rajeshguptan/workspace/hailstorm/frontend/data/load-tests/run_1777738561489_w84praz/req_1777738571557_nmmf98t.json.gz",
+    "startSequence": 1,
+    "endSequence": 1,
+    "recordCount": 1,
+    "compressedSize": 1286,
+    "createdAt": 1777738571558
+  },
+  {
+    "id": "chunk_1777750937384_2olhrlr",
+    "runId": "run_1777750936526_2jg2qj4",
+    "filePath": "/Users/rajeshguptan/workspace/hailstorm/frontend/data/load-tests/run_1777750936526_2jg2qj4/req_1777750937381_3ewqlow.json.gz",
+    "startSequence": 1,
+    "endSequence": 1,
+    "recordCount": 1,
+    "compressedSize": 1289,
+    "createdAt": 1777750937384
+  },
+  {
+    "id": "chunk_1777752330830_hevnjh4",
+    "runId": "run_1777752330529_7iehr3b",
+    "filePath": "/Users/rajeshguptan/workspace/hailstorm/frontend/data/load-tests/run_1777752330529_7iehr3b/req_1777752330828_smtcfzv.json.gz",
+    "startSequence": 1,
+    "endSequence": 1,
+    "recordCount": 1,
+    "compressedSize": 1280,
+    "createdAt": 1777752330830
+  },
+  {
+    "id": "chunk_1777752331158_inmzsyh",
+    "runId": "run_1777752330529_7iehr3b",
+    "filePath": "/Users/rajeshguptan/workspace/hailstorm/frontend/data/load-tests/run_1777752330529_7iehr3b/req_1777752331156_qwa7ct5.json.gz",
+    "startSequence": 1,
+    "endSequence": 1,
+    "recordCount": 1,
+    "compressedSize": 1288,
+    "createdAt": 1777752331158
+  },
+  {
+    "id": "chunk_1777752349510_73kie6o",
+    "runId": "run_1777752348641_x5by65u",
+    "filePath": "/Users/rajeshguptan/workspace/hailstorm/frontend/data/load-tests/run_1777752348641_x5by65u/req_1777752349509_tzfr93k.json.gz",
+    "startSequence": 1,
+    "endSequence": 1,
+    "recordCount": 1,
+    "compressedSize": 1291,
+    "createdAt": 1777752349510
+  },
+  {
+    "id": "chunk_1777752350102_dgyypak",
+    "runId": "run_1777752348641_x5by65u",
+    "filePath": "/Users/rajeshguptan/workspace/hailstorm/frontend/data/load-tests/run_1777752348641_x5by65u/req_1777752350102_3x44f2v.json.gz",
+    "startSequence": 1,
+    "endSequence": 1,
+    "recordCount": 1,
+    "compressedSize": 1292,
+    "createdAt": 1777752350102
+  }
+]

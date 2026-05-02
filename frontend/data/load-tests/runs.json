@@ -1,0 +1,100 @@
+[
+  {
+    "name": "Runm 2",
+    "collectionId": "coll_1776555377234_2vatotsx1",
+    "collectionName": "",
+    "selectedRequests": [
+      "req_1776555377234_z0htq13un",
+      "req_1776555377234_qabgxi4zi"
+    ],
+    "runMode": "sequential",
+    "delay": 1000,
+    "runRepeated": true,
+    "iterations": 5,
+    "id": "run_1777738561489_w84praz",
+    "startTime": 1777738561489,
+    "status": "completed",
+    "totalRequests": 10,
+    "completedRequests": 10,
+    "failedRequests": 0,
+    "endTime": 1777738574161
+  },
+  {
+    "name": "Runm 2",
+    "collectionId": "coll_1776555377234_2vatotsx1",
+    "collectionName": "",
+    "selectedRequests": [
+      "req_1776555377234_z0htq13un",
+      "req_1776555377234_qabgxi4zi"
+    ],
+    "runMode": "parallel",
+    "delay": 1000,
+    "runRepeated": true,
+    "iterations": 5,
+    "id": "run_1777738695191_e59pz0t",
+    "startTime": 1777738695191,
+    "status": "completed",
+    "totalRequests": 10,
+    "completedRequests": 10,
+    "failedRequests": 0,
+    "endTime": 1777738697549
+  },
+  {
+    "name": "Runm 2",
+    "collectionId": "coll_1776555377234_2vatotsx1",
+    "collectionName": "",
+    "selectedRequests": [
+      "req_1776555377234_qabgxi4zi"
+    ],
+    "runMode": "parallel",
+    "delay": 1000,
+    "runRepeated": true,
+    "iterations": 5,
+    "id": "run_1777750936526_2jg2qj4",
+    "startTime": 1777750936527,
+    "status": "completed",
+    "totalRequests": 5,
+    "completedRequests": 5,
+    "failedRequests": 0,
+    "endTime": 1777750938204
+  },
+  {
+    "name": "Runm 2",
+    "collectionId": "coll_1776555377234_2vatotsx1",
+    "collectionName": "",
+    "selectedRequests": [
+      "req_1776555377234_qabgxi4zi"
+    ],
+    "runMode": "parallel",
+    "delay": 1000,
+    "runRepeated": true,
+    "iterations": 5,
+    "id": "run_1777752330529_7iehr3b",
+    "startTime": 1777752330529,
+    "status": "completed",
+    "totalRequests": 5,
+    "completedRequests": 5,
+    "failedRequests": 0,
+    "endTime": 1777752332082
+  },
+  {
+    "name": "Runm 2",
+    "collectionId": "coll_1776555377234_2vatotsx1",
+    "collectionName": "",
+    "selectedRequests": [
+      "req_1776555377234_qabgxi4zi",
+      "req_1776555377234_z0htq13un"
+    ],
+    "runMode": "parallel",
+    "delay": 1000,
+    "runRepeated": true,
+    "iterations": 5,
+    "id": "run_1777752348641_x5by65u",
+    "startTime": 1777752348641,
+    "status": "completed",
+    "totalRequests": 10,
+    "completedRequests": 10,
+    "failedRequests": 0,
+    "endTime": 1777752350105
+  }
+]

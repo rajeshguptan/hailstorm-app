@@ -100,6 +100,112 @@ export interface TestStats {
   avgTime: number;
 }
 
+// Load Testing Data Model
+export interface LoadTestRun {
+  id: string;
+  name: string;
+  collectionId: string;
+  collectionName: string;
+  selectedRequests: string[];
+  runMode: 'parallel' | 'sequential';
+  delay: number;
+  runRepeated: boolean;
+  iterations: number;
+  startTime: number;
+  endTime?: number;
+  status: 'running' | 'completed' | 'stopped';
+  totalRequests: number;
+  completedRequests: number;
+  failedRequests: number;
+}
+
+export interface LoadTestRunMetrics {
+  runId: string;
+  timeBucket: number; // timestamp rounded to bucket size
+  bucketSize: number; // in seconds (e.g., 1, 5, 60)
+  requestCount: number;
+  errorCount: number;
+  avgResponseTime: number;
+  minResponseTime: number;
+  maxResponseTime: number;
+  p50ResponseTime: number;
+  p95ResponseTime: number;
+  p99ResponseTime: number;
+}
+
+export interface LoadTestRequestIndex {
+  id: string;
+  runId: string;
+  requestId: string;
+  requestName: string;
+  method: string;
+  url: string;
+  urlHash: string;
+  status: number;
+  latency: number;
+  responseSize: number;
+  error: boolean;
+  timestamp: number;
+  detailChunkId: string;
+  sequenceNumber: number;
+}
+
+export interface LoadTestDetailChunk {
+  id: string;
+  runId: string;
+  filePath: string;
+  startSequence: number;
+  endSequence: number;
+  recordCount: number;
+  compressedSize: number;
+  createdAt: number;
+}
+
+export interface LoadTestRequestDetail {
+  requestIndexId: string;
+  request: {
+    method: string;
+    url: string;
+    headers: Record<string, string>;
+    body?: string;
+  };
+  response: {
+    status: number;
+    statusText: string;
+    headers: Record<string, string>;
+    body?: string;
+    size: number;
+  };
+  timestamp: number;
+  latency: number;
+  error?: string;
+}
+
+export interface LoadTestStats {
+  runId: string;
+  totalRequests: number;
+  successfulRequests: number;
+  failedRequests: number;
+  errorRate: number;
+  avgResponseTime: number;
+  minResponseTime: number;
+  maxResponseTime: number;
+  p50ResponseTime: number;
+  p95ResponseTime: number;
+  p99ResponseTime: number;
+  requestsPerSecond: number;
+  startTime: number;
+  endTime: number;
+  duration: number;
+}
+
+export interface LoadTestTimeSeriesPoint {
+  timestamp: number;
+  requests: number;
+  errors: number;
+  avgResponseTime: number;
+}
+
 export interface RunConfig {
   id: string;
   name: string;

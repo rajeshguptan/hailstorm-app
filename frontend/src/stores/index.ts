@@ -121,8 +121,10 @@ export const useAppStore = defineStore('app', {
                   collectionsStore.collections.push(loadedCollection);
                   console.log('[STORE] Loaded collection from files:', coll.name);
                 } else {
-                  collectionsStore.collections.push(coll);
-                  console.log('[STORE] Failed to load from files, using localStorage data for:', coll.name);
+                  console.log('[STORE] Collection file not found, using localStorage data without workspaceLocation for:', coll.name);
+                  // Remove workspaceLocation to prevent future attempts to load from missing file
+                  const { workspaceLocation, ...collWithoutWorkspace } = coll;
+                  collectionsStore.collections.push(collWithoutWorkspace);
                 }
               } catch (error) {
                 console.error('[STORE] Error loading collection from files:', coll.name, error);

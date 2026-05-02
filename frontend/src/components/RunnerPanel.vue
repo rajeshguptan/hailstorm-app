@@ -42,9 +42,9 @@
         </div>
 
         <div class="flex gap-4 mb-4">
-          <label class="flex items-center gap-2">
+          <label class="flex items-center gap-2 cursor-pointer">
             <input v-model="currentRunRepeated" :disabled="!editMode" type="checkbox" class="form-checkbox" />
-            <span>Run Repeated</span>
+            <span class="checkbox-label">Run Repeated</span>
           </label>
           <div v-if="currentRunRepeated" class="flex items-center gap-2">
             <label class="text-sm text-zinc-600 dark:text-gray-400">Iterations:</label>
@@ -58,14 +58,14 @@
       </div>
       
       <div class="flex-1 overflow-auto p-4">
-        <div class="mb-4">
+        <div class="flex-1 flex flex-col mb-4">
           <h4 class="text-sm font-bold mb-2">Select Requests to Run:</h4>
-          <div class="border border-zinc-700 rounded max-h-48 overflow-auto">
-            <div v-for="req in collectionRequests" :key="req.id" class="p-2 border-b border-zinc-700 hover:bg-zinc-800">
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" :value="req.id" v-model="selectedRequests" />
+          <div class="flex-1 border border-zinc-700 rounded overflow-auto">
+            <div v-for="req in collectionRequests" :key="req.id" class="p-2 border-b border-zinc-700">
+              <label class="flex items-center gap-2 cursor-pointer p-1 rounded">
+                <input type="checkbox" :value="req.id" v-model="selectedRequests" class="form-checkbox" />
                 <span class="badge mr-1" :class="getMethodClass(req)">{{ req.method }}</span>
-                <span>{{ req.name }}</span>
+                <span class="checkbox-label">{{ req.name }}</span>
               </label>
             </div>
           </div>
@@ -91,8 +91,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
-import type { RunConfig } from '../types';
+import { ref, computed, watch, onMounted } from 'vue';
+import { useLoadTestStore } from '../stores/loadTest';
+import type { RunConfig, LoadTestRequestDetail } from '../types';
+
+const loadTestStore = useLoadTestStore();
+
+// Initialize load test store
+onMounted(() => {
+  loadTestStore.initialize();
+});
 
 interface Variable {
   key: string;
@@ -123,18 +131,6 @@ interface Collection {
   name: string;
   items: (Request | Folder)[];
   variables: Variable[];
-}
-
-interface RunConfig {
-  id: string;
-  name: string;
-  collectionId: string;
-  collectionName: string;
-  selectedRequests: string[];
-  runMode: 'parallel' | 'sequential';
-  delay: number;
-  runRepeated: boolean;
-  iterations: number;
 }
 
 interface RunResult {
@@ -170,6 +166,9 @@ const editMode = ref(false);
 const editingConfig = ref<RunConfig | null>(null);
 const editedName = ref('');
 const selectedRequests = ref<string[]>([]);
+
+// Track request sequence for load testing
+let requestSequence = 0;
 
 const selectedConfig = computed(() => {
   if (!props.runConfigs || !props.selectedConfigId) return null;
@@ -272,38 +271,57 @@ async function runCollection() {
     console.log('[RUNNER_PANEL] No selected config');
     return;
   }
-  
+
   const requests = collectionRequests.value.filter(r => selectedConfig.value!.selectedRequests.includes(r.id));
   console.log('[RUNNER_PANEL] Requests to run:', requests.length, requests.map(r => r.name));
   if (requests.length === 0) return;
-  
+
   isRunning.value = true;
   results.value = [];
-  
+  requestSequence = 0;
+
+  // Start load test run
+  const runConfig = {
+    name: selectedConfig.value.name,
+    collectionId: selectedConfig.value.collectionId,
+    collectionName: selectedConfig.value.collectionName,
+    selectedRequests: selectedConfig.value.selectedRequests,
+    runMode: selectedConfig.value.runMode,
+    delay: selectedConfig.value.delay,
+    runRepeated: selectedConfig.value.runRepeated,
+    iterations: selectedConfig.value.iterations
+  };
+
+  await loadTestStore.startRun(runConfig);
+
   const totalIterations = selectedConfig.value.runRepeated ? selectedConfig.value.iterations : 1;
-  
-  for (let iter = 0; iter < totalIterations; iter++) {
-    if (!isRunning.value) break;
-    
-    if (selectedConfig.value.runMode === 'parallel') {
-      const promises = requests.map(req => runSingleRequest(req));
-      await Promise.all(promises);
-    } else {
-      for (let i = 0; i < requests.length; i++) {
-        if (!isRunning.value) break;
-        await runSingleRequest(requests[i]);
-        if (i < requests.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, selectedConfig.value!.delay));
+
+  try {
+    for (let iter = 0; iter < totalIterations; iter++) {
+      if (!isRunning.value) break;
+
+      if (selectedConfig.value.runMode === 'parallel') {
+        const promises = requests.map(req => runSingleRequest(req));
+        await Promise.all(promises);
+      } else {
+        for (let i = 0; i < requests.length; i++) {
+          if (!isRunning.value) break;
+          await runSingleRequest(requests[i]);
+          if (i < requests.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, selectedConfig.value!.delay));
+          }
         }
       }
+
+      if (selectedConfig.value.runRepeated && iter < totalIterations - 1 && selectedConfig.value.runMode === 'sequential') {
+        await new Promise(resolve => setTimeout(resolve, selectedConfig.value!.delay));
+      }
     }
-    
-    if (selectedConfig.value.runRepeated && iter < totalIterations - 1 && selectedConfig.value.runMode === 'sequential') {
-      await new Promise(resolve => setTimeout(resolve, selectedConfig.value!.delay));
-    }
+  } finally {
+    // End the load test run
+    await loadTestStore.endRun();
+    isRunning.value = false;
   }
-  
-  isRunning.value = false;
 }
 
 async function runSingleRequest(req: Request): Promise<RunResult> {
@@ -312,14 +330,15 @@ async function runSingleRequest(req: Request): Promise<RunResult> {
   (req.headers || []).forEach(h => {
     headers[substituteVariables(h.key)] = substituteVariables(h.value);
   });
-  
+
   let body = req.body.type !== 'none' ? substituteVariables(req.body.content) : undefined;
   if (req.body.type === 'json' && body) {
     headers['Content-Type'] = 'application/json';
   }
-  
+
   const startTime = Date.now();
-  
+  const requestTimestamp = startTime;
+
   try {
     const result = await window.api.makeRequest({
       method: req.method,
@@ -327,7 +346,7 @@ async function runSingleRequest(req: Request): Promise<RunResult> {
       headers,
       body
     });
-    
+
     const runResult: RunResult = {
       name: req.name,
       method: req.method,
@@ -335,21 +354,95 @@ async function runSingleRequest(req: Request): Promise<RunResult> {
       time: result.time
     };
     results.value.push(runResult);
+
+    // Record request in load testing store
+    const requestDetail: LoadTestRequestDetail = {
+      requestIndexId: '', // Will be set by the store
+      request: {
+        method: req.method,
+        url: url,
+        headers: headers,
+        body: body
+      },
+      response: {
+        status: result.status,
+        statusText: result.statusText || '',
+        headers: result.headers || {},
+        body: result.data,
+        size: result.data ? result.data.length : 0
+      },
+      timestamp: requestTimestamp,
+      latency: result.time
+    };
+
+    await loadTestStore.recordRequest({
+      requestId: req.id,
+      requestName: req.name,
+      method: req.method,
+      url: url,
+      status: result.status,
+      latency: result.time,
+      responseSize: result.data ? result.data.length : 0,
+      timestamp: requestTimestamp,
+      requestDetail: requestDetail,
+      // Capture full details for errors, sample for successful requests
+      shouldCaptureFullDetail: result.status >= 500 || Math.random() < 0.1
+    });
+
     return runResult;
   } catch (error) {
+    const latency = Date.now() - startTime;
     const runResult: RunResult = {
       name: req.name,
       method: req.method,
       status: 0,
-      time: Date.now() - startTime
+      time: latency
     };
     results.value.push(runResult);
+
+    // Record failed request
+    const requestDetail: LoadTestRequestDetail = {
+      requestIndexId: '',
+      request: {
+        method: req.method,
+        url: url,
+        headers: headers,
+        body: body
+      },
+      response: {
+        status: 0,
+        statusText: 'Network Error',
+        headers: {},
+        body: undefined,
+        size: 0
+      },
+      timestamp: requestTimestamp,
+      latency: latency,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+
+    await loadTestStore.recordRequest({
+      requestId: req.id,
+      requestName: req.name,
+      method: req.method,
+      url: url,
+      status: 0,
+      latency: latency,
+      responseSize: 0,
+      timestamp: requestTimestamp,
+      requestDetail: requestDetail,
+      shouldCaptureFullDetail: true // Always capture full details for failures
+    });
+
     return runResult;
   }
 }
 
-function stopRun() {
+async function stopRun() {
   isRunning.value = false;
+  if (loadTestStore.currentRun) {
+    await loadTestStore.endRun();
+  }
 }
 
 function startEdit() {
@@ -422,3 +515,47 @@ watch(selectedRequests, (newVal) => {
   }
 }, { deep: true });
 </script>
+
+<style scoped>
+/* Custom checkbox styling for better visibility in both light and dark modes */
+input[type="checkbox"] {
+  appearance: none; /* Remove default browser styling */
+  @apply w-4 h-4 rounded border-2 transition-colors duration-200 cursor-pointer;
+  background-color: rgb(255 255 255); /* Pure white background for light mode */
+  border-color: rgb(161 161 170); /* zinc-400 */
+}
+
+.dark input[type="checkbox"] {
+  background-color: rgb(39 39 42); /* zinc-800 for dark mode */
+  border-color: rgb(82 82 91); /* zinc-600 */
+}
+
+/* Checked state styling */
+input[type="checkbox"]:checked {
+  background-color: rgb(37 99 235); /* blue-600 */
+  border-color: rgb(37 99 235); /* blue-600 */
+  background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='m13.854 3.646-7.5 7.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 0 1 .708-.708L6 10.293l7.146-7.147a.5.5 0 0 1 .708.708z'/%3e%3c/svg%3e");
+  background-size: 0.75rem;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Focus state */
+input[type="checkbox"]:focus {
+  @apply ring-2 ring-blue-500 ring-offset-2;
+}
+
+.dark input[type="checkbox"]:focus {
+  @apply ring-blue-600 ring-offset-zinc-800;
+}
+
+/* Disabled state */
+input[type="checkbox"]:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+/* Better contrast for checkbox labels */
+.checkbox-label {
+  @apply text-zinc-900 dark:text-white;
+}
+</style>
