@@ -60,3 +60,9 @@ Hailstorm is an Electron-based desktop application for API testing and developme
 3. **Modularity**: Core functionality encapsulated in reusable modules
 4. **Electron Best Practices**: Proper use of main/renderer process separation
 5. **Type Safety**: Extensive use of TypeScript for compile-time safety
+
+Refactor store into domain-specific modules
+Implement secure script execution with VM2
+Split large components and add error boundaries
+Complete Playwright tests and add Vitest unit tests
+Add input validation and improve performance for large responses

@@ -76,9 +76,9 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import type { Environment, Variable } from '../types';
-import { useAppStore } from '../stores/app';
+import { useEnvironmentsStore } from '../stores/environments';
 
-const store = useAppStore();
+const environmentsStore = useEnvironmentsStore();
 
 const editingEnvironment = ref<Environment>({
   id: '',
@@ -87,12 +87,12 @@ const editingEnvironment = ref<Environment>({
   active: false
 });
 
-const activeEnvironment = computed(() => store.activeEnvironment);
+const activeEnvironment = computed(() => environmentsStore.activeEnvironment);
 
-watch(() => store.activeEnvironmentId, (newId) => {
-  console.log('[DEBUG] EnvironmentsDetail watch triggered, newId:', newId, 'environments length:', store.environments.length);
+watch(() => environmentsStore.activeEnvironmentId, (newId) => {
+  console.log('[DEBUG] EnvironmentsDetail watch triggered, newId:', newId, 'environments length:', environmentsStore.environments.length);
   if (newId) {
-    const env = store.environments.find(e => e.id === newId);
+    const env = environmentsStore.environments.find(e => e.id === newId);
     if (env) {
       console.log('[DEBUG] Found environment:', env.name, 'variables:', env.variables.length);
       editingEnvironment.value = { ...env, variables: [...env.variables] };
@@ -125,11 +125,11 @@ function removeVariable(index: number) {
 function saveEnvironment() {
   if (!editingEnvironment.value.id) return;
 
-  store.updateEnvironment(editingEnvironment.value);
+  environmentsStore.updateEnvironment(editingEnvironment.value);
 }
 
 function cancelChanges() {
-  const env = store.environments.find(e => e.id === store.activeEnvironmentId);
+  const env = environmentsStore.environments.find(e => e.id === environmentsStore.activeEnvironmentId);
   if (env) {
     editingEnvironment.value = { ...env, variables: [...env.variables] };
   }

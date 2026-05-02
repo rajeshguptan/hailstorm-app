@@ -20,7 +20,7 @@
       {{ searchQuery ? 'No matching requests found' : 'No requests yet' }}
     </div>
     <div v-else class="space-y-1">
-      <div v-for="item in filteredHistory" :key="item.id" class="history-item p-2 rounded cursor-pointer bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors" @click="store.loadFromHistory(item)">
+      <div v-for="item in filteredHistory" :key="item.id" class="history-item p-2 rounded cursor-pointer bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors" @click="handleHistoryClick(item)">
         <div class="flex items-center">
           <span class="badge mr-2" :class="getMethodClass(item.method)">{{ item.method }}</span>
           <span class="truncate flex-1 text-sm text-zinc-700 dark:text-zinc-300">{{ item.url }}</span>
@@ -41,14 +41,14 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { useAppStore } from '../../stores/app';
+import { useHistoryStore } from '../../stores/history';
 import type { HistoryItem } from '../../types';
 
-const store = useAppStore();
+const historyStore = useHistoryStore();
 
 const searchQuery = ref('');
 
-const history = computed(() => store.history);
+const history = computed(() => historyStore.history);
 
 const filteredHistory = computed(() => {
   if (!searchQuery.value.trim()) {
@@ -60,7 +60,8 @@ const filteredHistory = computed(() => {
     return (
       item.url.toLowerCase().includes(query) ||
       item.method.toLowerCase().includes(query) ||
-      item.status.toString().includes(query)
+      item.status.toString().includes(query) ||
+      (item.request.name && item.request.name.toLowerCase().includes(query))
     );
   });
 });
@@ -91,7 +92,12 @@ function formatTimestamp(timestamp: number): string {
   }
 }
 
+function handleHistoryClick(item: HistoryItem) {
+  console.log('[HISTORY_PANEL] History item clicked:', item);
+  historyStore.loadFromHistory(item);
+}
+
 function clearHistory() {
-  store.clearHistory();
+  historyStore.clearHistory();
 }
 </script>

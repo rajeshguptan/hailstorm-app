@@ -4,14 +4,14 @@
       <h3 class="font-semibold text-zinc-900 dark:text-white">Stats</h3>
     </div>
     <div class="stats-content flex-1 overflow-auto p-4">
-      <div v-if="!computedStats.totalRequests" class="text-zinc-500 italic">
+      <div v-if="!computedStats.total" class="text-zinc-500 italic">
         No test data yet. Run a collection to see stats.
       </div>
       <div v-else class="space-y-4">
         <div class="grid grid-cols-2 gap-3">
           <div class="stat-card bg-zinc-100 dark:bg-zinc-800 p-3 rounded">
             <div class="text-xs text-zinc-500">Total Requests</div>
-            <div class="text-xl font-bold text-zinc-900 dark:text-white">{{ computedStats.totalRequests }}</div>
+            <div class="text-xl font-bold text-zinc-900 dark:text-white">{{ computedStats.total }}</div>
           </div>
           <div class="stat-card bg-zinc-100 dark:bg-zinc-800 p-3 rounded">
             <div class="text-xs text-zinc-500">Passed</div>
@@ -33,11 +33,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useAppStore } from '../stores/app';
+import { useResponseStore } from '../stores/response';
 
-const store = useAppStore();
+const responseStore = useResponseStore();
 
-const computedStats = computed(() => store.testStats);
+const computedStats = computed(() => responseStore.testStats);
 </script>
 
 <style scoped>

@@ -1,0 +1,89 @@
+import { test, expect } from '../fixtures/base.fixture';
+import { AppLayout } from '../fixtures/page-objects/AppLayout';
+
+test.describe('Theme Management', () => {
+  let appLayout: AppLayout;
+
+  test.beforeEach(async ({ appLoaded }) => {
+    appLayout = new AppLayout(appLoaded);
+    await appLayout.waitForLoad();
+  });
+
+  test('should load app and apply theme on startup', async ({ appLoaded }) => {
+    // Test that the app loads
+    const hasRibbonBar = await appLoaded.locator('.ribbon-bar').isVisible();
+    expect(hasRibbonBar).toBe(true);
+
+    // Check that theme is applied (should have some theme class)
+    const bodyClasses = await appLoaded.evaluate(() => document.body.className);
+    expect(bodyClasses).toBeDefined();
+  });
+
+  test('should allow switching to dark theme', async ({ appLoaded }) => {
+    // Navigate to settings
+    await appLayout.navigateToSettings();
+
+    // Wait for settings panel to load
+    await appLoaded.waitForSelector('.settings-content', { timeout: 5000 });
+
+    // Find and click dark theme radio button
+    const darkThemeRadio = appLoaded.locator('input[value="dark"]').first();
+    await darkThemeRadio.check();
+
+    // Verify theme is applied immediately
+    const hasDarkClass = await appLoaded.evaluate(() => {
+      return document.documentElement.classList.contains('dark');
+    });
+    expect(hasDarkClass).toBe(true);
+
+    // Verify theme is saved to localStorage
+    const savedTheme = await appLoaded.evaluate(() => {
+      return localStorage.getItem('hailstorm_theme');
+    });
+    expect(savedTheme).toBe('dark');
+  });
+
+  test('should allow switching to light theme', async ({ appLoaded }) => {
+    // Navigate to settings
+    await appLayout.navigateToSettings();
+
+    // Wait for settings panel to load
+    await appLoaded.waitForSelector('.settings-content', { timeout: 5000 });
+
+    // Find and click light theme radio button
+    const lightThemeRadio = appLoaded.locator('input[value="light"]').first();
+    await lightThemeRadio.check();
+
+    // Verify theme is applied immediately
+    const hasDarkClass = await appLoaded.evaluate(() => {
+      return document.documentElement.classList.contains('dark');
+    });
+    expect(hasDarkClass).toBe(false);
+
+    // Verify theme is saved to localStorage
+    const savedTheme = await appLoaded.evaluate(() => {
+      return localStorage.getItem('hailstorm_theme');
+    });
+    expect(savedTheme).toBe('light');
+  });
+
+  test('should persist theme across page reload', async ({ appLoaded }) => {
+    // Set theme to dark
+    await appLoaded.evaluate(() => {
+      localStorage.setItem('hailstorm_theme', 'dark');
+      document.documentElement.classList.add('dark');
+    });
+
+    // Reload the page
+    await appLoaded.reload();
+
+    // Wait for app to load
+    await appLayout.waitForLoad();
+
+    // Verify theme is still applied
+    const hasDarkClass = await appLoaded.evaluate(() => {
+      return document.documentElement.classList.contains('dark');
+    });
+    expect(hasDarkClass).toBe(true);
+  });
+});

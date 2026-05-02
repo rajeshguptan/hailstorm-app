@@ -75,21 +75,25 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { useAppStore } from '../stores/app';
+import { useAppStore } from '../stores';
+import { useUtilitiesStore } from '../stores/utilities';
+import { useEnvironmentsStore } from '../stores/environments';
 import MonacoEditor from './MonacoEditor.vue';
 
-const store = useAppStore();
+const appStore = useAppStore();
+const utilitiesStore = useUtilitiesStore();
+const environmentsStore = useEnvironmentsStore();
 
 const command = computed({
   get: () => {
-    const utility = store.utilities.find(u => u.id === selectedUtilityId.value);
+    const utility = utilitiesStore.utilities.find(u => u.id === selectedUtilityId.value);
     return utility?.command || '';
   },
   set: (value) => {
-    const utility = store.utilities.find(u => u.id === selectedUtilityId.value);
+    const utility = utilitiesStore.utilities.find(u => u.id === selectedUtilityId.value);
     if (utility) {
       utility.command = value;
-      store.updateUtility(utility);
+      utilitiesStore.updateUtility(utility);
     }
   }
 });
@@ -100,40 +104,40 @@ const selectedTool = ref('shell');
 
 const postProcessScript = computed({
   get: () => {
-    const utility = store.utilities.find(u => u.id === selectedUtilityId.value);
+    const utility = utilitiesStore.utilities.find(u => u.id === selectedUtilityId.value);
     return utility?.postProcessScript || '';
   },
   set: (script) => {
-    const utility = store.utilities.find(u => u.id === selectedUtilityId.value);
+    const utility = utilitiesStore.utilities.find(u => u.id === selectedUtilityId.value);
     if (utility) {
       utility.postProcessScript = script;
-      store.updateUtility(utility);
+      utilitiesStore.updateUtility(utility);
     }
   }
 });
 
 const selectedUtilityId = computed({
-  get: () => store.selectedUtilityId,
-  set: (id) => store.selectUtility(id)
+  get: () => utilitiesStore.selectedUtilityId,
+  set: (id) => utilitiesStore.selectUtility(id)
 });
 
 const currentUtilityName = computed({
   get: () => {
-    const utility = store.utilities.find(u => u.id === selectedUtilityId.value);
+    const utility = utilitiesStore.utilities.find(u => u.id === selectedUtilityId.value);
     return utility?.name || '';
   },
   set: (name) => {
-    const utility = store.utilities.find(u => u.id === selectedUtilityId.value);
+    const utility = utilitiesStore.utilities.find(u => u.id === selectedUtilityId.value);
     if (utility) {
       utility.name = name;
-      store.updateUtility(utility);
+      utilitiesStore.updateUtility(utility);
     }
   }
 });
 
 function substituteVariables(text: string): string {
   if (!text) return text;
-  const activeEnv = store.environments.find(e => e.id === store.activeEnvironmentId);
+  const activeEnv = environmentsStore.environments.find(e => e.id === environmentsStore.activeEnvironmentId);
   if (!activeEnv) return text;
   return text.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
     const variable = activeEnv.variables.find(v => v.key === varName && v.enabled);
@@ -179,12 +183,12 @@ async function runCommand() {
 }
 
 function setVariable(key: string, value: string) {
-  if (!store.activeEnvironmentId) return;
+  if (!environmentsStore.activeEnvironmentId) return;
 
-  const envIndex = store.environments.findIndex(e => e.id === store.activeEnvironmentId);
+  const envIndex = environmentsStore.environments.findIndex(e => e.id === environmentsStore.activeEnvironmentId);
   if (envIndex === -1) return;
 
-  const env = store.environments[envIndex];
+  const env = environmentsStore.environments[envIndex];
   const existingVar = env.variables.find(v => v.key === key);
 
   if (existingVar) {
@@ -205,15 +209,15 @@ function saveAsUtility() {
   const newName = prompt('Enter name for new utility:', currentUtilityName.value + ' Copy');
   if (newName) {
     const newUtility = {
-      id: store.generateId('utility'),
+      id: appStore.generateId('utility'),
       name: newName,
       icon: '🔧',
       command: command.value,
       postProcessScript: postProcessScript.value
     };
-    store.utilities.push(newUtility);
-    store.saveToLocalStorage();
-    store.selectUtility(newUtility.id);
+    utilitiesStore.utilities.push(newUtility);
+    appStore.saveToLocalStorage();
+    utilitiesStore.selectUtility(newUtility.id);
   }
 }
 

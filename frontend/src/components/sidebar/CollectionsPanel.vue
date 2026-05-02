@@ -2,20 +2,20 @@
   <div class="collections-panel">
     <div class="flex gap-2 mb-2">
       <button class="btn btn-sm border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 flex-1 hover:bg-zinc-100 dark:hover:bg-zinc-800" @click="handleImport">Import</button>
-      <button class="btn btn-sm bg-blue-500 text-white flex-1 hover:bg-blue-600" @click="store.addCollection()">+ Collection</button>
+      <button class="btn btn-sm bg-blue-500 text-white flex-1 hover:bg-blue-600" @click="collectionsStore.addCollection()">+ Collection</button>
     </div>
     <div v-if="collections.length === 0" class="text-center text-zinc-400 dark:text-zinc-500 py-4">
       No collections yet
     </div>
     <div v-else>
       <div v-for="coll in collections" :key="coll.id" class="collection-item mb-2">
-        <div class="flex items-center p-2 rounded bg-zinc-200 dark:bg-zinc-800 cursor-pointer" @click="toggleCollection(coll.id)" @contextmenu.prevent="store.showContextMenu($event, 'collection', coll.id)">
+        <div class="flex items-center p-2 rounded bg-zinc-200 dark:bg-zinc-800 cursor-pointer" @click="toggleCollection(coll.id)" @contextmenu.prevent="uiStore.showContextMenu($event, 'collection', coll.id)">
           <span class="mr-2">{{ expandedCollections.includes(coll.id) ? '📂' : '📁' }}</span>
           <span class="flex-1 text-zinc-900 dark:text-white">{{ coll.name }}</span>
         </div>
         <div v-if="expandedCollections.includes(coll.id)" class="ml-3 mt-1">
           <template v-for="item in coll.items" :key="item.id">
-            <div class="request-item p-1 rounded cursor-pointer mb-1 flex items-center" :class="item.id === store.selectedRequestId ? 'bg-blue-200 dark:bg-blue-800' : 'bg-zinc-100 dark:bg-zinc-800'" :style="{ paddingLeft: '8px' }" @click="handleItemClick($event, item)" @contextmenu.prevent="store.showContextMenu($event, getItemType(item), item.id)" role="button" tabindex="0" @keydown.enter="handleItemClick($event, item)">
+            <div class="request-item p-1 rounded cursor-pointer mb-1 flex items-center" :class="item.id === requestsStore.selectedRequestId ? 'bg-blue-200 dark:bg-blue-800' : 'bg-zinc-100 dark:bg-zinc-800'" :style="{ paddingLeft: '8px' }" @click="handleItemClick($event, item)" @contextmenu.prevent="uiStore.showContextMenu($event, getItemType(item), item.id)" role="button" tabindex="0" @keydown.enter="handleItemClick($event, item)">
               <span v-if="hasMethod(item) && (item as Request).flavors?.length" class="mr-1 cursor-pointer text-blue-400" @click.stop="toggleFlavors(item.id)">{{ (item as Request).flavors?.length ? (expandedFlavors.includes(item.id) ? '▼' : '▶') : '+' }}</span>
               <span v-if="hasMethod(item)" class="badge mr-1" :class="getMethodClass(item)">{{ getMethod(item) }}</span>
               <span v-if="hasItems(item)" class="mr-1">{{ expandedFolders.includes(item.id) ? '📂' : '📁' }}</span>
@@ -23,7 +23,7 @@
               <span v-else class="text-sm text-zinc-700 dark:text-zinc-300">{{ item.name }}</span>
             </div>
             <template v-if="hasItems(item) && expandedFolders.includes(item.id)">
-              <div v-for="subItem in (item as Folder).items" :key="subItem.id" class="ml-3 request-item p-1 rounded cursor-pointer mb-1 flex items-center" :class="subItem.id === store.selectedRequestId ? 'bg-blue-200 dark:bg-blue-800' : 'bg-zinc-100 dark:bg-zinc-800'" :style="{ paddingLeft: '8px' }" @click="handleItemClick($event, subItem)" @contextmenu.prevent="store.showContextMenu($event, getItemType(subItem), subItem.id)" role="button" tabindex="0" @keydown.enter="handleItemClick($event, subItem)">
+              <div v-for="subItem in (item as Folder).items" :key="subItem.id" class="ml-3 request-item p-1 rounded cursor-pointer mb-1 flex items-center" :class="subItem.id === requestsStore.selectedRequestId ? 'bg-blue-200 dark:bg-blue-800' : 'bg-zinc-100 dark:bg-zinc-800'" :style="{ paddingLeft: '8px' }" @click="handleItemClick($event, subItem)" @contextmenu.prevent="uiStore.showContextMenu($event, getItemType(subItem), subItem.id)" role="button" tabindex="0" @keydown.enter="handleItemClick($event, subItem)">
                 <span v-if="hasMethod(subItem) && (subItem as Request).flavors?.length" class="mr-1 cursor-pointer text-blue-400" @click.stop="toggleFlavors(subItem.id)">{{ (subItem as Request).flavors?.length ? (expandedFlavors.includes(subItem.id) ? '▼' : '▶') : '+' }}</span>
                 <span v-if="hasMethod(subItem)" class="badge mr-1" :class="getMethodClass(subItem)">{{ getMethod(subItem) }}</span>
                 <span v-if="hasItems(subItem)" class="mr-1">{{ expandedFolders.includes(subItem.id) ? '📂' : '📁' }}</span>
@@ -32,7 +32,7 @@
               </div>
             </template>
             <div v-if="hasMethod(item) && expandedFlavors.includes(item.id) && (item as Request).flavors?.length" class="ml-6">
-              <div v-for="flavor in (item as Request).flavors" :key="flavor.id" class="request-item p-1 rounded cursor-pointer mb-1" :class="flavor.id === store.selectedRequestId ? 'bg-blue-200 dark:bg-blue-800' : 'bg-zinc-100 dark:bg-zinc-800'" :style="{ paddingLeft: '8px' }" @click.stop="store.openRequest(flavor)" @contextmenu.prevent="store.showContextMenu($event, 'flavor', flavor.id)">
+              <div v-for="flavor in (item as Request).flavors" :key="flavor.id" class="request-item p-1 rounded cursor-pointer mb-1" :class="flavor.id === requestsStore.selectedRequestId ? 'bg-blue-200 dark:bg-blue-800' : 'bg-zinc-100 dark:bg-zinc-800'" :style="{ paddingLeft: '8px' }" @click.stop="requestsStore.openRequest(flavor)" @contextmenu.prevent="uiStore.showContextMenu($event, 'flavor', flavor.id)">
                 <span class="badge mr-1" :class="getMethodClass(flavor)">{{ flavor.method }}</span>
                 <span class="text-sm text-blue-400">{{ flavor.name }}</span>
               </div>
@@ -46,11 +46,22 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { useAppStore } from '../../stores/app';
+import { useCollectionsStore } from '../../stores/collections';
+import { useRequestsStore } from '../../stores/requests';
+import { useUIStore } from '../../stores/ui';
 import type { Request, Folder } from '../../types';
 
-const store = useAppStore();
-const collections = computed(() => store.collections);
+console.log('[CollectionsPanel] Initializing stores...');
+const collectionsStore = useCollectionsStore();
+const requestsStore = useRequestsStore();
+const uiStore = useUIStore();
+console.log('[CollectionsPanel] Stores initialized:', { collectionsStore, requestsStore, uiStore });
+
+const collections = computed(() => {
+  const cols = collectionsStore.collections;
+  console.log('[CollectionsPanel] collections computed:', cols, 'length:', cols?.length);
+  return Array.isArray(cols) ? cols : [];
+});
 
 const expandedCollections = ref<string[]>([]);
 const expandedFolders = ref<string[]>([]);
@@ -220,24 +231,24 @@ function importData(data: any) {
   });
 
   if (data.collection) {
-    store.collections.push(processCollection(data.collection));
-    store.saveToLocalStorage();
+    collectionsStore.collections.push(processCollection(data.collection));
+    collectionsStore.saveCollections();
   } else if (data.collections) {
-    store.collections.push(...data.collections.map(processCollection));
-    store.saveToLocalStorage();
+    collectionsStore.collections.push(...data.collections.map(processCollection));
+    collectionsStore.saveCollections();
   } else if (Array.isArray(data)) {
-    store.collections.push(...data.map(processCollection));
-    store.saveToLocalStorage();
+    collectionsStore.collections.push(...data.map(processCollection));
+    collectionsStore.saveCollections();
   } else if (data.info && data.item) {
     const processedItems = processItems(data.item);
-    store.collections.push({
+    collectionsStore.collections.push({
       id: `coll_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: data.info.name || 'Imported Collection',
       items: processedItems,
       variables: []
     });
     console.log(`[IMPORT] Successfully imported Postman collection "${data.info.name}" with ${processedItems.length} requests`);
-    store.saveToLocalStorage();
+    collectionsStore.saveCollections();
   } else {
     console.log('[IMPORT] Unknown collection format:', Object.keys(data));
   }
@@ -251,7 +262,7 @@ function toggleCollection(id: string) {
     expandedCollections.value.push(id);
   }
   // Also select the collection to show details
-  store.selectCollection(id);
+  collectionsStore.selectCollection(id);
 }
 
 function handleItemClick(event: MouseEvent, item: any) {
@@ -261,7 +272,7 @@ function handleItemClick(event: MouseEvent, item: any) {
   if (hasItems(item)) {
     toggleFolder(item.id);
   } else {
-    store.selectRequest(item.id);
+    requestsStore.selectRequest(item.id);
   }
 }
 

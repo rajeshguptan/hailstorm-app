@@ -58,7 +58,7 @@
             :key="opt.value"
             class="relative cursor-pointer"
           >
-            <input type="radio" name="theme" :value="opt.value" v-model="theme" class="sr-only" @change="applyTheme">
+            <input type="radio" name="theme" :value="opt.value" v-model="theme" class="sr-only" @change="setTheme(theme)">
             <div 
               class="p-4 rounded-lg border-2 transition-all"
               :class="theme === opt.value ? 'border-blue-500 bg-blue-500/5' : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'"
@@ -285,7 +285,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
+import { useTheme } from '../composables/useTheme';
 
 const activeSection = ref('theme');
 
@@ -307,7 +308,7 @@ const advancedItems = [
   { id: 'about', label: 'About' },
 ];
 
-const theme = ref<'light' | 'dark' | 'system'>('dark');
+const { theme, setTheme } = useTheme();
 
 const themeOptions = [
   { value: 'light', label: 'Light', description: 'Clean light theme', icon: '☀️' },
@@ -334,22 +335,5 @@ const shortcuts = [
   { action: 'Search', keys: 'Ctrl + F' },
 ];
 
-function applyTheme() {
-  localStorage.setItem('hailstorm_theme', theme.value);
-  if (theme.value === 'system') {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    document.documentElement.classList.toggle('dark', prefersDark);
-  } else {
-    document.documentElement.classList.toggle('dark', theme.value === 'dark');
-  }
-}
 
-onMounted(() => {
-  const saved = localStorage.getItem('hailstorm_theme') as 'light' | 'dark' | 'system' | null;
-  if (saved) theme.value = saved;
-  
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    if (theme.value === 'system') applyTheme();
-  });
-});
 </script>

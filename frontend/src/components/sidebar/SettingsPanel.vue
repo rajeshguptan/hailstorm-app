@@ -9,17 +9,17 @@
     </div>
     <div v-else>
       <div v-for="category in settingsCategories" :key="category.id" class="settings-category-item mb-2">
-        <div class="flex items-center p-2 rounded bg-zinc-200 dark:bg-zinc-800 cursor-pointer" @click="toggleCategory(category.id)" @contextmenu.prevent="store.showContextMenu($event, 'settings-category', category.id)">
+        <div class="flex items-center p-2 rounded bg-zinc-200 dark:bg-zinc-800 cursor-pointer" @click="toggleCategory(category.id)" @contextmenu.prevent="uiStore.showContextMenu($event, 'settings-category', category.id)">
           <span class="mr-2">{{ expandedCategories.includes(category.id) ? '📂' : '📁' }}</span>
           <span class="flex-1 text-zinc-900 dark:text-white">{{ category.name }}</span>
         </div>
         <div v-if="expandedCategories.includes(category.id)" class="ml-3 mt-1">
-          <div v-for="setting in category.settings" :key="setting.id" class="setting-item p-1 rounded cursor-pointer mb-1 flex items-center bg-zinc-100 dark:bg-zinc-800" :style="{ paddingLeft: '8px' }" @click="handleSettingClick($event, setting)" @contextmenu.prevent="store.showContextMenu($event, 'setting', setting.id)" role="button" tabindex="0" @keydown.enter="handleSettingClick($event, setting)">
+          <div v-for="setting in category.settings" :key="setting.id" class="setting-item p-1 rounded cursor-pointer mb-1 flex items-center bg-zinc-100 dark:bg-zinc-800" :style="{ paddingLeft: '8px' }" @click="handleSettingClick($event, setting)" @contextmenu.prevent="uiStore.showContextMenu($event, 'setting', setting.id)" role="button" tabindex="0" @keydown.enter="handleSettingClick($event, setting)">
             <span v-if="hasSubSettings(setting)" class="mr-1 cursor-pointer text-blue-400" @click.stop="toggleSubSettings(setting.id)">{{ expandedSubSettings.includes(setting.id) ? '▼' : '▶' }}</span>
             <span class="flex-1 text-zinc-900 dark:text-white">{{ setting.name }}</span>
           </div>
           <div v-if="expandedSubSettings.length > 0" class="ml-3">
-            <div v-for="subSetting in expandedSubSettingsMap[activeSubSettingParentId] || []" :key="subSetting.id" class="sub-setting-item p-1 rounded cursor-pointer mb-1 flex items-center bg-zinc-100 dark:bg-zinc-800" :style="{ paddingLeft: '16px' }" @click.stop="handleSubSettingClick($event, subSetting)" @contextmenu.prevent="store.showContextMenu($event, 'sub-setting', subSetting.id)">
+            <div v-for="subSetting in expandedSubSettingsMap[activeSubSettingParentId] || []" :key="subSetting.id" class="sub-setting-item p-1 rounded cursor-pointer mb-1 flex items-center bg-zinc-100 dark:bg-zinc-800" :style="{ paddingLeft: '16px' }" @click.stop="handleSubSettingClick($event, subSetting)" @contextmenu.prevent="uiStore.showContextMenu($event, 'sub-setting', subSetting.id)">
               <span class="mr-1 text-blue-400">{{ subSetting.icon }}</span>
               <span class="flex-1 text-zinc-900 dark:text-white">{{ subSetting.name }}</span>
             </div>
@@ -32,11 +32,13 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { useAppStore } from '../../stores/app';
+import { useSettingsStore } from '../../stores/settings';
+import { useUIStore } from '../../stores/ui';
 import type { SettingsCategory, Setting, SubSetting } from '../../types';
 
-const store = useAppStore();
-const settingsCategories = computed(() => store.settingsCategories);
+const settingsStore = useSettingsStore();
+const uiStore = useUIStore();
+const settingsCategories = computed(() => settingsStore.settingsCategories);
 
 // Expand states
 const expandedCategories = ref<string[]>([]);

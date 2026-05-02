@@ -6,12 +6,17 @@
 
     <div v-else class="flex flex-col h-full">
       <!-- Header -->
-      <div class="p-3 border-b border-zinc-200 dark:border-zinc-700">
+      <div class="p-3 border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
         <input
           v-model="editingCollection.name"
-          class="w-full text-lg font-semibold bg-transparent border-none text-zinc-900 dark:text-white focus:outline-none"
+          class="flex-1 text-lg font-semibold bg-transparent border-none text-zinc-900 dark:text-white focus:outline-none mr-4"
           placeholder="Collection name"
         >
+        <div class="flex gap-2">
+          <button @click="saveCollection" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm">Save</button>
+          <button @click="exportCollection" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded text-sm">Export</button>
+          <button @click="cancelChanges" class="px-4 py-2 bg-zinc-300 hover:bg-zinc-400 dark:bg-zinc-600 dark:hover:bg-zinc-500 text-zinc-700 dark:text-zinc-300 rounded text-sm">Cancel</button>
+        </div>
       </div>
 
       <!-- Tabs -->
@@ -221,21 +226,19 @@
         </div>
       </div>
 
-      <!-- Footer Actions -->
-      <div class="p-3 border-t border-zinc-200 dark:border-zinc-700 flex gap-2">
-        <button @click="saveCollection" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded">Save</button>
-        <button @click="cancelChanges" class="px-4 py-2 bg-zinc-300 hover:bg-zinc-400 dark:bg-zinc-600 dark:hover:bg-zinc-500 text-zinc-700 dark:text-zinc-300 rounded">Cancel</button>
-      </div>
+
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
-import { useAppStore } from '../stores/app';
+import { useAppStore } from '../stores';
+import { useCollectionsStore } from '../stores/collections';
 import type { Collection, Variable, Auth } from '../types';
 
-const store = useAppStore();
+const appStore = useAppStore();
+const collectionsStore = useCollectionsStore();
 
 const activeTab = ref('properties');
 
@@ -247,7 +250,7 @@ const tabs = [
 ];
 
 const selectedCollection = computed(() => {
-  return store.collections.find(c => c.id === store.selectedCollectionId) || null;
+  return collectionsStore.collections.find(c => c.id === collectionsStore.selectedCollectionId) || null;
 });
 
 const editingCollection = ref<Collection>({
@@ -305,7 +308,7 @@ const selectWorkspaceLocation = async () => {
 
 const saveCollection = async () => {
   if (selectedCollection.value) {
-    store.updateCollection(editingCollection.value);
+    collectionsStore.updateCollection(editingCollection.value);
 
     // Auto-save to files if workspace location is set
     if (editingCollection.value.workspaceLocation) {
@@ -319,6 +322,140 @@ const saveCollection = async () => {
       }
     }
   }
+};
+
+const exportCollection = () => {
+  if (!selectedCollection.value) return;
+
+  const postmanCollection = convertToPostmanFormat(selectedCollection.value);
+
+  // Create and download the JSON file
+  const dataStr = JSON.stringify(postmanCollection, null, 2);
+  const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+
+  const exportFileDefaultName = `${selectedCollection.value.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_postman_collection.json`;
+
+  const linkElement = document.createElement('a');
+  linkElement.setAttribute('href', dataUri);
+  linkElement.setAttribute('download', exportFileDefaultName);
+  linkElement.click();
+};
+
+const convertToPostmanFormat = (collection: any) => {
+  const postmanCollection = {
+    info: {
+      name: collection.name,
+      description: collection.description || '',
+      schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json'
+    },
+    item: [] as any[],
+    variable: [] as any[]
+  };
+
+  // Convert variables
+  if (collection.variables) {
+    postmanCollection.variable = collection.variables
+      .filter((v: any) => v.enabled !== false)
+      .map((v: any) => ({
+        key: v.key,
+        value: v.value
+      }));
+  }
+
+  // Convert items (requests and folders)
+  const convertItems = (items: any[], parentFolder?: any) => {
+    items.forEach(item => {
+      if (item.method) {
+        // This is a request
+        const postmanRequest: any = {
+          name: item.name,
+          request: {
+            method: item.method,
+            header: [],
+            url: {
+              raw: item.url || ''
+            }
+          }
+        };
+
+        // Convert headers
+        if (item.headers) {
+          postmanRequest.request.header = item.headers
+            .filter((h: any) => h.enabled !== false)
+            .map((h: any) => ({
+              key: h.key,
+              value: h.value
+            }));
+        }
+
+        // Convert URL to Postman format
+        if (item.url) {
+          try {
+            const url = new URL(item.url);
+            postmanRequest.request.url = {
+              raw: item.url,
+              protocol: url.protocol.replace(':', ''),
+              host: url.hostname.split('.'),
+              path: url.pathname.split('/').filter(p => p),
+              query: Array.from(url.searchParams.entries()).map(([key, value]) => ({
+                key,
+                value
+              }))
+            };
+          } catch {
+            // If URL parsing fails, just use raw
+            postmanRequest.request.url = {
+              raw: item.url
+            };
+          }
+        }
+
+        // Convert body
+        if (item.body && item.body.type !== 'none') {
+          postmanRequest.request.body = {
+            mode: item.body.type === 'json' ? 'raw' : item.body.type,
+            raw: item.body.content || ''
+          };
+
+          if (item.body.type === 'json') {
+            postmanRequest.request.body.options = {
+              raw: {
+                language: 'json'
+              }
+            };
+          }
+        }
+
+        // Convert auth
+        if (item.auth && item.auth.type !== 'noauth') {
+          // Postman auth structure is different, this is a simplified version
+          if (item.auth.bearerToken) {
+            postmanRequest.request.auth = {
+              type: 'bearer',
+              bearer: [{ key: 'token', value: item.auth.bearerToken, type: 'string' }]
+            };
+          }
+        }
+
+        postmanCollection.item.push(postmanRequest);
+      } else if (item.items) {
+        // This is a folder
+        const folder = {
+          name: item.name,
+          item: [] as any[]
+        };
+
+        // Convert nested items
+        convertItems(item.items, folder);
+
+        postmanCollection.item.push(folder);
+      }
+    });
+  };
+
+  convertItems(collection.items);
+
+  return postmanCollection;
 };
 
 const cancelChanges = () => {

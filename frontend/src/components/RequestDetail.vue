@@ -277,9 +277,15 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import type { Request, Variable, RequestVariable } from '../types';
-import { useAppStore } from '../stores/app';
+import { useAppStore } from '../stores';
+import { useRequestsStore } from '../stores/requests';
+import { useResponseStore } from '../stores/response';
+import { useHistoryStore } from '../stores/history';
 
-const store = useAppStore();
+const appStore = useAppStore();
+const requestsStore = useRequestsStore();
+const responseStore = useResponseStore();
+const historyStore = useHistoryStore();
 
 const activeRequestTab = ref<'params' | 'auth' | 'headers' | 'body' | 'variables' | 'scripts'>('params');
 
@@ -308,7 +314,7 @@ const requestHeaders = ref<Variable[]>([]);
 const requestVariables = ref<RequestVariable[]>([]);
 const selectedDataset = ref<string>('');
 
-const selectedRequest = computed(() => store.selectedRequest);
+const selectedRequest = computed(() => requestsStore.selectedRequest);
 
 const uniqueDatasets = computed(() => {
   const datasets = new Set<string>();
@@ -325,14 +331,14 @@ const filteredVariables = computed(() => {
   return requestVariables.value.filter(v => v.dataset === selectedDataset.value);
 });
 
-watch(() => store.selectedRequestId, (newId) => {
+watch(() => requestsStore.selectedRequestId, (newId) => {
   console.log('RequestDetail watcher triggered with newId:', newId);
   if (newId) {
-    const request = store.selectedRequest;
-    console.log('store.selectedRequest:', request);
+    const request = requestsStore.selectedRequest;
+    console.log('requestsStore.selectedRequest:', request);
     if (request) {
       editingRequest.value = { ...request };
-      urlParams.value = store.extractParams(request.url || '');
+      urlParams.value = requestsStore.extractParams(request.url || '');
       requestHeaders.value = (request.headers && request.headers.length > 0) ? [...request.headers] : [];
       requestVariables.value = (request.variables && request.variables.length > 0) ? [...request.variables] : [];
     }
@@ -395,7 +401,7 @@ function saveRequest() {
   editingRequest.value.variables = [...requestVariables.value];
 
   // Find and update the request in the collections
-  for (const collection of store.collections) {
+  for (const collection of appStore.collections) {
     const updateRequest = (items: any[]): boolean => {
       for (let i = 0; i < items.length; i++) {
         if (items[i].id === editingRequest.value.id && 'method' in items[i]) {
@@ -415,10 +421,10 @@ function saveRequest() {
     }
   }
 
-  store.saveToLocalStorage();
+  appStore.saveToLocalStorage();
 
   // Find and update the request in the collections
-  for (const collection of store.collections) {
+  for (const collection of appStore.collections) {
     const updateRequest = (items: any[]): boolean => {
       for (let i = 0; i < items.length; i++) {
         if (items[i].id === editingRequest.value.id && 'method' in items[i]) {
@@ -438,13 +444,13 @@ function saveRequest() {
     }
   }
 
-  store.saveToLocalStorage();
+  appStore.saveToLocalStorage();
 }
 
 async function sendRequest() {
   console.log('Sending request:', editingRequest.value);
 
-  store.isLoading = true;
+  responseStore.isLoading = true;
   const startTime = Date.now();
 
   try {
@@ -506,7 +512,7 @@ async function sendRequest() {
     const result = await window.api.makeRequest(options);
     const time = Date.now() - startTime;
 
-    store.response = {
+    responseStore.response = {
       status: result.status,
       statusText: result.statusText,
       data: result.data,
@@ -516,17 +522,17 @@ async function sendRequest() {
     };
 
     // Associate response with current request
-    store.currentRequest.response = store.response;
+    requestsStore.currentRequest.response = responseStore.response;
 
     // Save the response with the current request to localStorage
-    if (!store.selectedRequestId) {
-      store.saveRequest();
+    if (!requestsStore.selectedRequestId) {
+      requestsStore.saveRequest();
     } else {
-      store.updateCurrentRequest();
+      requestsStore.updateCurrentRequest();
     }
 
     // Add to history
-    store.addToHistory({
+    historyStore.addToHistory({
       id: Date.now(),
       method: editingRequest.value.method,
       url: editingRequest.value.url,
@@ -534,12 +540,12 @@ async function sendRequest() {
       time: result.time,
       timestamp: Date.now(),
       request: JSON.parse(JSON.stringify(editingRequest.value)), // Deep copy of request
-      response: store.response!
+      response: responseStore.response!
     });
 
-    store.activeResponseTab = 'body';
+    responseStore.activeResponseTab = 'body';
   } catch (err: any) {
-    store.response = {
+    responseStore.response = {
       status: 0,
       statusText: 'Error',
       data: err.message || 'Failed to make request',
@@ -548,15 +554,15 @@ async function sendRequest() {
       error: err.message
     };
   } finally {
-    store.isLoading = false;
+    responseStore.isLoading = false;
   }
 }
 
 function cancelChanges() {
-  const request = store.selectedRequest;
+  const request = requestsStore.selectedRequest;
   if (request) {
     editingRequest.value = { ...request };
-    urlParams.value = store.extractParams(request.url || '');
+    urlParams.value = requestsStore.extractParams(request.url || '');
     requestHeaders.value = (request.headers && request.headers.length > 0) ? [...request.headers] : [];
     requestVariables.value = (request.variables && request.variables.length > 0) ? [...request.variables] : [];
   }

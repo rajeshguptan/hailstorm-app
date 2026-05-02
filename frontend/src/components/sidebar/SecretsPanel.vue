@@ -13,22 +13,36 @@
       </div>
       
       <div v-if="hasSalt" class="p-2">
+        <!-- Search/Filter Section -->
+        <div class="mb-3">
+          <div class="relative mb-2">
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search secrets (name, environment)..."
+              class="w-full px-3 py-2 pl-8 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
+            >
+            <svg class="absolute left-2 top-2.5 h-4 w-4 text-zinc-400 dark:text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
+        </div>
+
         <button @click="addSecret" class="w-full text-xs px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded mb-2">+ Add Secret</button>
         
-        <div v-if="secrets.length === 0" class="text-center text-zinc-500 py-4 text-sm">
-          No secrets defined
+        <div v-if="filteredSecrets.length === 0" class="text-center text-zinc-500 py-4 text-sm">
+          {{ searchQuery ? 'No matching secrets found' : 'No secrets defined' }}
         </div>
         
-        <div 
-          v-for="secret in secrets" 
+        <div
+          v-for="secret in filteredSecrets"
           :key="secret.id"
           class="p-2 mb-1 rounded cursor-pointer bg-zinc-100 dark:bg-zinc-800"
-          :class="{ 'bg-zinc-200 dark:bg-zinc-700': store.selectedSecretId === secret.id }"
+          :class="{ 'bg-zinc-200 dark:bg-zinc-700': appStore.selectedSecretId === secret.id }"
           @click="selectSecret(secret.id)"
         >
-          <div class="flex items-center justify-between">
+          <div class="flex items-center">
             <span class="text-sm text-zinc-900 dark:text-white">{{ secret.name || 'Unnamed' }}</span>
-            <button @click.stop="deleteSecret(secret.id)" class="text-red-500 hover:text-red-700 text-xl">×</button>
           </div>
           <div class="text-xs text-zinc-500">{{ getEnvName(secret.env) }}</div>
         </div>
@@ -39,20 +53,38 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { useAppStore } from '../../stores/app';
+import { useAppStore } from '../../stores';
+import { useEnvironmentsStore } from '../../stores/environments';
 
-const store = useAppStore();
+const appStore = useAppStore();
+const environmentsStore = useEnvironmentsStore();
 
 const salt = ref('');
+const searchQuery = ref('');
 const secrets = computed(() => {
-  console.log('[DEBUG] secrets computed, length:', store.secrets.length);
-  return store.secrets;
+  console.log('[DEBUG] secrets computed, length:', appStore.secrets.length);
+  return appStore.secrets;
 });
+
+const filteredSecrets = computed(() => {
+  if (!searchQuery.value.trim()) {
+    return secrets.value;
+  }
+
+  const query = searchQuery.value.toLowerCase().trim();
+  return secrets.value.filter((secret) => {
+    return (
+      secret.name.toLowerCase().includes(query) ||
+      getEnvName(secret.env).toLowerCase().includes(query)
+    );
+  });
+});
+
 const hasSalt = computed(() => localStorage.getItem('hailstorm_salt') !== null);
 
 function getEnvName(envId: string): string {
   if (!envId) return 'All';
-  const env = store.environments.find(e => e.id === envId);
+  const env = environmentsStore.environments.find(e => e.id === envId);
   return env?.name || 'Unknown';
 }
 
@@ -94,22 +126,16 @@ function generateId(): string {
 function addSecret() {
   if (!hasSalt.value) return;
   const newSecret = { id: generateId(), name: '', env: '', value: '' };
-  store.secrets.push(newSecret);
-  store.selectedSecretId = newSecret.id;
+  appStore.secrets.push(newSecret);
+  appStore.selectedSecretId = newSecret.id;
   saveSecrets();
 }
 
-function deleteSecret(id: string) {
-  store.secrets = store.secrets.filter(s => s.id !== id);
-  if (store.selectedSecretId === id) {
-    store.selectedSecretId = store.secrets.length > 0 ? store.secrets[0].id : null;
-  }
-  saveSecrets();
-}
+
 
 function saveSecrets() {
   const saltVal = localStorage.getItem('hailstorm_salt') || '';
-  const encryptedSecrets = store.secrets.map(s => ({
+  const encryptedSecrets = appStore.secrets.map(s => ({
     ...s,
     value: simpleEncrypt(s.value, saltVal)
   }));
@@ -117,11 +143,11 @@ function saveSecrets() {
 }
 
 function selectSecret(id: string) {
-  store.selectedSecretId = id;
+  appStore.selectedSecretId = id;
 }
 
 function getSecretValue(id: string): string {
-  const secret = store.secrets.find(s => s.id === id);
+  const secret = appStore.secrets.find(s => s.id === id);
   return secret?.value || '';
 }
 
@@ -133,11 +159,11 @@ function loadSecrets() {
     try {
       const parsed = JSON.parse(saved);
       console.log('[DEBUG] SecretsPanel loadSecrets, parsed secrets:', parsed.length);
-      store.secrets = parsed.map((s: any) => ({
+      appStore.secrets = parsed.map((s: any) => ({
         ...s,
         value: simpleDecrypt(s.value, saltVal)
       }));
-      console.log('[DEBUG] SecretsPanel loadSecrets, set store.secrets to:', store.secrets.length);
+      console.log('[DEBUG] SecretsPanel loadSecrets, set appStore.secrets to:', appStore.secrets.length);
     } catch (e) {
       console.error('[DEBUG] SecretsPanel loadSecrets, error parsing:', e);
     }
@@ -153,7 +179,7 @@ onMounted(() => {
 
 defineExpose({
   secrets,
-  selectedSecretId: () => store.selectedSecretId,
+  selectedSecretId: () => appStore.selectedSecretId,
   selectSecret,
   getSecretValue,
   saveSecrets

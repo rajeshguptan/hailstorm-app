@@ -16,7 +16,7 @@
     
 <main class="flex-1 flex">
 <!-- Settings view (full width) -->
-<div v-if="store.activeSidebar === 'settings'" class="main-content flex-1 flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
+  <div v-if="uiStore.activeSidebar === 'settings'" class="main-content flex-1 flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
   <SettingsContent />
 </div>
 
@@ -40,22 +40,22 @@
       <ResponsePanel />
     </div>
     <!-- Secrets detail when selected -->
-    <SecretsDetail v-if="store.activeSidebar === 'secrets' && store.selectedSecretId !== null" />
-    <!-- Environments detail when selected -->
-    <EnvironmentsDetail v-if="store.activeSidebar === 'environments' && store.activeEnvironmentId !== null" />
-    <!-- Collection detail when selected (but not when a request is selected) -->
-    <CollectionPanel v-if="store.activeSidebar === 'collections' && store.selectedCollectionId !== null && store.selectedRequestId === null" />
-      <!-- Utility content when selected -->
-       <UtilityContent v-if="store.activeSidebar === 'utilities' && store.selectedUtilityId !== null" />
+    <SecretsDetail v-if="uiStore.activeSidebar === 'secrets' && appStore.selectedSecretId !== null" />
+
+    <EnvironmentsDetail v-if="uiStore.activeSidebar === 'environments' && environmentsStore.activeEnvironmentId !== null" />
+
+    <CollectionPanel v-if="uiStore.activeSidebar === 'collections' && appStore.selectedCollectionId !== null && requestsStore.selectedRequestId === null" />
+
+       <UtilityContent v-if="uiStore.activeSidebar === 'utilities' && utilitiesStore.selectedUtilityId !== null" />
     <!-- Runner panel -->
     <RunnerPanel
-      v-if="store.activeSidebar === 'runner'"
-      :collections="store.collections"
-      :environments="store.environments"
-      :activeEnvironmentId="store.activeEnvironmentId"
-      :runConfigs="store.runConfigs"
-      :selectedConfigId="store.selectedConfigId"
-      @update-run-config="store.updateRunConfig"
+      v-if="uiStore.activeSidebar === 'runner'"
+      :collections="collectionsStore.collections"
+      :environments="environmentsStore.environments"
+      :activeEnvironmentId="environmentsStore.activeEnvironmentId"
+      :runConfigs="runnerStore.runConfigs"
+      :selectedConfigId="runnerStore.selectedConfigId"
+      @update-run-config="runnerStore.updateRunConfig"
     />
      <!-- Other main content can go here -->
   </div>
@@ -72,6 +72,9 @@
   <!-- Context Menu -->
   <ContextMenu />
 
+  <!-- Rename Modal -->
+  <RenameModal />
+
 </div>
 </template>
 
@@ -79,7 +82,13 @@
 import { computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import type { SidebarView } from '../types';
-import { useAppStore } from '../stores/app';
+import { useAppStore } from '../stores';
+import { useUIStore } from '../stores/ui';
+import { useRequestsStore } from '../stores/requests';
+import { useEnvironmentsStore } from '../stores/environments';
+import { useUtilitiesStore } from '../stores/utilities';
+import { useCollectionsStore } from '../stores/collections';
+import { useRunnerStore } from '../stores/runner';
 import ContextMenu from '../components/ContextMenu.vue';
 import EnvModal from '../components/EnvModal.vue';
 import RenameModal from '../components/RenameModal.vue';
@@ -95,7 +104,13 @@ import RunnerPanel from '../components/RunnerPanel.vue';
 
 const router = useRouter();
 const route = useRoute();
-const store = useAppStore();
+const appStore = useAppStore();
+const uiStore = useUIStore();
+const requestsStore = useRequestsStore();
+const environmentsStore = useEnvironmentsStore();
+const utilitiesStore = useUtilitiesStore();
+const collectionsStore = useCollectionsStore();
+const runnerStore = useRunnerStore();
 
 // Sync activeSidebar with route when navigation happens (not via ribbon click)
 watch(
@@ -114,12 +129,12 @@ watch(
     };
 
     const sidebarId = routeToSidebar[to];
-    if (sidebarId && store.activeSidebar !== sidebarId) {
-      store.activeSidebar = sidebarId;
+    if (sidebarId && uiStore.activeSidebar !== sidebarId) {
+      uiStore.activeSidebar = sidebarId;
       if (sidebarId === 'runner') {
-        store.sidebarTitle = 'Run Configs';
+        uiStore.sidebarTitle = 'Run Configs';
       } else {
-        store.sidebarTitle = sidebarId.charAt(0).toUpperCase() + sidebarId.slice(1);
+        uiStore.sidebarTitle = sidebarId.charAt(0).toUpperCase() + sidebarId.slice(1);
       }
     }
   }
@@ -139,43 +154,49 @@ const ribbonItems = [
 const sidebarPanels: SidebarView[] = ['collections', 'environments', 'history', 'secrets', 'utilities', 'runner', 'settings'];
 
 const showSidebarMain = computed(() => {
-  return sidebarPanels.includes(store.activeSidebar);
+  return sidebarPanels.includes(uiStore.activeSidebar);
 });
 
 const showRequestDetail = computed(() => {
-  const shouldShow = (store.activeSidebar === 'collections' || store.activeSidebar === 'history') && store.selectedRequestId !== null;
-  console.log('showRequestDetail computed:', shouldShow, 'activeSidebar:', store.activeSidebar, 'selectedRequestId:', store.selectedRequestId);
+  const shouldShow = (uiStore.activeSidebar === 'collections' || uiStore.activeSidebar === 'history') && requestsStore.selectedRequestId !== null;
+  console.log('showRequestDetail computed:', shouldShow, 'activeSidebar:', uiStore.activeSidebar, 'selectedRequestId:', requestsStore.selectedRequestId);
+  console.log('showRequestDetail - collections check:', uiStore.activeSidebar === 'collections', 'history check:', uiStore.activeSidebar === 'history', 'selectedRequestId check:', requestsStore.selectedRequestId !== null);
   return shouldShow;
 });
 
 const sidebarTitle = computed(() => {
-  return store.sidebarTitle;
+  return uiStore.sidebarTitle;
 });
 
 function isActive(id: string): boolean {
-  return store.activeSidebar === id;
+  return uiStore.activeSidebar === id;
 }
 
 function navigate(id: SidebarView) {
   const item = ribbonItems.find(i => i.id === id);
   if (item) {
-    store.activeSidebar = id;
+    uiStore.activeSidebar = id;
     if (id === 'runner') {
-      store.sidebarTitle = 'Run Configs';
+      uiStore.sidebarTitle = 'Run Configs';
     } else {
-      store.sidebarTitle = id.charAt(0).toUpperCase() + id.slice(1);
+      uiStore.sidebarTitle = id.charAt(0).toUpperCase() + id.slice(1);
     }
+
+    // Navigate to the corresponding route
+    router.push(`/${id}`).catch(err => {
+      console.error('Router navigation error:', err);
+    });
 
     // Clear selections when navigating to different views
     if (id === 'collections') {
-      store.selectRequest(null); // This will reset to default request
+      requestsStore.selectRequest(null); // This will reset to default request
     } else if (id === 'environments') {
-      store.activeEnvironmentId = null;
+      environmentsStore.activeEnvironmentId = null;
     } else if (id === 'secrets') {
       console.log('[DEBUG] navigate to secrets, setting selectedSecretId to null');
-      store.selectedSecretId = null;
+      appStore.selectedSecretId = null;
     } else if (id === 'utilities') {
-      store.selectedUtilityId = store.utilities.length > 0 ? store.utilities[0].id : null;
+      utilitiesStore.selectedUtilityId = utilitiesStore.utilities.length > 0 ? utilitiesStore.utilities[0].id : null;
     } else if (id === 'runner') {
       // Sidebar title is set in watch(route)
     }

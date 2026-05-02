@@ -1,11 +1,11 @@
-import { test as base } from '@playwright/test';
+import { test as base, expect } from '@playwright/test';
 
 export const test = base.extend({
   // Base fixture that ensures the app is loaded
   appLoaded: async ({ page }, use) => {
     page.on('console', msg => console.log('PAGE LOG:', msg.text()));
     page.on('pageerror', err => console.log('PAGE ERROR:', err.message));
-    await page.goto('/');
+    await page.goto('http://localhost:5173/');
     // Mock the Electron API since tests run in browser context
     await page.addScriptTag({
       content: `
@@ -24,4 +24,4 @@ export const test = base.extend({
 });
 
 // Export types for better TypeScript support
-export { expect } from '@playwright/test';
+export { expect };

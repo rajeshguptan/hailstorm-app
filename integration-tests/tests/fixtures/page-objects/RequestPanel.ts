@@ -17,14 +17,16 @@ export class RequestPanel {
   constructor(page: Page) {
     this.page = page;
     this.panel = page.locator('.request-panel');
-    this.methodSelect = page.locator('.request-panel select.method');
-    this.urlInput = page.locator('.request-panel input.url');
+    this.methodSelect = page.locator('.request-panel select');
+    this.urlInput = page.locator('.request-panel input[type="text"]').first();
     this.sendBtn = page.locator('.request-panel button:has-text("Send")');
     this.tabs = {
-      params: page.locator('.request-panel .tab:has-text("Params")'),
-      auth: page.locator('.request-panel .tab:has-text("Auth")'),
-      headers: page.locator('.request-panel .tab:has-text("Headers")'),
-      body: page.locator('.request-panel .tab:has-text("Body")'),
+      params: page.locator('.request-panel button:has-text("Parameters")'),
+      auth: page.locator('.request-panel button:has-text("Auth")'),
+      headers: page.locator('.request-panel button:has-text("Headers")'),
+      body: page.locator('.request-panel button:has-text("Body")'),
+      variables: page.locator('.request-panel button:has-text("Variables")'),
+      scripts: page.locator('.request-panel button:has-text("Scripts")'),
     };
     this.responsePanel = page.locator('.response-panel');
   }
@@ -39,35 +41,39 @@ export class RequestPanel {
 
   async addHeader(key: string, value: string): Promise<void> {
     await this.tabs.headers.click();
-    await this.page.locator('.headers-section button.add-header').click();
-    const keyInput = this.page.locator('.header-row:last-child input.key');
-    const valueInput = this.page.locator('.header-row:last-child input.value');
-    await keyInput.fill(key);
-    await valueInput.fill(value);
+    await this.page.locator('.request-panel button:has-text("+ Add Header")').click();
+    const headerRows = this.page.locator('.request-panel .key-value-editor input[placeholder="Key"]');
+    const valueInputs = this.page.locator('.request-panel .key-value-editor input[placeholder="Value"]');
+    const lastKeyInput = headerRows.last();
+    const lastValueInput = valueInputs.last();
+    await lastKeyInput.fill(key);
+    await lastValueInput.fill(value);
   }
 
-  async setBody(body: string, type: 'json' | 'text' | 'form-data' = 'json'): Promise<void> {
+  async setBody(body: string, type: 'raw' | 'form-data' | 'x-www-form-urlencoded' | 'binary' | 'none' = 'raw'): Promise<void> {
     await this.tabs.body.click();
-    const typeSelect = this.page.locator('.body-section select.body-type');
+    const typeSelect = this.page.locator('.request-panel select').nth(1); // Second select in the request panel
     await typeSelect.selectOption(type);
-    const bodyTextarea = this.page.locator('.body-section textarea');
-    await bodyTextarea.fill(body);
+    if (type !== 'none') {
+      const bodyTextarea = this.page.locator('.request-panel textarea');
+      await bodyTextarea.fill(body);
+    }
   }
 
-  async setAuth(type: 'none' | 'basic' | 'bearer' | 'api-key', config: any = {}): Promise<void> {
+  async setAuth(type: 'noauth' | 'basic' | 'bearer' | 'apikey', config: any = {}): Promise<void> {
     await this.tabs.auth.click();
-    const authSelect = this.page.locator('.auth-section select.auth-type');
+    const authSelect = this.page.locator('.request-panel select').nth(2); // Third select in the request panel
     await authSelect.selectOption(type);
 
     if (type === 'basic') {
-      await this.page.locator('input[placeholder="Username"]').fill(config.username);
-      await this.page.locator('input[placeholder="Password"]').fill(config.password);
+      await this.page.locator('.request-panel input[placeholder="Username"]').fill(config.username);
+      await this.page.locator('.request-panel input[placeholder="Password"]').fill(config.password);
     } else if (type === 'bearer') {
-      await this.page.locator('input[placeholder="Token"]').fill(config.token);
-    } else if (type === 'api-key') {
-      await this.page.locator('input[placeholder="Key"]').fill(config.key);
-      await this.page.locator('input[placeholder="Value"]').fill(config.value);
-      await this.page.locator('select[name="in"]').selectOption(config.in || 'header');
+      await this.page.locator('.request-panel input[placeholder="Enter bearer token"]').fill(config.token);
+    } else if (type === 'apikey') {
+      await this.page.locator('.request-panel input[placeholder="Key"]').first().fill(config.key);
+      await this.page.locator('.request-panel input[placeholder="Value"]').first().fill(config.value);
+      await this.page.locator('.request-panel select').nth(3).selectOption(config.in || 'header');
     }
   }
 

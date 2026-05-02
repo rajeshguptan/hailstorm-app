@@ -1,16 +1,18 @@
 <template>
   <RunConfigsPanel
-    :runConfigs="store.runConfigs"
-    :selectedConfigId="store.selectedConfigId"
-    @add-run-config="store.addRunConfig"
-    @select-config="store.selectRunConfig"
-    @context-menu="store.showContextMenu"
+    :runConfigs="runnerStore.runConfigs"
+    :selectedConfigId="runnerStore.selectedConfigId"
+    @add-run-config="runnerStore.addRunConfig"
+    @select-config="runnerStore.selectRunConfig"
+    @context-menu="uiStore.showContextMenu"
   />
 </template>
 
 <script setup lang="ts">
 import RunConfigsPanel from '../components/RunConfigsPanel.vue';
-import { useAppStore } from '../stores/app';
+import { useRunnerStore } from '../stores/runner';
+import { useUIStore } from '../stores/ui';
 
-const store = useAppStore();
+const runnerStore = useRunnerStore();
+const uiStore = useUIStore();
 </script>

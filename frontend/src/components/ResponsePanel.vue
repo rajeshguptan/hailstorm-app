@@ -37,9 +37,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useAppStore } from '../stores/app';
+import { useResponseStore } from '../stores/response';
 
-const store = useAppStore();
+const store = useResponseStore();
 
 const responseBody = computed(() => {
   if (!store.response) return 'Response will appear here';

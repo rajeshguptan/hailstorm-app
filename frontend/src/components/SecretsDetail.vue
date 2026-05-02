@@ -15,6 +15,7 @@
 
       <div class="p-3 border-b border-zinc-200 dark:border-zinc-700 flex gap-2">
         <button @click="saveSecret" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded">Save</button>
+        <button @click="deleteSecret" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded">Delete</button>
         <button @click="cancelEdit" class="px-4 py-2 bg-zinc-300 hover:bg-zinc-400 dark:bg-zinc-600 dark:hover:bg-zinc-500 text-zinc-700 dark:text-zinc-300 rounded">Cancel</button>
       </div>
 
@@ -55,7 +56,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { useAppStore } from '../stores/app';
+import { useAppStore } from '../stores';
 
 const store = useAppStore();
 
@@ -98,6 +99,24 @@ function saveSecret() {
     store.secrets.splice(index, 1, { ...editingSecret.value });
   }
 
+  const saltVal = localStorage.getItem('hailstorm_salt') || '';
+  const encryptedSecrets = store.secrets.map(s => ({
+    ...s,
+    value: simpleEncrypt(s.value, saltVal)
+  }));
+  localStorage.setItem('hailstorm_secrets', JSON.stringify(encryptedSecrets));
+}
+
+function deleteSecret() {
+  if (!editingSecret.value.id) return;
+
+  // Remove from store
+  store.secrets = store.secrets.filter(s => s.id !== editingSecret.value.id);
+
+  // Clear selection
+  store.selectedSecretId = store.secrets.length > 0 ? store.secrets[0].id : null;
+
+  // Update localStorage
   const saltVal = localStorage.getItem('hailstorm_salt') || '';
   const encryptedSecrets = store.secrets.map(s => ({
     ...s,

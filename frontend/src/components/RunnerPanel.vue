@@ -28,9 +28,9 @@
         <div class="flex gap-4 mb-4">
           <div class="flex-1">
             <label class="block text-sm text-zinc-600 dark:text-gray-400 mb-1">Collection</label>
-            <select v-model="currentCollectionId" :disabled="!editMode" class="form-select bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
-              <option v-for="coll in collections" :key="coll.id" :value="coll.id">{{ coll.name }}</option>
-            </select>
+             <select v-model="currentCollectionId" :disabled="!editMode" class="form-select bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
+               <option v-for="coll in collections || []" :key="coll.id" :value="coll.id">{{ coll.name }}</option>
+             </select>
           </div>
           <div class="flex-1">
             <label class="block text-sm text-zinc-600 dark:text-gray-400 mb-1">Run Mode</label>
@@ -172,6 +172,7 @@ const editedName = ref('');
 const selectedRequests = ref<string[]>([]);
 
 const selectedConfig = computed(() => {
+  if (!props.runConfigs || !props.selectedConfigId) return null;
   return props.runConfigs.find(c => c.id === props.selectedConfigId) || null;
 });
 
@@ -180,7 +181,7 @@ const passedCount = computed(() => {
 });
 
 const currentCollection = computed(() => {
-  if (!selectedConfig.value) return null;
+  if (!selectedConfig.value || !props.collections) return null;
   return props.collections.find(c => c.id === selectedConfig.value?.collectionId) || null;
 });
 
@@ -201,7 +202,7 @@ const currentCollectionId = computed({
 });
 
 const currentRunMode = computed({
-  get: () => editMode.value ? editingConfig.value?.runMode : selectedConfig.value?.runMode,
+  get: () => editMode.value ? editingConfig.value?.runMode : selectedConfig.value?.runMode || 'sequential',
   set: (value: 'parallel' | 'sequential') => {
     if (editMode.value && editingConfig.value) {
       editingConfig.value.runMode = value;
@@ -210,7 +211,7 @@ const currentRunMode = computed({
 });
 
 const currentRunRepeated = computed({
-  get: () => editMode.value ? editingConfig.value?.runRepeated : selectedConfig.value?.runRepeated,
+  get: () => editMode.value ? editingConfig.value?.runRepeated : selectedConfig.value?.runRepeated || false,
   set: (value: boolean) => {
     if (editMode.value && editingConfig.value) {
       editingConfig.value.runRepeated = value;
@@ -219,7 +220,7 @@ const currentRunRepeated = computed({
 });
 
 const currentIterations = computed({
-  get: () => editMode.value ? editingConfig.value?.iterations : selectedConfig.value?.iterations,
+  get: () => editMode.value ? editingConfig.value?.iterations : selectedConfig.value?.iterations || 1,
   set: (value: number) => {
     if (editMode.value && editingConfig.value) {
       editingConfig.value.iterations = value;
@@ -228,7 +229,7 @@ const currentIterations = computed({
 });
 
 const currentDelay = computed({
-  get: () => editMode.value ? editingConfig.value?.delay : selectedConfig.value?.delay,
+  get: () => editMode.value ? editingConfig.value?.delay : selectedConfig.value?.delay || 1000,
   set: (value: number) => {
     if (editMode.value && editingConfig.value) {
       editingConfig.value.delay = value;
@@ -414,7 +415,7 @@ watch(() => selectedConfig.value, (newConfig) => {
 });
 
 watch(selectedRequests, (newVal) => {
-  if (selectedConfig.value && JSON.stringify(newVal) !== JSON.stringify(lastEmitted.value?.selectedRequests)) {
+  if (selectedConfig.value && lastEmitted.value && JSON.stringify(newVal) !== JSON.stringify(lastEmitted.value.selectedRequests)) {
     const updated = { ...selectedConfig.value, selectedRequests: newVal };
     lastEmitted.value = JSON.parse(JSON.stringify(updated));
     emit('update-run-config', updated);
