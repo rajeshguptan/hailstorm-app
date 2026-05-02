@@ -7,7 +7,7 @@
           :class="{ 'bg-zinc-300 dark:bg-zinc-700': isActive(item.id) }" 
           @click="navigate(item.id)"
         >
-          <span class="text-xl">{{ item.icon }}</span>
+          <span class="text-xl" :style="item.iconStyle">{{ item.icon }}</span>
           <span class="text-xs">{{ item.label }}</span>
         </button>
         <div class="separator" v-if="item.id !== 'settings'"></div>
@@ -75,11 +75,18 @@
   <!-- Rename Modal -->
   <RenameModal />
 
+  <!-- Secrets Encryption Modal -->
+  <SecretsEncryptionModal
+    :show="secretsStore.showEncryptionModal"
+    @submit="handleEncryptionKeySubmit"
+    @close="secretsStore.hideUnlockModal()"
+  />
+
 </div>
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, watch, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import type { SidebarView } from '../types';
 import { useAppStore } from '../stores';
@@ -89,9 +96,11 @@ import { useEnvironmentsStore } from '../stores/environments';
 import { useUtilitiesStore } from '../stores/utilities';
 import { useCollectionsStore } from '../stores/collections';
 import { useRunnerStore } from '../stores/runner';
+import { useSecretsStore } from '../stores/secrets';
 import ContextMenu from '../components/ContextMenu.vue';
 import EnvModal from '../components/EnvModal.vue';
 import RenameModal from '../components/RenameModal.vue';
+import SecretsEncryptionModal from '../components/SecretsEncryptionModal.vue';
 import TabsBar from '../components/TabsBar.vue';
 import RequestPanel from '../components/RequestPanel.vue';
 import ResponsePanel from '../components/ResponsePanel.vue';
@@ -111,6 +120,7 @@ const environmentsStore = useEnvironmentsStore();
 const utilitiesStore = useUtilitiesStore();
 const collectionsStore = useCollectionsStore();
 const runnerStore = useRunnerStore();
+const secretsStore = useSecretsStore();
 
 // Sync activeSidebar with route when navigation happens (not via ribbon click)
 watch(
@@ -140,16 +150,16 @@ watch(
   }
 );
 
-const ribbonItems = [
+const ribbonItems = computed(() => [
   { id: 'collections' as SidebarView, icon: '📁', label: 'Collections', route: '/collections' },
   { id: 'environments' as SidebarView, icon: '🌍', label: 'Environments', route: '/environments' },
   { id: 'history' as SidebarView, icon: '🕒', label: 'History', route: '/history' },
-  { id: 'secrets' as SidebarView, icon: '🔐', label: 'Secrets', route: '/secrets' },
+  { id: 'secrets' as SidebarView, icon: secretsStore.isLocked ? '🔒' : '🔓', iconStyle: secretsStore.isLocked ? 'filter: sepia(1) hue-rotate(0deg) saturate(2) brightness(1.3)' : 'filter: sepia(1) hue-rotate(120deg) saturate(2) brightness(1.3)', label: 'Secrets', route: '/secrets' },
   { id: 'stats' as SidebarView, icon: '📊', label: 'Stats', route: '/stats' },
   { id: 'utilities' as SidebarView, icon: '🔧', label: 'Utilities', route: '/utilities' },
   { id: 'runner' as SidebarView, icon: '🏃', label: 'Runner', route: '/runner' },
   { id: 'settings' as SidebarView, icon: '⚙️', label: 'Settings', route: '/settings' },
-];
+]);
 
 const sidebarPanels: SidebarView[] = ['collections', 'environments', 'history', 'secrets', 'utilities', 'runner', 'settings'];
 
@@ -172,9 +182,32 @@ function isActive(id: string): boolean {
   return uiStore.activeSidebar === id;
 }
 
+function handleEncryptionKeySubmit(key: string) {
+  const hasEverSetUp = !!localStorage.getItem('hailstorm_encryption_key');
+
+  if (!hasEverSetUp) {
+    // First time setup - store the key
+    localStorage.setItem('hailstorm_encryption_key', key);
+  }
+
+  // Always unlock for this session
+  secretsStore.setEncryptionKey(key);
+
+  // Navigate to secrets after unlocking
+  navigate('secrets');
+}
+
+// Secrets store initializes itself when the module loads
+
 function navigate(id: SidebarView) {
-  const item = ribbonItems.find(i => i.id === id);
+  const item = ribbonItems.value.find(i => i.id === id);
   if (item) {
+    // Special handling for secrets - check if unlocked
+    if (id === 'secrets' && secretsStore.isLocked) {
+      secretsStore.showUnlockModal();
+      return; // Don't navigate if locked
+    }
+
     uiStore.activeSidebar = id;
     if (id === 'runner') {
       uiStore.sidebarTitle = 'Run Configs';
@@ -203,8 +236,6 @@ function navigate(id: SidebarView) {
 
     router.push(item.route);
   }
-
-
 }
 </script>
 

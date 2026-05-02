@@ -1,18 +1,13 @@
 <template>
   <div class="secrets-panel h-full flex flex-col bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300">
     <div class="secrets-content flex-1 overflow-auto">
-      <div v-if="!hasSalt" class="p-3 m-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
-        <label class="block text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">Encryption Salt</label>
-        <input 
-          v-model="salt" 
-          type="password" 
-          placeholder="Enter a salt for encryption"
-          class="w-full px-3 py-2 border border-yellow-300 dark:border-yellow-700 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white mb-2"
-        >
-        <button @click="saveSalt" class="text-xs px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-white rounded">Set Salt</button>
+      <div v-if="!secretsStore.isUnlocked" class="p-4 text-center">
+        <div class="text-zinc-500 dark:text-zinc-400 mb-4">
+          🔒 Secrets are locked. Please unlock using the encryption key.
+        </div>
       </div>
-      
-      <div v-if="hasSalt" class="p-2">
+
+      <div v-else class="p-2">
         <!-- Search/Filter Section -->
         <div class="mb-3">
           <div class="relative mb-2">
@@ -28,7 +23,7 @@
           </div>
         </div>
 
-        <button @click="addSecret" class="w-full text-xs px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded mb-2">+ Add Secret</button>
+        <button @click="addSecret" class="w-full text-xs px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded mb-2" v-if="secretsStore.isUnlocked">+ Add Secret</button>
         
         <div v-if="filteredSecrets.length === 0" class="text-center text-zinc-500 py-4 text-sm">
           {{ searchQuery ? 'No matching secrets found' : 'No secrets defined' }}
@@ -52,14 +47,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useAppStore } from '../../stores';
 import { useEnvironmentsStore } from '../../stores/environments';
+import { useSecretsStore } from '../../stores/secrets';
 
 const appStore = useAppStore();
 const environmentsStore = useEnvironmentsStore();
+const secretsStore = useSecretsStore();
 
-const salt = ref('');
 const searchQuery = ref('');
 const secrets = computed(() => {
   console.log('[DEBUG] secrets computed, length:', appStore.secrets.length);
@@ -80,43 +76,10 @@ const filteredSecrets = computed(() => {
   });
 });
 
-const hasSalt = computed(() => localStorage.getItem('hailstorm_salt') !== null);
-
 function getEnvName(envId: string): string {
   if (!envId) return 'All';
   const env = environmentsStore.environments.find(e => e.id === envId);
   return env?.name || 'Unknown';
-}
-
-function simpleEncrypt(text: string, saltVal: string): string {
-  if (!saltVal || !text) return text;
-  let result = '';
-  for (let i = 0; i < text.length; i++) {
-    const charCode = text.charCodeAt(i) ^ saltVal.charCodeAt(i % saltVal.length);
-    result += String.fromCharCode(charCode);
-  }
-  return btoa(result);
-}
-
-function simpleDecrypt(encrypted: string, saltVal: string): string {
-  if (!saltVal || !encrypted) return encrypted;
-  try {
-    const decoded = atob(encrypted);
-    let result = '';
-    for (let i = 0; i < decoded.length; i++) {
-      const charCode = decoded.charCodeAt(i) ^ saltVal.charCodeAt(i % saltVal.length);
-      result += String.fromCharCode(charCode);
-    }
-    return result;
-  } catch {
-    return encrypted;
-  }
-}
-
-function saveSalt() {
-  if (salt.value) {
-    localStorage.setItem('hailstorm_salt', salt.value);
-  }
 }
 
 function generateId(): string {
@@ -124,7 +87,7 @@ function generateId(): string {
 }
 
 function addSecret() {
-  if (!hasSalt.value) return;
+  if (!secretsStore.isUnlocked) return;
   const newSecret = { id: generateId(), name: '', env: '', value: '' };
   appStore.secrets.push(newSecret);
   appStore.selectedSecretId = newSecret.id;
@@ -134,10 +97,11 @@ function addSecret() {
 
 
 function saveSecrets() {
-  const saltVal = localStorage.getItem('hailstorm_salt') || '';
+  if (!secretsStore.isUnlocked) return;
+
   const encryptedSecrets = appStore.secrets.map(s => ({
     ...s,
-    value: simpleEncrypt(s.value, saltVal)
+    value: secretsStore.simpleEncrypt(s.value, secretsStore.encryptionKey)
   }));
   localStorage.setItem('hailstorm_secrets', JSON.stringify(encryptedSecrets));
 }
@@ -152,16 +116,17 @@ function getSecretValue(id: string): string {
 }
 
 function loadSecrets() {
+  if (!secretsStore.isUnlocked) return;
+
   const saved = localStorage.getItem('hailstorm_secrets');
-  const saltVal = localStorage.getItem('hailstorm_salt') || '';
-  console.log('[DEBUG] SecretsPanel loadSecrets, saved:', saved, 'saltVal:', !!saltVal);
-  if (saved && saltVal) {
+  console.log('[DEBUG] SecretsPanel loadSecrets, saved:', saved);
+  if (saved) {
     try {
       const parsed = JSON.parse(saved);
       console.log('[DEBUG] SecretsPanel loadSecrets, parsed secrets:', parsed.length);
       appStore.secrets = parsed.map((s: any) => ({
         ...s,
-        value: simpleDecrypt(s.value, saltVal)
+        value: secretsStore.simpleDecrypt(s.value, secretsStore.encryptionKey)
       }));
       console.log('[DEBUG] SecretsPanel loadSecrets, set appStore.secrets to:', appStore.secrets.length);
     } catch (e) {
@@ -170,12 +135,12 @@ function loadSecrets() {
   }
 }
 
-// Load secrets immediately
-loadSecrets();
-
-onMounted(() => {
-  // Already loaded
-});
+// Load secrets when unlocked
+watch(() => secretsStore.isUnlocked, (unlocked) => {
+  if (unlocked) {
+    loadSecrets();
+  }
+}, { immediate: true });
 
 defineExpose({
   secrets,

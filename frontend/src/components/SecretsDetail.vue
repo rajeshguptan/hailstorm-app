@@ -1,9 +1,11 @@
 <template>
   <div class="secret-detail-panel h-full flex flex-col bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300">
-    <div v-if="!hasSalt" class="p-4 text-center">
-      <div class="text-yellow-500 mb-2">Set an encryption salt first in the sidebar to manage secrets.</div>
+    <div v-if="!secretsStore.isUnlocked" class="p-4 text-center">
+      <div class="text-zinc-500 dark:text-zinc-400 mb-4">
+        🔒 Secrets are locked. Please unlock using the encryption key.
+      </div>
     </div>
-    
+
     <div v-else-if="selectedSecret" class="flex flex-col h-full">
       <div class="p-3 border-b border-zinc-200 dark:border-zinc-700">
         <input
@@ -57,13 +59,13 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useAppStore } from '../stores';
+import { useSecretsStore } from '../stores/secrets';
 
 const store = useAppStore();
+const secretsStore = useSecretsStore();
 
 const showSecretValue = ref(false);
 const editingSecret = ref<{ id: string; name: string; env: string; value: string }>({ id: '', name: '', env: '', value: '' });
-
-const hasSalt = computed(() => localStorage.getItem('hailstorm_salt') !== null);
 
 const selectedSecret = computed(() => {
   if (!store.selectedSecretId) return null;
@@ -81,34 +83,23 @@ watch(() => store.selectedSecretId, (newId) => {
   }
 }, { immediate: true });
 
-function simpleEncrypt(text: string, saltVal: string): string {
-  if (!saltVal || !text) return text;
-  let result = '';
-  for (let i = 0; i < text.length; i++) {
-    const charCode = text.charCodeAt(i) ^ saltVal.charCodeAt(i % saltVal.length);
-    result += String.fromCharCode(charCode);
-  }
-  return btoa(result);
-}
-
 function saveSecret() {
-  if (!editingSecret.value.id) return;
+  if (!editingSecret.value.id || !secretsStore.isUnlocked) return;
 
   const index = store.secrets.findIndex(s => s.id === editingSecret.value.id);
   if (index !== -1) {
     store.secrets.splice(index, 1, { ...editingSecret.value });
   }
 
-  const saltVal = localStorage.getItem('hailstorm_salt') || '';
   const encryptedSecrets = store.secrets.map(s => ({
     ...s,
-    value: simpleEncrypt(s.value, saltVal)
+    value: secretsStore.simpleEncrypt(s.value, secretsStore.encryptionKey)
   }));
   localStorage.setItem('hailstorm_secrets', JSON.stringify(encryptedSecrets));
 }
 
 function deleteSecret() {
-  if (!editingSecret.value.id) return;
+  if (!editingSecret.value.id || !secretsStore.isUnlocked) return;
 
   // Remove from store
   store.secrets = store.secrets.filter(s => s.id !== editingSecret.value.id);
@@ -117,10 +108,9 @@ function deleteSecret() {
   store.selectedSecretId = store.secrets.length > 0 ? store.secrets[0].id : null;
 
   // Update localStorage
-  const saltVal = localStorage.getItem('hailstorm_salt') || '';
   const encryptedSecrets = store.secrets.map(s => ({
     ...s,
-    value: simpleEncrypt(s.value, saltVal)
+    value: secretsStore.simpleEncrypt(s.value, secretsStore.encryptionKey)
   }));
   localStorage.setItem('hailstorm_secrets', JSON.stringify(encryptedSecrets));
 }

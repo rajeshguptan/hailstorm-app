@@ -255,10 +255,59 @@
         <button @click="variables.push({ key: '', value: '' })" class="text-blue-500 hover:text-blue-600 text-sm font-medium">+ Add Variable</button>
       </div>
       
+      <div v-else-if="activeSection === 'secrets'" class="max-w-xl">
+        <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Secrets Encryption</h3>
+        <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">Manage encryption settings for secrets</p>
+
+        <div class="space-y-6">
+          <div v-if="secretsStore.checkEncryptionKey()" class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded">
+            <div class="flex items-center mb-2">
+              <span class="text-green-600 dark:text-green-400 mr-2">✓</span>
+              <span class="text-sm font-medium text-green-800 dark:text-green-200">Encryption Key Set</span>
+            </div>
+            <p class="text-sm text-green-700 dark:text-green-300 mb-3">
+              Your secrets are encrypted with a secure key.
+            </p>
+            <button
+              @click="showChangeKeyModal = true"
+              class="px-3 py-1 text-sm bg-green-600 hover:bg-green-700 text-white rounded"
+            >
+              Change Key
+            </button>
+          </div>
+
+          <div v-else class="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+            <div class="flex items-center mb-2">
+              <span class="text-yellow-600 dark:text-yellow-400 mr-2">⚠</span>
+              <span class="text-sm font-medium text-yellow-800 dark:text-yellow-200">No Encryption Key</span>
+            </div>
+            <p class="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
+              Set an encryption key to secure your secrets.
+            </p>
+            <button
+              @click="showSetKeyModal = true"
+              class="px-3 py-1 text-sm bg-yellow-600 hover:bg-yellow-700 text-white rounded"
+            >
+              Set Key
+            </button>
+          </div>
+
+          <div class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+            <h4 class="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Security Information</h4>
+            <ul class="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+              <li>• Secrets are encrypted before being stored on disk</li>
+              <li>• The encryption key is required to access secrets</li>
+              <li>• If you forget the key, secrets cannot be recovered</li>
+              <li>• Store your encryption key securely</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       <div v-else-if="activeSection === 'shortcuts'" class="max-w-xl">
         <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Keyboard Shortcuts</h3>
         <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">View and customize keyboard shortcuts</p>
-        
+
         <div class="space-y-3">
           <div v-for="s in shortcuts" :key="s.action" class="flex items-center justify-between py-2 border-b border-zinc-100 dark:border-zinc-800">
             <span class="text-zinc-700 dark:text-zinc-300">{{ s.action }}</span>
@@ -281,12 +330,101 @@
         </div>
       </div>
     </div>
+
+    <!-- Set Encryption Key Modal -->
+    <div v-if="showSetKeyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" @click="closeModals">
+      <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-lg max-w-md w-full mx-4 p-6" @click.stop>
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">Set Encryption Key</h3>
+          <button @click="closeModals" class="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+            New Encryption Key
+          </label>
+          <input
+            v-model="newEncryptionKey"
+            type="password"
+            class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter encryption key"
+          >
+        </div>
+
+        <div class="flex justify-end gap-3">
+          <button @click="closeModals" class="px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200">
+            Cancel
+          </button>
+          <button
+            @click="setEncryptionKey"
+            :disabled="!newEncryptionKey.trim()"
+            class="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-zinc-300 disabled:cursor-not-allowed text-white rounded-md"
+          >
+            Set Key
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Change Encryption Key Modal -->
+    <div v-if="showChangeKeyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" @click="closeModals">
+      <div class="bg-white dark:bg-zinc-800 rounded-lg shadow-lg max-w-md w-full mx-4 p-6" @click.stop>
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">Change Encryption Key</h3>
+          <button @click="closeModals" class="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+            Current Encryption Key
+          </label>
+          <input
+            v-model="currentEncryptionKey"
+            type="password"
+            class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+            placeholder="Enter current key"
+          >
+
+          <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+            New Encryption Key
+          </label>
+          <input
+            v-model="newEncryptionKey"
+            type="password"
+            class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-md bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter new key"
+          >
+        </div>
+
+        <div class="flex justify-end gap-3">
+          <button @click="closeModals" class="px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200">
+            Cancel
+          </button>
+          <button
+            @click="changeEncryptionKey"
+            :disabled="!currentEncryptionKey.trim() || !newEncryptionKey.trim()"
+            class="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-zinc-300 disabled:cursor-not-allowed text-white rounded-md"
+          >
+            Change Key
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useTheme } from '../composables/useTheme';
+import { useSecretsStore } from '../stores/secrets';
 
 const activeSection = ref('theme');
 
@@ -304,11 +442,13 @@ const appItems = [
 ];
 
 const advancedItems = [
+  { id: 'secrets', label: 'Secrets' },
   { id: 'shortcuts', label: 'Shortcuts' },
   { id: 'about', label: 'About' },
 ];
 
 const { theme, setTheme } = useTheme();
+const secretsStore = useSecretsStore();
 
 const themeOptions = [
   { value: 'light', label: 'Light', description: 'Clean light theme', icon: '☀️' },
@@ -334,6 +474,42 @@ const shortcuts = [
   { action: 'Toggle Sidebar', keys: 'Ctrl + B' },
   { action: 'Search', keys: 'Ctrl + F' },
 ];
+
+// Encryption key modal state
+const showSetKeyModal = ref(false);
+const showChangeKeyModal = ref(false);
+const currentEncryptionKey = ref('');
+const newEncryptionKey = ref('');
+
+// Encryption key functions
+function setEncryptionKey() {
+  if (newEncryptionKey.value.trim()) {
+    secretsStore.setEncryptionKey(newEncryptionKey.value.trim());
+    closeModals();
+  }
+}
+
+function changeEncryptionKey() {
+  if (currentEncryptionKey.value.trim() && newEncryptionKey.value.trim()) {
+    const success = secretsStore.changeEncryptionKey(
+      currentEncryptionKey.value.trim(),
+      newEncryptionKey.value.trim()
+    );
+    if (success) {
+      closeModals();
+    } else {
+      // Could show error message
+      console.error('Invalid current encryption key');
+    }
+  }
+}
+
+function closeModals() {
+  showSetKeyModal.value = false;
+  showChangeKeyModal.value = false;
+  currentEncryptionKey.value = '';
+  newEncryptionKey.value = '';
+}
 
 
 </script>

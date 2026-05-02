@@ -1,87 +1,70 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/base.fixture';
+import { AppLayout } from '../fixtures/page-objects/AppLayout';
 
-// Note: Electron testing requires complex setup with built app
-// For now, these tests serve as documentation and can be run manually
-// or with proper Electron build setup
+test.describe('Secrets Icon Tests', () => {
+  let appLayout: AppLayout;
+  let appLoaded: any;
 
-test.describe('Theme Management', () => {
-  test.describe('Theme Persistence', () => {
-    test('should load and apply saved theme on app startup', async () => {
-      // This test verifies theme persistence:
-      // 1. Theme is saved to localStorage
-      // 2. On app restart, theme is loaded from localStorage
-      // 3. Theme classes are applied to the DOM
-
-      expect(true).toBe(true); // Placeholder - requires implementation
-    });
-
-    test('should apply system theme when system preference is set', async () => {
-      // This test verifies system theme functionality:
-      // 1. When theme is set to 'system', it follows OS preference
-      // 2. Changes automatically when system theme changes
-      // 3. Falls back appropriately
-
-      expect(true).toBe(true); // Placeholder - requires implementation
-    });
+  test.beforeEach(async ({ appLoaded: loadedPage }) => {
+    appLoaded = loadedPage;
+    appLayout = new AppLayout(appLoaded);
+    await appLayout.waitForLoad();
   });
 
-  test.describe('Theme Switching in Settings', () => {
-    test('should allow switching to light theme in settings', async () => {
-      // Test: Settings panel has light theme option
-      // Test: Clicking light theme applies it immediately
-      // Test: Theme is saved to localStorage
-      expect(true).toBe(true); // Placeholder - requires implementation
+  test('should show locked secrets icon when no encryption key exists', async () => {
+    // Clear any existing encryption key
+    await appLoaded.evaluate(() => {
+      localStorage.removeItem('hailstorm_encryption_key');
     });
 
-    test('should allow switching to dark theme in settings', async () => {
-      // Test: Settings panel has dark theme option
-      // Test: Clicking dark theme applies it immediately
-      // Test: Theme is saved to localStorage
-      expect(true).toBe(true); // Placeholder - requires implementation
-    });
+    // Reload to reset state
+    await appLoaded.reload();
+    await appLayout.waitForLoad();
 
-    test('should allow switching to system theme in settings', async () => {
-      // Test: Settings panel has system theme option
-      // Test: Clicking system theme applies OS preference
-      // Test: Theme is saved to localStorage
-      expect(true).toBe(true); // Placeholder - requires implementation
-    });
+    // Check that secrets icon shows locked symbol
+    const secretsButton = appLoaded.locator('.ribbon-bar button:has-text("Secrets")');
+    const iconSpan = secretsButton.locator('span').first();
+    const iconText = await iconSpan.textContent();
+    expect(iconText).toBe('🔒');
   });
 
-  test.describe('Settings Panel Navigation', () => {
-    test('should display theme section in settings', async () => {
-      // Test: Settings panel loads correctly
-      // Test: Theme section is visible with proper options
-      // Test: Current theme selection is shown
-      expect(true).toBe(true); // Placeholder - requires implementation
+  test('should show unlocked secrets icon when encryption key exists', async () => {
+    // Set an encryption key
+    await appLoaded.evaluate(() => {
+      localStorage.setItem('hailstorm_encryption_key', 'test-key-123');
     });
+
+    // Reload to reset state
+    await appLoaded.reload();
+    await appLayout.waitForLoad();
+
+    // Check that secrets icon shows unlocked symbol
+    const secretsButton = appLoaded.locator('.ribbon-bar button:has-text("Secrets")');
+    const iconSpan = secretsButton.locator('span').first();
+    const iconText = await iconSpan.textContent();
+    expect(iconText).toBe('🔓');
   });
 
-  test.describe('Theme Visual Consistency', () => {
-    test('should maintain theme across navigation', async () => {
-      // Test: Theme persists when navigating between sections
-      // Test: UI elements maintain correct theme classes
-      // Test: No theme flickering or inconsistencies
-      expect(true).toBe(true); // Placeholder - requires implementation
+  test('should show unlock modal when clicking locked secrets icon', async () => {
+    // Clear any existing encryption key
+    await appLoaded.evaluate(() => {
+      localStorage.removeItem('hailstorm_encryption_key');
     });
 
-    test('should apply theme classes to main UI elements', async () => {
-      // Test: Ribbon bar has correct theme classes
-      // Test: Sidebar has correct theme classes
-      // Test: Main content has correct theme classes
-      // Test: All interactive elements are properly themed
-      expect(true).toBe(true); // Placeholder - requires implementation
-    });
-  });
+    // Reload to reset state
+    await appLoaded.reload();
+    await appLayout.waitForLoad();
 
-  test.describe('Theme Integration Tests', () => {
-    test('should work with all existing functionality', async () => {
-      // Test: Theme changes don't break existing features
-      // Test: Navigation works correctly with themes
-      // Test: All UI components render properly in both themes
-      // Test: Performance is not impacted by theme switching
+    // Click the locked secrets icon
+    const secretsButton = appLoaded.locator('.ribbon-bar button:has-text("Secrets")');
+    await secretsButton.click();
 
-      expect(true).toBe(true); // Placeholder - requires implementation
-    });
+    // Check that unlock modal appears
+    const modal = appLoaded.locator('.fixed.inset-0.bg-black.bg-opacity-50');
+    await expect(modal).toBeVisible();
+
+    // Check modal title
+    const modalTitle = appLoaded.locator('h3:has-text("Set Encryption Key")');
+    await expect(modalTitle).toBeVisible();
   });
 });

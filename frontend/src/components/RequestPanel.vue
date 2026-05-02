@@ -36,9 +36,9 @@
 
          <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': requestsStore.activeRequestTab === 'body' }" @click="requestsStore.activeRequestTab = 'body'">Body</button>
 
-         <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': requestsStore.activeRequestTab === 'variables' }" @click="requestsStore.activeRequestTab = 'variables'">Variables</button>
+          <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': requestsStore.activeRequestTab === 'variables' }" @click="requestsStore.activeRequestTab = 'variables'">Variables</button>
 
-         <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': requestsStore.activeRequestTab === 'scripts' }" @click="requestsStore.activeRequestTab = 'scripts'">Scripts</button>
+          <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': requestsStore.activeRequestTab === 'scripts' }" @click="requestsStore.activeRequestTab = 'scripts'">Scripts</button>
        </li>
     </ul>
     
@@ -157,10 +157,12 @@
            <input v-model="variable.dataset" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="Dataset" />
            <button class="btn btn-sm border border-red-500 text-red-500 px-2" @click="removeVariable(index)">×</button>
          </div>
-         <button class="btn btn-sm border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 mt-2 hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="addVariable()">+ Add Variable</button>
-       </div>
+          <button class="btn btn-sm border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 mt-2 hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="addVariable()">+ Add Variable</button>
+        </div>
 
-       <div v-if="requestsStore.activeRequestTab === 'scripts'">
+
+
+        <div v-if="requestsStore.activeRequestTab === 'scripts'">
         <div class="mb-2">
           <label class="block text-sm text-zinc-500 mb-1">Pre-request Script</label>
           <textarea v-model="requestsStore.currentRequest.preRequestScript" class="form-textarea bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded font-mono w-full" rows="3" placeholder="// Runs before request is sent"></textarea>
@@ -181,12 +183,16 @@ import { useEnvironmentsStore } from '../stores/environments';
 import { useResponseStore } from '../stores/response';
 import { useCollectionsStore } from '../stores/collections';
 import { useHistoryStore } from '../stores/history';
+import { useSecretsStore } from '../stores/secrets';
+import { useAppStore } from '../stores';
 
 const requestsStore = useRequestsStore();
 const environmentsStore = useEnvironmentsStore();
 const responseStore = useResponseStore();
 const historyStore = useHistoryStore();
 const collectionsStore = useCollectionsStore();
+const secretsStore = useSecretsStore();
+const appStore = useAppStore();
 const selectedDataset = ref<string>('');
 const showSaveMenu = ref<boolean>(false);
 
@@ -318,10 +324,12 @@ watch(() => requestsStore.selectedRequestId, () => {
 
 const uniqueDatasets = computed(() => {
   const datasets = new Set<string>();
-  (requestsStore.currentRequest.variables || []).forEach(v => {
-    if (v.dataset) datasets.add(v.dataset);
-  });
-  return Array.from(datasets).sort();
+  if (requestsStore.currentRequest.variables) {
+    requestsStore.currentRequest.variables.forEach(v => {
+      if (v.dataset) datasets.add(v.dataset);
+    });
+  }
+  return Array.from(datasets);
 });
 
 const filteredVariables = computed(() => {
@@ -354,7 +362,15 @@ function substituteVariables(text: string): string {
       }
     }
 
-    // Return original match if no variable found
+    // Then check secrets (only if unlocked)
+    if (secretsStore.isUnlocked) {
+      const secret = appStore.secrets.find(s => s.name === varName);
+      if (secret && secret.value) {
+        return secret.value;
+      }
+    }
+
+    // Return original match if no variable/secret found
     return match;
   });
 }
@@ -511,9 +527,18 @@ async function sendRequest() {
 }
 
 function addVariable() {
-  if (!requestsStore.currentRequest.variables) requestsStore.currentRequest.variables = [];
-  requestsStore.currentRequest.variables.push({ key: '', value: '', dataset: '', enabled: true });
+  if (!requestsStore.currentRequest.variables) {
+    requestsStore.currentRequest.variables = [];
+  }
+  requestsStore.currentRequest.variables.push({
+    key: '',
+    value: '',
+    dataset: '',
+    enabled: true
+  });
 }
+
+
 
 function removeVariable(index: number) {
   const variable = filteredVariables.value[index];

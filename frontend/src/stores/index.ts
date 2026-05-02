@@ -10,6 +10,7 @@ import { useHistoryStore } from './history';
 import { useRunnerStore } from './runner';
 import { useSettingsStore } from './settings';
 import { useUtilitiesStore } from './utilities';
+import { useSecretsStore } from './secrets';
 
 export const useAppStore = defineStore('app', {
   state: () => ({
@@ -84,7 +85,6 @@ export const useAppStore = defineStore('app', {
           selectedUtilityId: utilitiesStore.selectedUtilityId,
 
           // App-level
-          secrets: this.secrets,
           selectedSecretId: this.selectedSecretId,
         };
 
@@ -185,7 +185,7 @@ export const useAppStore = defineStore('app', {
           utilitiesStore.selectedUtilityId = parsed.selectedUtilityId || null;
 
           // App-level data
-          this.secrets = parsed.secrets || [];
+          // Secrets are now handled by the secrets store
           this.selectedSecretId = parsed.selectedSecretId || null;
 
           console.log('[STORE] Loaded data from localStorage');
