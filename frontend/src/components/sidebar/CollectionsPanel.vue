@@ -8,29 +8,40 @@
       No collections yet
     </div>
     <div v-else>
-      <div v-for="coll in collections" :key="coll.id" class="collection-item mb-2">
-        <div class="flex items-center p-2 rounded bg-zinc-200 dark:bg-zinc-800 cursor-pointer" @click="toggleCollection(coll.id)" @contextmenu.prevent="uiStore.showContextMenu($event, 'collection', coll.id)">
+      <div v-for="coll in collections" :key="coll.id" class="collection-item mb-2" @dragover.prevent @dragenter="onDragEnter" @dragleave="onDragLeave" @drop="onDrop($event, coll.id, 'collection')">
+        <div class="flex items-center p-2 rounded bg-zinc-200 dark:bg-zinc-800 cursor-pointer" @click="toggleCollection(coll.id)" @contextmenu.prevent="uiStore.showContextMenu($event, 'collection', coll.id)" @dragover.prevent @dragenter="onDragEnter" @dragleave="onDragLeave" @drop="onDrop($event, coll.id, 'collection')">
           <span class="mr-2">{{ expandedCollections.includes(coll.id) ? '📂' : '📁' }}</span>
           <span class="flex-1 text-zinc-900 dark:text-white">{{ coll.name }}</span>
         </div>
-        <div v-if="expandedCollections.includes(coll.id)" class="ml-3 mt-1">
+        <div v-if="expandedCollections.includes(coll.id)" class="ml-3 mt-1" @dragover.prevent @dragenter="onDragEnter" @dragleave="onDragLeave" @drop="onDrop($event, coll.id, 'collection')">
+          <div v-if="coll.items.length === 0" class="text-center text-zinc-400 dark:text-zinc-500 py-2 text-sm">
+            Drop requests here
+          </div>
           <template v-for="item in coll.items" :key="item.id">
-            <div class="request-item p-1 rounded cursor-pointer mb-1 flex items-center" :class="item.id === requestsStore.selectedRequestId ? 'bg-blue-200 dark:bg-blue-800' : 'bg-zinc-100 dark:bg-zinc-800'" :style="{ paddingLeft: '8px' }" @click="handleItemClick($event, item)" @contextmenu.prevent="uiStore.showContextMenu($event, getItemType(item), item.id)" role="button" tabindex="0" @keydown.enter="handleItemClick($event, item)">
+            <div class="request-item p-1 rounded cursor-pointer mb-1 flex items-center" :class="item.id === requestsStore.selectedRequestId ? 'bg-blue-200 dark:bg-blue-800' : 'bg-zinc-100 dark:bg-zinc-800'" :style="{ paddingLeft: '8px' }" @click="handleItemClick($event, item)" @contextmenu.prevent="uiStore.showContextMenu($event, getItemType(item), item.id)" role="button" tabindex="0" @keydown.enter="handleItemClick($event, item)" draggable="true" @dragstart="onDragStart($event, item, coll.id, 'collection')" @dragover.prevent @dragenter="onDragEnter" @dragleave="onDragLeave" @drop="onDrop($event, hasItems(item) ? item.id : coll.id, hasItems(item) ? 'folder' : 'collection')">
               <span v-if="hasMethod(item) && (item as Request).flavors?.length" class="mr-1 cursor-pointer text-blue-400" @click.stop="toggleFlavors(item.id)">{{ (item as Request).flavors?.length ? (expandedFlavors.includes(item.id) ? '▼' : '▶') : '+' }}</span>
               <span v-if="hasMethod(item)" class="badge mr-1" :class="getMethodClass(item)">{{ getMethod(item) }}</span>
               <span v-if="hasItems(item)" class="mr-1">{{ expandedFolders.includes(item.id) ? '📂' : '📁' }}</span>
               <span v-if="hasItems(item)" class="text-zinc-900 dark:text-white">{{ item.name }}</span>
               <span v-else class="text-sm text-zinc-700 dark:text-zinc-300">{{ item.name }}</span>
             </div>
-            <template v-if="hasItems(item) && expandedFolders.includes(item.id)">
-              <div v-for="subItem in (item as Folder).items" :key="subItem.id" class="ml-3 request-item p-1 rounded cursor-pointer mb-1 flex items-center" :class="subItem.id === requestsStore.selectedRequestId ? 'bg-blue-200 dark:bg-blue-800' : 'bg-zinc-100 dark:bg-zinc-800'" :style="{ paddingLeft: '8px' }" @click="handleItemClick($event, subItem)" @contextmenu.prevent="uiStore.showContextMenu($event, getItemType(subItem), subItem.id)" role="button" tabindex="0" @keydown.enter="handleItemClick($event, subItem)">
-                <span v-if="hasMethod(subItem) && (subItem as Request).flavors?.length" class="mr-1 cursor-pointer text-blue-400" @click.stop="toggleFlavors(subItem.id)">{{ (subItem as Request).flavors?.length ? (expandedFlavors.includes(subItem.id) ? '▼' : '▶') : '+' }}</span>
-                <span v-if="hasMethod(subItem)" class="badge mr-1" :class="getMethodClass(subItem)">{{ getMethod(subItem) }}</span>
-                <span v-if="hasItems(subItem)" class="mr-1">{{ expandedFolders.includes(subItem.id) ? '📂' : '📁' }}</span>
-                <span v-if="hasItems(subItem)" class="text-zinc-900 dark:text-white">{{ subItem.name }}</span>
-                <span v-else class="text-sm text-zinc-700 dark:text-zinc-300">{{ subItem.name }}</span>
+            <div v-if="hasItems(item)" class="ml-3" @dragover.prevent @dragenter="onDragEnter" @dragleave="onDragLeave" @drop="onDrop($event, item.id, 'folder')">
+              <div v-if="expandedFolders.includes(item.id)">
+                <div v-if="(item as Folder).items.length === 0" class="text-center text-zinc-400 dark:text-zinc-500 py-1 text-sm">
+                  Drop requests here
+                </div>
+                <div v-for="subItem in (item as Folder).items" :key="subItem.id" class="request-item p-1 rounded cursor-pointer mb-1 flex items-center" :class="subItem.id === requestsStore.selectedRequestId ? 'bg-blue-200 dark:bg-blue-800' : 'bg-zinc-100 dark:bg-zinc-800'" :style="{ paddingLeft: '8px' }" @click="handleItemClick($event, subItem)" @contextmenu.prevent="uiStore.showContextMenu($event, getItemType(subItem), subItem.id)" role="button" tabindex="0" @keydown.enter="handleItemClick($event, subItem)" draggable="true" @dragstart="onDragStart($event, subItem, item.id, 'folder')" @dragover.prevent @dragenter="onDragEnter" @dragleave="onDragLeave" @drop="onDrop($event, item.id, 'folder')">
+                  <span v-if="hasMethod(subItem) && (subItem as Request).flavors?.length" class="mr-1 cursor-pointer text-blue-400" @click.stop="toggleFlavors(subItem.id)">{{ (subItem as Request).flavors?.length ? (expandedFlavors.includes(subItem.id) ? '▼' : '▶') : '+' }}</span>
+                  <span v-if="hasMethod(subItem)" class="badge mr-1" :class="getMethodClass(subItem)">{{ getMethod(subItem) }}</span>
+                  <span v-if="hasItems(subItem)" class="mr-1">{{ expandedFolders.includes(subItem.id) ? '📂' : '📁' }}</span>
+                  <span v-if="hasItems(subItem)" class="text-zinc-900 dark:text-white">{{ subItem.name }}</span>
+                  <span v-else class="text-sm text-zinc-700 dark:text-zinc-300">{{ subItem.name }}</span>
+                </div>
               </div>
-            </template>
+              <div v-else class="text-center text-zinc-400 dark:text-zinc-500 py-1 text-sm">
+                Drop into {{ item.name }}
+              </div>
+            </div>
             <div v-if="hasMethod(item) && expandedFlavors.includes(item.id) && (item as Request).flavors?.length" class="ml-6">
               <div v-for="flavor in (item as Request).flavors" :key="flavor.id" class="request-item p-1 rounded cursor-pointer mb-1" :class="flavor.id === requestsStore.selectedRequestId ? 'bg-blue-200 dark:bg-blue-800' : 'bg-zinc-100 dark:bg-zinc-800'" :style="{ paddingLeft: '8px' }" @click.stop="requestsStore.openRequest(flavor)" @contextmenu.prevent="uiStore.showContextMenu($event, 'flavor', flavor.id)">
                 <span class="badge mr-1" :class="getMethodClass(flavor)">{{ flavor.method }}</span>
@@ -43,6 +54,23 @@
     </div>
   </div>
 </template>
+
+<style scoped>
+.request-item.drag-over {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  border: 2px dashed #3b82f6 !important;
+}
+
+.collection-item.drag-over > div:first-child {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  border: 2px dashed #3b82f6 !important;
+}
+
+.collection-item.drag-over {
+  background-color: rgba(59, 130, 246, 0.05) !important;
+  border-radius: 6px;
+}
+</style>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
@@ -322,5 +350,126 @@ function getItemType(item: any): string {
 function getMethodClass(item: any): string {
   const method = (('request' in item) ? item.request.method : item.method)?.toLowerCase() || 'get';
   return method === 'get' ? 'text-green-800 dark:text-green-200 font-dancing font-bold text-xs' : method === 'post' ? 'text-blue-800 dark:text-blue-200 font-dancing font-bold text-xs' : method === 'put' ? 'text-amber-800 dark:text-amber-200 font-dancing font-bold text-xs' : method === 'delete' ? 'text-red-800 dark:text-red-200 font-dancing font-bold text-xs' : 'text-cyan-800 dark:text-cyan-200 font-dancing font-bold text-xs';
+}
+
+function onDragStart(event: DragEvent, item: any, containerId: string, containerType: 'collection' | 'folder') {
+  event.dataTransfer!.effectAllowed = 'move';
+  event.dataTransfer!.setData('text/plain', JSON.stringify({
+    itemId: item.id,
+    containerId,
+    containerType
+  }));
+  console.log('🔄 DRAG START:', item.name, 'from', containerType, containerId);
+}
+
+function onDragEnter(event: DragEvent) {
+  event.preventDefault();
+  event.stopPropagation(); // Prevent event bubbling
+
+  const target = event.target as HTMLElement;
+
+  console.log('📍 DRAG ENTER on:', target.tagName, target.className, 'closest .request-item:', !!target.closest('.request-item'), 'closest .collection-item:', !!target.closest('.collection-item'));
+
+  // Find the actual drop target element
+  const requestItem = target.closest('.request-item');
+  const collectionItem = target.closest('.collection-item');
+
+  if (requestItem) {
+    console.log('✅ Adding drag-over to request item');
+    requestItem.classList.add('drag-over');
+  } else if (collectionItem) {
+    console.log('✅ Adding drag-over to collection item');
+    collectionItem.classList.add('drag-over');
+  } else {
+    console.log('❌ No valid drop target found');
+  }
+}
+
+function onDragLeave(event: DragEvent) {
+  event.preventDefault();
+  event.stopPropagation(); // Prevent event bubbling
+
+  const target = event.target as HTMLElement;
+
+  console.log('📍 DRAG LEAVE from:', target.tagName, target.className);
+
+  // Find the actual drop target element
+  const requestItem = target.closest('.request-item');
+  const collectionItem = target.closest('.collection-item');
+
+  if (requestItem) {
+    console.log('✅ Removing drag-over from request item');
+    requestItem.classList.remove('drag-over');
+  } else if (collectionItem) {
+    console.log('✅ Removing drag-over from collection item');
+    collectionItem.classList.remove('drag-over');
+  }
+}
+
+function onDrop(event: DragEvent, targetContainerId: string, targetContainerType: 'collection' | 'folder') {
+  event.preventDefault();
+  event.stopPropagation(); // Prevent event bubbling to parent drop zones
+
+  const target = event.target as HTMLElement;
+  target.classList.remove('drag-over');
+
+  console.log('🎯 DROP EVENT on target:', target.tagName, target.className, 'targetContainerId:', targetContainerId, 'targetContainerType:', targetContainerType);
+
+  try {
+    const data = JSON.parse(event.dataTransfer!.getData('text/plain'));
+    const { itemId, containerId, containerType } = data;
+
+    console.log('📦 Drop data:', { itemId, containerId, containerType, targetContainerId, targetContainerType });
+
+    // Prevent dropping on itself
+    if (itemId === targetContainerId) {
+      console.log('❌ Prevented drop on itself');
+      return;
+    }
+
+    // Prevent dropping a folder into itself or its subfolders
+    if (containerType === 'folder' && targetContainerType === 'folder' && isDescendant(itemId, targetContainerId)) {
+      console.log('❌ Prevented dropping folder into itself or descendant');
+      return;
+    }
+
+    console.log('✅ Executing drop:', itemId, 'from', containerType, containerId, 'to', targetContainerType, targetContainerId);
+
+    const result = collectionsStore.moveItem(itemId, targetContainerId, targetContainerType);
+    console.log('📋 Move result:', result);
+
+  } catch (error) {
+    console.error('❌ Error handling drop:', error);
+  }
+}
+
+function isDescendant(itemId: string, potentialParentId: string): boolean {
+  // Find the potential parent and check if itemId exists in its subtree
+  const findItemInParentSubtree = (items: any[]): boolean => {
+    for (const item of items) {
+      if (item.id === potentialParentId && 'items' in item) {
+        // Found the parent, now check if itemId is in its subtree
+        const hasItemInSubtree = (subItems: any[]): boolean => {
+          for (const subItem of subItems) {
+            if (subItem.id === itemId) return true;
+            if ('items' in subItem && subItem.items) {
+              if (hasItemInSubtree(subItem.items)) return true;
+            }
+          }
+          return false;
+        };
+        return hasItemInSubtree(item.items);
+      }
+      if ('items' in item && item.items) {
+        if (findItemInParentSubtree(item.items)) return true;
+      }
+    }
+    return false;
+  };
+
+  for (const collection of collectionsStore.collections) {
+    if (findItemInParentSubtree(collection.items)) return true;
+  }
+  return false;
 }
 </script>
