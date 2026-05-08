@@ -165,6 +165,16 @@ const api = {
     }
   },
 
+  getLoadTestTimeSeriesDataByRequest: async (runId: string, startTime?: number, endTime?: number): Promise<any[]> => {
+    try {
+      const result = await ipcRenderer.invoke('get-load-test-time-series-data-by-request', runId, startTime, endTime);
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] getLoadTestTimeSeriesDataByRequest failed', error);
+      throw error;
+    }
+  },
+
   exportLoadTestRunData: async (runId: string, format?: string): Promise<string> => {
     console.log('[PRELOAD] exportLoadTestRunData called');
     try {
@@ -219,6 +229,18 @@ const api = {
       return result;
     } catch (error) {
       console.error('[PRELOAD] importSecretsDialog failed', error);
+      throw error;
+    }
+  },
+
+  showOpenDialog: async (options: any): Promise<{ canceled: boolean; filePaths: string[] }> => {
+    console.log('[PRELOAD] showOpenDialog called');
+    try {
+      const result = await ipcRenderer.invoke('select-datafile-dialog', options.filters);
+      console.log('[PRELOAD] showOpenDialog result:', result.canceled ? 'cancelled' : 'selected file');
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] showOpenDialog failed', error);
       throw error;
     }
   },

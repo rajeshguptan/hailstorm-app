@@ -244,13 +244,13 @@ class LoadTestingService {
     if (!this.isInitialized) throw new Error('Load testing service not initialized');
 
     // Simple implementation - group by minute buckets
-    const runRequests = this.requestIndex.filter(r => r.runId === runId);
+    let runRequests = this.requestIndex.filter(r => r.runId === runId);
 
     if (startTime) {
-      runRequests.filter(r => r.timestamp >= startTime);
+      runRequests = runRequests.filter(r => r.timestamp >= startTime);
     }
     if (endTime) {
-      runRequests.filter(r => r.timestamp <= endTime);
+      runRequests = runRequests.filter(r => r.timestamp <= endTime);
     }
 
     const buckets: { [key: number]: { requests: number; errors: number; totalLatency: number } } = {};
@@ -271,6 +271,58 @@ class LoadTestingService {
       errors: data.errors,
       avgResponseTime: data.requests > 0 ? data.totalLatency / data.requests : 0
     })).sort((a, b) => a.timestamp - b.timestamp);
+  }
+
+  async getTimeSeriesDataByRequest(runId: string, startTime?: number, endTime?: number): Promise<LoadTestTimeSeriesByRequestPoint[]> {
+    if (!this.isInitialized) throw new Error('Load testing service not initialized');
+
+    // Group by request name and minute buckets
+    let runRequests = this.requestIndex.filter(r => r.runId === runId);
+
+    if (startTime) {
+      runRequests = runRequests.filter(r => r.timestamp >= startTime);
+    }
+    if (endTime) {
+      runRequests = runRequests.filter(r => r.timestamp <= endTime);
+    }
+
+    const buckets: { [key: string]: { [key: number]: { requests: number; errors: number; totalLatency: number } } } = {};
+
+    runRequests.forEach(req => {
+      const requestName = req.requestName;
+      const bucket = Math.floor(req.timestamp / 60000) * 60000; // 1-minute buckets
+
+      if (!buckets[requestName]) {
+        buckets[requestName] = {};
+      }
+      if (!buckets[requestName][bucket]) {
+        buckets[requestName][bucket] = { requests: 0, errors: 0, totalLatency: 0 };
+      }
+      buckets[requestName][bucket].requests++;
+      if (req.error) buckets[requestName][bucket].errors++;
+      buckets[requestName][bucket].totalLatency += req.latency;
+    });
+
+    const result: LoadTestTimeSeriesByRequestPoint[] = [];
+
+    for (const [requestName, requestBuckets] of Object.entries(buckets)) {
+      for (const [timestamp, data] of Object.entries(requestBuckets)) {
+        result.push({
+          requestName,
+          timestamp: parseInt(timestamp),
+          requests: data.requests,
+          errors: data.errors,
+          avgResponseTime: data.requests > 0 ? data.totalLatency / data.requests : 0
+        });
+      }
+    }
+
+    return result.sort((a, b) => {
+      if (a.requestName !== b.requestName) {
+        return a.requestName.localeCompare(b.requestName);
+      }
+      return a.timestamp - b.timestamp;
+    });
   }
 
   async exportRunData(runId: string, format = 'json') {
@@ -347,6 +399,67 @@ class LoadTestingService {
   }
 }
 
+// Token Bucket implementation for rate limiting
+class TokenBucket {
+  capacity: number;
+  tokens: number;
+  rps: number;
+  lastRefill: number;
+
+  constructor(rps: number) {
+    this.capacity = rps; // Maximum tokens (burst capacity)
+    this.tokens = rps; // Current tokens
+    this.rps = rps; // Refill rate per second
+    this.lastRefill = Date.now(); // Last refill timestamp
+  }
+
+  refill() {
+    const now = Date.now();
+    const elapsed = (now - this.lastRefill) / 1000; // seconds
+    const tokensToAdd = elapsed * this.rps;
+
+    this.tokens = Math.min(this.capacity, this.tokens + tokensToAdd);
+    this.lastRefill = now;
+  }
+
+  consume() {
+    this.refill();
+    if (this.tokens >= 1) {
+      this.tokens -= 1;
+      return true;
+    }
+    return false;
+  }
+
+  // Wait for a token to be available
+  async consumeWait(): Promise<void> {
+    return new Promise((resolve) => {
+      const tryConsume = () => {
+        this.refill();
+        if (this.tokens >= 1) {
+          this.tokens -= 1;
+          resolve();
+        } else {
+          // Wait a bit and try again
+          setTimeout(tryConsume, 10); // Check every 10ms
+        }
+      };
+      tryConsume();
+    });
+  }
+
+  // Update RPS rate
+  setRps(newRps: number) {
+    this.rps = newRps;
+    this.capacity = newRps;
+    // Don't change current tokens, but cap at new capacity
+    this.tokens = Math.min(this.tokens, this.capacity);
+  }
+}
+
+// Global token bucket store for rate limiting per request
+const tokenBuckets = new Map<string, TokenBucket>();
+
 // Global instance
 const loadTestingService = new LoadTestingService();
 
@@ -354,7 +467,6 @@ export function initializeExecutionEngine() {
   console.log('[EXECUTION_ENGINE] Initializing core execution engine...');
 
   ipcMain.handle('make-request', async (_event, options) => {
-    console.log('[EXECUTION_ENGINE] makeRequest received', { method: options.method, url: options.url, headers: options.headers });
     return makeHttpRequest(options);
   });
 
@@ -600,6 +712,16 @@ export function initializeExecutionEngine() {
     }
   });
 
+  ipcMain.handle('get-load-test-time-series-data-by-request', async (_event, runId, startTime, endTime) => {
+    try {
+      const data = await loadTestingService.getTimeSeriesDataByRequest(runId, startTime, endTime);
+      return data;
+    } catch (error: any) {
+      console.error('[EXECUTION_ENGINE] getLoadTestTimeSeriesDataByRequest error:', error.message);
+      throw error;
+    }
+  });
+
   ipcMain.handle('export-load-test-run-data', async (_event, runId, format) => {
     console.log('[EXECUTION_ENGINE] exportLoadTestRunData called', runId, format);
     try {
@@ -700,16 +822,64 @@ export function initializeExecutionEngine() {
       throw error;
     }
   });
+
+  ipcMain.handle('select-datafile-dialog', async (_event, filters) => {
+    console.log('[EXECUTION_ENGINE] selectDatafileDialog requested');
+
+    try {
+      const result = await dialog.showOpenDialog({
+        title: 'Select Data File',
+        filters: filters || [
+          { name: 'CSV Files', extensions: ['csv'] },
+          { name: 'JSON Files', extensions: ['json'] },
+          { name: 'All Files', extensions: ['*'] }
+        ],
+        properties: ['openFile']
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { canceled: true, filePaths: [] };
+      }
+
+      console.log('[EXECUTION_ENGINE] selectDatafileDialog completed, selected:', result.filePaths[0]);
+      return { canceled: false, filePaths: result.filePaths };
+    } catch (error: any) {
+      console.error('[EXECUTION_ENGINE] selectDatafileDialog error:', error.message);
+      throw error;
+    }
+  });
 }
 
-function makeHttpRequest(options: { method: string; url: string; headers: Record<string, string>; body?: string }): Promise<{ status: number; statusText: string; headers: Record<string, string | string[]>; data: string; time: number; error?: string }> {
-  return new Promise((resolve) => {
+async function makeHttpRequest(options: { method: string; url: string; headers: Record<string, string>; body?: string; rps?: number; requestId?: string }): Promise<{ status: number; statusText: string; headers: Record<string, string | string[]>; data: string; time: number; error?: string }> {
+  return new Promise(async (resolve) => {
     const startTime = Date.now();
+
+    // Apply rate limiting if RPS is specified
+    if (options.rps && options.rps > 0 && options.requestId) {
+      const requestId = options.requestId;
+
+      // Get or create token bucket for this request
+      if (!tokenBuckets.has(requestId)) {
+        tokenBuckets.set(requestId, new TokenBucket(options.rps));
+      }
+
+      const bucket = tokenBuckets.get(requestId)!;
+
+      // Update RPS if it changed
+      if (bucket.rps !== options.rps) {
+        bucket.setRps(options.rps);
+      }
+
+      // Wait for a token to be available
+      await bucket.consumeWait();
+      console.log(`[RATE LIMIT] ${requestId}: TOKEN CONSUMED (${bucket.tokens.toFixed(2)} tokens remaining)`);
+    }
+
     const parsedUrl = new URL(options.url);
-    
+
     const isHttps = parsedUrl.protocol === 'https:';
     const httpModule = isHttps ? https : http;
-    
+
     const requestOptions: http.RequestOptions = {
       hostname: parsedUrl.hostname,
       port: parsedUrl.port || (isHttps ? 443 : 80),

@@ -6,7 +6,8 @@ import type {
   LoadTestDetailChunk,
   LoadTestRequestDetail,
   LoadTestStats,
-  LoadTestTimeSeriesPoint
+  LoadTestTimeSeriesPoint,
+  LoadTestTimeSeriesByRequestPoint
 } from '../types';
 
 export const useLoadTestStore = defineStore('loadTest', {
@@ -23,9 +24,85 @@ export const useLoadTestStore = defineStore('loadTest', {
       recentRequests: [] as LoadTestTimeSeriesPoint[]
     },
     // In-memory rolling window for live charts (last 5 minutes)
-    rollingWindow: [] as LoadTestTimeSeriesPoint[],
+    rollingWindowData: [] as { timestamp: number; requests: number; errors: number; responseTimes: number[] }[],
+    rollingWindowByRequestData: {} as { [requestName: string]: { timestamp: number; requests: number; errors: number; responseTimes: number[] }[] },
     maxRollingWindowSize: 300, // 5 minutes at 1 second resolution
   }),
+
+  getters: {
+    // Calculate percentiles from response times
+    calculatePercentiles(responseTimes: number[]): { p50: number; p75: number; p90: number; p95: number; p99: number; mean: number } {
+      if (responseTimes.length === 0) {
+        return { p50: 0, p75: 0, p90: 0, p95: 0, p99: 0, mean: 0 };
+      }
+
+      const sorted = [...responseTimes].sort((a, b) => a - b);
+      const len = sorted.length;
+
+      const percentile = (p: number) => {
+        const index = (p / 100) * (len - 1);
+        const lower = Math.floor(index);
+        const upper = Math.ceil(index);
+        const weight = index % 1;
+
+        if (upper >= len) return sorted[len - 1];
+        return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+      };
+
+      const mean = responseTimes.reduce((a, b) => a + b, 0) / len;
+
+      return {
+        mean,
+        p50: percentile(50),
+        p75: percentile(75),
+        p90: percentile(90),
+        p95: percentile(95),
+        p99: percentile(99)
+      };
+    },
+
+    // Convert rolling window data to LoadTestTimeSeriesPoint format
+    rollingWindow(): LoadTestTimeSeriesPoint[] {
+      return this.rollingWindowData.map(point => {
+        const percentiles = this.calculatePercentiles(point.responseTimes);
+        return {
+          timestamp: point.timestamp,
+          requests: point.requests,
+          errors: point.errors,
+          avgResponseTime: percentiles.mean,
+          p50ResponseTime: percentiles.p50,
+          p75ResponseTime: percentiles.p75,
+          p90ResponseTime: percentiles.p90,
+          p95ResponseTime: percentiles.p95,
+          p99ResponseTime: percentiles.p99
+        };
+      });
+    },
+
+    // Convert by-request rolling window data
+    rollingWindowByRequest(): { [requestName: string]: LoadTestTimeSeriesPoint[] } {
+      const result: { [requestName: string]: LoadTestTimeSeriesPoint[] } = {};
+
+      for (const [requestName, points] of Object.entries(this.rollingWindowByRequestData)) {
+        result[requestName] = points.map(point => {
+          const percentiles = this.calculatePercentiles(point.responseTimes);
+          return {
+            timestamp: point.timestamp,
+            requests: point.requests,
+            errors: point.errors,
+            avgResponseTime: percentiles.mean,
+            p50ResponseTime: percentiles.p50,
+            p75ResponseTime: percentiles.p75,
+            p90ResponseTime: percentiles.p90,
+            p95ResponseTime: percentiles.p95,
+            p99ResponseTime: percentiles.p99
+          };
+        });
+      }
+
+      return result;
+    }
+  },
 
   actions: {
     async initialize() {
@@ -63,7 +140,8 @@ export const useLoadTestStore = defineStore('loadTest', {
         startTime: run.startTime,
         recentRequests: []
       };
-      this.rollingWindow = [];
+      this.rollingWindowData = [];
+      this.rollingWindowByRequestData = {};
 
       return run;
     },
@@ -113,7 +191,7 @@ export const useLoadTestStore = defineStore('loadTest', {
       this.liveStats.requestsPerSecond = elapsedSeconds > 0 ? this.liveStats.totalRequests / elapsedSeconds : 0;
 
       // Add to rolling window for live charts
-      this.updateRollingWindow(requestData.timestamp, requestData.latency, isError);
+      this.updateRollingWindow(requestData.timestamp, requestData.latency, isError, requestData.requestName);
     },
 
     async storeRequestDetail(requestIndexId: string, detail: LoadTestRequestDetail) {
@@ -157,32 +235,64 @@ export const useLoadTestStore = defineStore('loadTest', {
       updateStmt.run(chunkId, requestIndexId);
     },
 
-    updateRollingWindow(timestamp: number, latency: number, isError: boolean) {
+    updateRollingWindow(timestamp: number, latency: number, isError: boolean, requestName: string) {
       const bucketTimestamp = Math.floor(timestamp / 1000) * 1000; // 1-second buckets
 
-      let existingPoint = this.rollingWindow.find(p => p.timestamp === bucketTimestamp);
+      // Update aggregated rolling window
+      let existingPoint = this.rollingWindowData.find(p => p.timestamp === bucketTimestamp);
       if (!existingPoint) {
         existingPoint = {
           timestamp: bucketTimestamp,
           requests: 0,
           errors: 0,
-          avgResponseTime: 0
+          responseTimes: []
         };
-        this.rollingWindow.push(existingPoint);
+        this.rollingWindowData.push(existingPoint);
 
         // Keep only last 5 minutes
-        if (this.rollingWindow.length > this.maxRollingWindowSize) {
-          this.rollingWindow.shift();
+        if (this.rollingWindowData.length > this.maxRollingWindowSize) {
+          this.rollingWindowData.shift();
         }
       }
 
       existingPoint.requests++;
       if (isError) existingPoint.errors++;
+      existingPoint.responseTimes.push(latency);
 
-      // Update average response time
-      const totalRequests = existingPoint.requests;
-      existingPoint.avgResponseTime =
-        (existingPoint.avgResponseTime * (totalRequests - 1) + latency) / totalRequests;
+      // Keep only last 100 response times per bucket for memory efficiency
+      if (existingPoint.responseTimes.length > 100) {
+        existingPoint.responseTimes.shift();
+      }
+
+      // Update per-request rolling window
+      if (!this.rollingWindowByRequestData[requestName]) {
+        this.rollingWindowByRequestData[requestName] = [];
+      }
+
+      let existingPointByRequest = this.rollingWindowByRequestData[requestName].find(p => p.timestamp === bucketTimestamp);
+      if (!existingPointByRequest) {
+        existingPointByRequest = {
+          timestamp: bucketTimestamp,
+          requests: 0,
+          errors: 0,
+          responseTimes: []
+        };
+        this.rollingWindowByRequestData[requestName].push(existingPointByRequest);
+
+        // Keep only last 5 minutes
+        if (this.rollingWindowByRequestData[requestName].length > this.maxRollingWindowSize) {
+          this.rollingWindowByRequestData[requestName].shift();
+        }
+      }
+
+      existingPointByRequest.requests++;
+      if (isError) existingPointByRequest.errors++;
+      existingPointByRequest.responseTimes.push(latency);
+
+      // Keep only last 100 response times per bucket for memory efficiency
+      if (existingPointByRequest.responseTimes.length > 100) {
+        existingPointByRequest.responseTimes.shift();
+      }
     },
 
     updateMetrics() {
@@ -267,9 +377,13 @@ export const useLoadTestStore = defineStore('loadTest', {
       return await window.api.getLoadTestRunStats(runId);
     },
 
-    async getTimeSeriesData(runId: string, startTime?: number, endTime?: number): Promise<LoadTestTimeSeriesPoint[]> {
-      return await window.api.getLoadTestTimeSeriesData(runId, startTime, endTime);
-    },
+  async getTimeSeriesData(runId: string, startTime?: number, endTime?: number): Promise<LoadTestTimeSeriesPoint[]> {
+    return await window.api.getLoadTestTimeSeriesData(runId, startTime, endTime);
+  },
+
+  async getTimeSeriesDataByRequest(runId: string, startTime?: number, endTime?: number): Promise<LoadTestTimeSeriesByRequestPoint[]> {
+    return await window.api.getLoadTestTimeSeriesDataByRequest(runId, startTime, endTime);
+  },
 
     async exportRunData(runId: string, format: 'json' | 'csv' = 'json') {
       return await window.api.exportLoadTestRunData(runId, format);

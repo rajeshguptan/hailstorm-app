@@ -17,7 +17,7 @@
           </h3>
           <div class="flex gap-2 mt-4">
             <button class="btn bg-green-500 text-white" :disabled="isRunning || selectedRequests.length === 0" @click="runCollection">Run</button>
-            <button v-if="isRunning" class="btn bg-red-500 text-white" @click="stopRun">Stop</button>
+            <button class="btn bg-red-500 text-white" :disabled="!isRunning" @click="stopRun">Stop</button>
             <button class="btn bg-gray-500 text-white" :disabled="editMode" @click="startEdit">Edit</button>
             <button class="btn bg-blue-500 text-white" :disabled="!editMode" @click="saveConfig">Save</button>
             <button class="btn bg-purple-500 text-white" @click="duplicateConfig">Duplicate</button>
@@ -26,20 +26,13 @@
         </div>
         
         <div class="flex gap-4 mb-4">
-          <div class="flex-1">
-            <label class="block text-sm text-zinc-600 dark:text-gray-400 mb-1">Collection</label>
-             <select v-model="currentCollectionId" :disabled="!editMode" class="form-select bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
-               <option v-for="coll in collections || []" :key="coll.id" :value="coll.id">{{ coll.name }}</option>
-             </select>
-          </div>
-          <div class="flex-1">
-            <label class="block text-sm text-zinc-600 dark:text-gray-400 mb-1">Run Mode</label>
-            <select v-model="currentRunMode" :disabled="!editMode" class="form-select bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
-              <option value="parallel">Parallel</option>
-              <option value="sequential">Sequential</option>
-            </select>
-          </div>
-        </div>
+           <div class="flex-1">
+             <label class="block text-sm text-zinc-600 dark:text-gray-400 mb-1">Collection</label>
+              <select v-model="currentCollectionId" :disabled="!editMode" class="form-select bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
+                <option v-for="coll in collections || []" :key="coll.id" :value="coll.id">{{ coll.name }}</option>
+              </select>
+           </div>
+         </div>
 
         <div class="flex gap-4 mb-4">
           <label class="flex items-center gap-2 cursor-pointer">
@@ -47,12 +40,8 @@
             <span class="checkbox-label">Run Repeated</span>
           </label>
           <div v-if="currentRunRepeated" class="flex items-center gap-2">
-            <label class="text-sm text-zinc-600 dark:text-gray-400">Iterations:</label>
-            <input v-model.number="currentIterations" :disabled="!editMode" type="number" class="form-input bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1" style="width: 80px;" />
-          </div>
-          <div v-if="currentRunMode === 'sequential'" class="flex items-center gap-2">
-            <label class="text-sm text-zinc-600 dark:text-gray-400">Delay (ms):</label>
-            <input v-model.number="currentDelay" :disabled="!editMode" type="number" class="form-input bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1" style="width: 80px;" />
+            <label class="text-sm text-zinc-600 dark:text-gray-400">Duration (sec):</label>
+            <input v-model.number="currentDuration" :disabled="!editMode" type="number" class="form-input bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1" style="width: 80px;" />
           </div>
         </div>
       </div>
@@ -60,14 +49,59 @@
       <div class="flex-1 overflow-auto p-4">
         <div class="flex-1 flex flex-col mb-4">
           <h4 class="text-sm font-bold mb-2">Select Requests to Run:</h4>
-          <div class="flex-1 border border-zinc-700 rounded overflow-auto">
-            <div v-for="req in collectionRequests" :key="req.id" class="p-2 border-b border-zinc-700">
-              <label class="flex items-center gap-2 cursor-pointer p-1 rounded">
-                <input type="checkbox" :value="req.id" v-model="selectedRequests" class="form-checkbox" />
-                <span class="badge mr-1" :class="getMethodClass(req)">{{ req.method }}</span>
-                <span class="checkbox-label">{{ req.name }}</span>
-              </label>
-            </div>
+          <div class="flex-1 border border-zinc-200 dark:border-zinc-700 rounded overflow-auto">
+            <table class="w-full text-sm min-w-full">
+              <thead class="bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700">
+                <tr>
+                  <th class="px-2 sm:px-4 py-2 text-left font-medium text-zinc-700 dark:text-zinc-300 w-12 sm:w-16">Select</th>
+                  <th class="px-2 sm:px-4 py-2 text-left font-medium text-zinc-700 dark:text-zinc-300 w-16 sm:w-20">Method</th>
+                  <th class="px-2 sm:px-4 py-2 text-left font-medium text-zinc-700 dark:text-zinc-300 min-w-0">Name</th>
+                   <th class="px-2 sm:px-4 py-2 text-left font-medium text-zinc-700 dark:text-zinc-300 w-20 sm:w-24">RPS</th>
+                  <th class="px-2 sm:px-4 py-2 text-left font-medium text-zinc-700 dark:text-zinc-300 min-w-0">Datafile</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="req in collectionRequests.filter(r => requestConfigs[r.id])" :key="req.id" class="border-b border-zinc-100 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                  <td class="px-2 sm:px-4 py-2">
+                    <div :class="selectedRequests.includes(req.id) ? 'checkbox-custom checked' : 'checkbox-custom'" class="form-checkbox" @click="toggleRequest(req.id)"></div>
+                  </td>
+                  <td class="px-2 sm:px-4 py-2">
+                    <span class="badge" :class="getMethodClass(req)">{{ req.method }}</span>
+                  </td>
+                  <td class="px-2 sm:px-4 py-2 text-zinc-900 dark:text-white truncate">{{ req.name }}</td>
+                  <td class="px-2 sm:px-4 py-2">
+                    <input
+                      v-model.number="requestConfigs[req.id].rps"
+                      type="number"
+                      min="1"
+                      step="1"
+                      class="w-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border border-zinc-300 dark:border-zinc-600 rounded px-1 sm:px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      :disabled="!selectedRequests.includes(req.id)"
+                      @input="validateRPS(req.id)"
+                    />
+                  </td>
+                  <td class="px-2 sm:px-4 py-2">
+                    <div class="flex items-center gap-1 sm:gap-2">
+                      <input
+                        v-model="requestConfigs[req.id].datafile"
+                        type="text"
+                        readonly
+                        class="flex-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border border-zinc-300 dark:border-zinc-600 rounded px-1 sm:px-2 py-1 text-xs sm:text-sm focus:outline-none truncate"
+                        :disabled="!selectedRequests.includes(req.id)"
+                        placeholder="Select file..."
+                      />
+                      <button
+                        class="px-1 sm:px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 disabled:opacity-50 whitespace-nowrap"
+                        :disabled="!selectedRequests.includes(req.id)"
+                        @click="selectDatafile(req.id)"
+                      >
+                        Browse
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
         
@@ -93,13 +127,17 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import { useLoadTestStore } from '../stores/loadTest';
-import type { RunConfig, LoadTestRequestDetail } from '../types';
+import type { RunConfig, RequestConfig, LoadTestRequestDetail } from '../types';
 
 const loadTestStore = useLoadTestStore();
 
-// Initialize load test store
+// Initialize load test store and selectedRequests
 onMounted(() => {
   loadTestStore.initialize();
+  // Initialize selectedRequests based on current config
+  if (selectedConfig.value) {
+    selectedRequests.value = [...selectedConfig.value.selectedRequests];
+  }
 });
 
 interface Variable {
@@ -147,6 +185,8 @@ interface Environment {
   active: boolean;
 }
 
+
+
 const props = defineProps<{
   collections: Collection[];
   environments: Environment[];
@@ -166,6 +206,7 @@ const editMode = ref(false);
 const editingConfig = ref<RunConfig | null>(null);
 const editedName = ref('');
 const selectedRequests = ref<string[]>([]);
+const requestConfigs = ref<Record<string, RequestConfig>>({});
 
 // Track request sequence for load testing
 let requestSequence = 0;
@@ -200,15 +241,6 @@ const currentCollectionId = computed({
   }
 });
 
-const currentRunMode = computed({
-  get: () => editMode.value ? editingConfig.value?.runMode : selectedConfig.value?.runMode || 'sequential',
-  set: (value: 'parallel' | 'sequential') => {
-    if (editMode.value && editingConfig.value) {
-      editingConfig.value.runMode = value;
-    }
-  }
-});
-
 const currentRunRepeated = computed({
   get: () => editMode.value ? editingConfig.value?.runRepeated : selectedConfig.value?.runRepeated || false,
   set: (value: boolean) => {
@@ -218,20 +250,11 @@ const currentRunRepeated = computed({
   }
 });
 
-const currentIterations = computed({
-  get: () => editMode.value ? editingConfig.value?.iterations : selectedConfig.value?.iterations || 1,
+const currentDuration = computed({
+  get: () => editMode.value ? editingConfig.value?.duration : selectedConfig.value?.duration || 60,
   set: (value: number) => {
     if (editMode.value && editingConfig.value) {
-      editingConfig.value.iterations = value;
-    }
-  }
-});
-
-const currentDelay = computed({
-  get: () => editMode.value ? editingConfig.value?.delay : selectedConfig.value?.delay || 1000,
-  set: (value: number) => {
-    if (editMode.value && editingConfig.value) {
-      editingConfig.value.delay = value;
+      editingConfig.value.duration = value;
     }
   }
 });
@@ -253,6 +276,92 @@ function collectRequests(items: (Request | Folder)[], requests: Request[]) {
 function getMethodClass(item: any): string {
   const method = item.method?.toLowerCase() || 'get';
   return method === 'get' ? 'text-green-800 dark:text-green-200 font-dancing font-bold text-xs' : method === 'post' ? 'text-blue-800 dark:text-blue-200 font-dancing font-bold text-xs' : method === 'put' ? 'text-amber-800 dark:text-amber-200 font-dancing font-bold text-xs' : method === 'delete' ? 'text-red-800 dark:text-red-200 font-dancing font-bold text-xs' : 'text-cyan-800 dark:text-cyan-200 font-dancing font-bold text-xs';
+}
+
+function toggleRequest(id: string) {
+  const index = selectedRequests.value.indexOf(id);
+  if (index > -1) {
+    selectedRequests.value.splice(index, 1);
+  } else {
+    selectedRequests.value.push(id);
+  }
+}
+
+function validateRPS(requestId: string) {
+  const config = requestConfigs.value[requestId];
+  if (config.rps < 1 || isNaN(config.rps)) {
+    config.rps = 1;
+  }
+}
+
+// Create an asynchronous scheduler for a request type
+function createRequestScheduler(req: Request, rps: number, testStartTime: number, totalDuration: number): Promise<void> {
+  return new Promise((resolve) => {
+    let requestCount = 0;
+    const maxRequests = totalDuration > 0 ? Math.ceil((totalDuration / 1000) * rps) : 1;
+    let nextExecutionTime = testStartTime;
+
+    const scheduleNext = () => {
+      if (!isRunning.value) {
+        resolve();
+        return;
+      }
+
+      // Check if we've exceeded the test duration
+      const now = Date.now();
+      if (totalDuration > 0 && (now - testStartTime) >= totalDuration) {
+        resolve();
+        return;
+      }
+
+      // Check if we've reached the max requests for non-repeated runs
+      if (totalDuration === 0 && requestCount >= 1) {
+        resolve();
+        return;
+      }
+
+      // If we're behind schedule, execute immediately
+      if (now >= nextExecutionTime) {
+        runSingleRequest(req).catch(error => {
+          console.error(`[SCHEDULER] Error running request ${req.name}:`, error);
+        });
+
+        requestCount++;
+        nextExecutionTime += 1000 / rps; // Schedule next based on RPS
+      }
+
+      // Schedule the next check
+      if (requestCount < maxRequests || totalDuration > 0) {
+        const delay = Math.max(0, nextExecutionTime - Date.now());
+        setTimeout(scheduleNext, Math.min(delay, 100)); // Check at least every 100ms
+      } else {
+        resolve();
+      }
+    };
+
+    // Start scheduling
+    scheduleNext();
+  });
+}
+
+async function selectDatafile(requestId: string) {
+  try {
+    const result = await window.api.showOpenDialog({
+      title: 'Select Data File',
+      properties: ['openFile'],
+      filters: [
+        { name: 'CSV Files', extensions: ['csv'] },
+        { name: 'JSON Files', extensions: ['json'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+
+    if (!result.canceled && result.filePaths.length > 0) {
+      requestConfigs.value[requestId].datafile = result.filePaths[0];
+    }
+  } catch (error) {
+    console.error('Error selecting datafile:', error);
+  }
 }
 
 function substituteVariables(text: string): string {
@@ -286,37 +395,26 @@ async function runCollection() {
     collectionId: selectedConfig.value.collectionId,
     collectionName: selectedConfig.value.collectionName,
     selectedRequests: selectedConfig.value.selectedRequests,
-    runMode: selectedConfig.value.runMode,
-    delay: selectedConfig.value.delay,
     runRepeated: selectedConfig.value.runRepeated,
-    iterations: selectedConfig.value.iterations
+    duration: selectedConfig.value.duration
   };
 
   await loadTestStore.startRun(runConfig);
 
-  const totalIterations = selectedConfig.value.runRepeated ? selectedConfig.value.iterations : 1;
+  const totalDuration = selectedConfig.value.runRepeated ? selectedConfig.value.duration : 0;
 
   try {
-    for (let iter = 0; iter < totalIterations; iter++) {
-      if (!isRunning.value) break;
+    const startTime = Date.now();
 
-      if (selectedConfig.value.runMode === 'parallel') {
-        const promises = requests.map(req => runSingleRequest(req));
-        await Promise.all(promises);
-      } else {
-        for (let i = 0; i < requests.length; i++) {
-          if (!isRunning.value) break;
-          await runSingleRequest(requests[i]);
-          if (i < requests.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, selectedConfig.value!.delay));
-          }
-        }
-      }
+    // Create asynchronous request schedulers for each request type
+    const schedulers = requests.map(req => {
+      const rps = requestConfigs.value[req.id]?.rps || 1;
+      return createRequestScheduler(req, rps, startTime, totalDuration * 1000);
+    });
 
-      if (selectedConfig.value.runRepeated && iter < totalIterations - 1 && selectedConfig.value.runMode === 'sequential') {
-        await new Promise(resolve => setTimeout(resolve, selectedConfig.value!.delay));
-      }
-    }
+    // Wait for all schedulers to complete
+    await Promise.all(schedulers);
+
   } finally {
     // End the load test run
     await loadTestStore.endRun();
@@ -344,7 +442,9 @@ async function runSingleRequest(req: Request): Promise<RunResult> {
       method: req.method,
       url: url.startsWith('http') ? url : 'https://' + url,
       headers,
-      body
+      body,
+      rps: requestConfigs.value[req.id]?.rps || 1,
+      requestId: req.id
     });
 
     const runResult: RunResult = {
@@ -457,6 +557,7 @@ function saveConfig() {
   if (!editingConfig.value) return;
   editingConfig.value.name = editedName.value;
   editingConfig.value.selectedRequests = [...selectedRequests.value];
+  editingConfig.value.requestConfigs = JSON.parse(JSON.stringify(requestConfigs.value));
   lastEmitted.value = JSON.parse(JSON.stringify(editingConfig.value));
   emit('update-run-config', editingConfig.value);
   editMode.value = false;
@@ -466,7 +567,7 @@ function saveConfig() {
 function duplicateConfig() {
   const sourceConfig = editMode.value ? editingConfig.value : selectedConfig.value;
   if (!sourceConfig) return;
-  
+
   const newName = prompt('Enter name for new run config:', sourceConfig.name + ' Copy');
   if (newName) {
     const collection = props.collections.find(c => c.id === sourceConfig?.collectionId);
@@ -476,15 +577,28 @@ function duplicateConfig() {
       collectionId: sourceConfig?.collectionId || '',
       collectionName: collection?.name || sourceConfig?.collectionName || '',
       selectedRequests: [...selectedRequests.value],
-      runMode: sourceConfig?.runMode || 'sequential',
-      delay: sourceConfig?.delay || 1000,
       runRepeated: sourceConfig?.runRepeated || false,
-      iterations: sourceConfig?.iterations || 1
+      duration: sourceConfig?.duration || 60,
+      requestConfigs: sourceConfig?.requestConfigs ? JSON.parse(JSON.stringify(sourceConfig.requestConfigs)) : undefined
     };
     emit('update-run-config', newConfig);
     editMode.value = false;
     editingConfig.value = null;
   }
+}
+
+function initializeRequestConfigs() {
+  const configs: Record<string, RequestConfig> = {};
+  collectionRequests.value.forEach(req => {
+    // Load from saved config if available, otherwise use defaults
+    const savedConfig = selectedConfig.value?.requestConfigs?.[req.id];
+    configs[req.id] = {
+      id: req.id,
+      rps: savedConfig?.rps || 1, // Default RPS
+      datafile: savedConfig?.datafile || '' // Default empty datafile
+    };
+  });
+  requestConfigs.value = configs;
 }
 
 function generateId(prefix: string): string {
@@ -499,59 +613,64 @@ function cancelEdit() {
 watch(() => selectedConfig.value, (newConfig) => {
   if (newConfig) {
     selectedRequests.value = [...newConfig.selectedRequests];
+    lastEmitted.value = JSON.parse(JSON.stringify(newConfig));
   } else {
     selectedRequests.value = [];
+    lastEmitted.value = null;
   }
   // Reset editing when config changes
   editMode.value = false;
   editingConfig.value = null;
-});
+}, { immediate: true });
 
 watch(selectedRequests, (newVal) => {
-  if (selectedConfig.value && lastEmitted.value && JSON.stringify(newVal) !== JSON.stringify(lastEmitted.value.selectedRequests)) {
+  if (selectedConfig.value && (!lastEmitted.value || JSON.stringify(newVal) !== JSON.stringify(lastEmitted.value.selectedRequests))) {
     const updated = { ...selectedConfig.value, selectedRequests: newVal };
     lastEmitted.value = JSON.parse(JSON.stringify(updated));
     emit('update-run-config', updated);
   }
 }, { deep: true });
+
+watch(collectionRequests, () => {
+  initializeRequestConfigs();
+}, { deep: true, immediate: true });
 </script>
 
 <style scoped>
+/* Standard checkbox styling for form inputs */
+.form-checkbox {
+  @apply w-4 h-4 rounded border-2 transition-colors duration-200 cursor-pointer;
+  background-color: rgb(255 255 255); /* Pure white background for light mode */
+  border-color: rgb(161 161 170); /* zinc-400 */
+  accent-color: rgb(37 99 235); /* blue-600 for checked state */
+}
+
+.dark .form-checkbox {
+  background-color: rgb(39 39 42); /* zinc-800 for dark mode */
+  border-color: rgb(82 82 91); /* zinc-600 */
+  accent-color: rgb(37 99 235); /* blue-600 for checked state */
+}
+
 /* Custom checkbox styling for better visibility in both light and dark modes */
-input[type="checkbox"] {
-  appearance: none; /* Remove default browser styling */
+.checkbox-custom {
   @apply w-4 h-4 rounded border-2 transition-colors duration-200 cursor-pointer;
   background-color: rgb(255 255 255); /* Pure white background for light mode */
   border-color: rgb(161 161 170); /* zinc-400 */
 }
 
-.dark input[type="checkbox"] {
+.dark .checkbox-custom {
   background-color: rgb(39 39 42); /* zinc-800 for dark mode */
   border-color: rgb(82 82 91); /* zinc-600 */
 }
 
 /* Checked state styling */
-input[type="checkbox"]:checked {
+.checkbox-custom.checked {
   background-color: rgb(37 99 235); /* blue-600 */
   border-color: rgb(37 99 235); /* blue-600 */
   background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='m13.854 3.646-7.5 7.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 0 1 .708-.708L6 10.293l7.146-7.147a.5.5 0 0 1 .708.708z'/%3e%3c/svg%3e");
   background-size: 0.75rem;
   background-position: center;
   background-repeat: no-repeat;
-}
-
-/* Focus state */
-input[type="checkbox"]:focus {
-  @apply ring-2 ring-blue-500 ring-offset-2;
-}
-
-.dark input[type="checkbox"]:focus {
-  @apply ring-blue-600 ring-offset-zinc-800;
-}
-
-/* Disabled state */
-input[type="checkbox"]:disabled {
-  @apply opacity-50 cursor-not-allowed;
 }
 
 /* Better contrast for checkbox labels */

@@ -204,6 +204,30 @@ export interface LoadTestTimeSeriesPoint {
   requests: number;
   errors: number;
   avgResponseTime: number;
+  p50ResponseTime: number;
+  p75ResponseTime: number;
+  p90ResponseTime: number;
+  p95ResponseTime: number;
+  p99ResponseTime: number;
+}
+
+export interface LoadTestTimeSeriesByRequestPoint {
+  requestName: string;
+  timestamp: number;
+  requests: number;
+  errors: number;
+  avgResponseTime: number;
+  p50ResponseTime: number;
+  p75ResponseTime: number;
+  p90ResponseTime: number;
+  p95ResponseTime: number;
+  p99ResponseTime: number;
+}
+
+export interface RequestConfig {
+  id: string;
+  rps: number;
+  datafile: string;
 }
 
 export interface RunConfig {
@@ -212,10 +236,9 @@ export interface RunConfig {
   collectionId: string;
   collectionName: string;
   selectedRequests: string[];
-  runMode: 'parallel' | 'sequential';
-  delay: number;
   runRepeated: boolean;
-  iterations: number;
+  duration: number;
+  requestConfigs?: Record<string, RequestConfig>;
 }
 
 export interface SettingsCategory {

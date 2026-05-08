@@ -4,97 +4,102 @@
     "collectionId": "coll_1776555377234_2vatotsx1",
     "collectionName": "",
     "selectedRequests": [
-      "req_1776555377234_z0htq13un",
-      "req_1776555377234_qabgxi4zi"
-    ],
-    "runMode": "sequential",
-    "delay": 1000,
-    "runRepeated": true,
-    "iterations": 5,
-    "id": "run_1777738561489_w84praz",
-    "startTime": 1777738561489,
-    "status": "completed",
-    "totalRequests": 10,
-    "completedRequests": 10,
-    "failedRequests": 0,
-    "endTime": 1777738574161
-  },
-  {
-    "name": "Runm 2",
-    "collectionId": "coll_1776555377234_2vatotsx1",
-    "collectionName": "",
-    "selectedRequests": [
-      "req_1776555377234_z0htq13un",
-      "req_1776555377234_qabgxi4zi"
-    ],
-    "runMode": "parallel",
-    "delay": 1000,
-    "runRepeated": true,
-    "iterations": 5,
-    "id": "run_1777738695191_e59pz0t",
-    "startTime": 1777738695191,
-    "status": "completed",
-    "totalRequests": 10,
-    "completedRequests": 10,
-    "failedRequests": 0,
-    "endTime": 1777738697549
-  },
-  {
-    "name": "Runm 2",
-    "collectionId": "coll_1776555377234_2vatotsx1",
-    "collectionName": "",
-    "selectedRequests": [
-      "req_1776555377234_qabgxi4zi"
-    ],
-    "runMode": "parallel",
-    "delay": 1000,
-    "runRepeated": true,
-    "iterations": 5,
-    "id": "run_1777750936526_2jg2qj4",
-    "startTime": 1777750936527,
-    "status": "completed",
-    "totalRequests": 5,
-    "completedRequests": 5,
-    "failedRequests": 0,
-    "endTime": 1777750938204
-  },
-  {
-    "name": "Runm 2",
-    "collectionId": "coll_1776555377234_2vatotsx1",
-    "collectionName": "",
-    "selectedRequests": [
-      "req_1776555377234_qabgxi4zi"
-    ],
-    "runMode": "parallel",
-    "delay": 1000,
-    "runRepeated": true,
-    "iterations": 5,
-    "id": "run_1777752330529_7iehr3b",
-    "startTime": 1777752330529,
-    "status": "completed",
-    "totalRequests": 5,
-    "completedRequests": 5,
-    "failedRequests": 0,
-    "endTime": 1777752332082
-  },
-  {
-    "name": "Runm 2",
-    "collectionId": "coll_1776555377234_2vatotsx1",
-    "collectionName": "",
-    "selectedRequests": [
       "req_1776555377234_qabgxi4zi",
       "req_1776555377234_z0htq13un"
     ],
-    "runMode": "parallel",
-    "delay": 1000,
     "runRepeated": true,
-    "iterations": 5,
-    "id": "run_1777752348641_x5by65u",
-    "startTime": 1777752348641,
+    "id": "run_1777818088480_qfqfhcw",
+    "startTime": 1777818088480,
+    "status": "running",
+    "totalRequests": 700,
+    "completedRequests": 700,
+    "failedRequests": 0
+  },
+  {
+    "name": "Mock",
+    "collectionId": "coll_1777825605272_jitp2s4ru",
+    "collectionName": "",
+    "selectedRequests": [
+      "req_1777825605272_9k77khkzx",
+      "req_1777825605272_cib4i9do6"
+    ],
+    "runRepeated": true,
+    "duration": 60,
+    "id": "run_1777833167057_ncqu9sh",
+    "startTime": 1777833167057,
+    "status": "running",
+    "totalRequests": 0,
+    "completedRequests": 0,
+    "failedRequests": 0
+  },
+  {
+    "name": "Mock",
+    "collectionId": "coll_1777825605272_jitp2s4ru",
+    "collectionName": "",
+    "selectedRequests": [
+      "req_1777825605272_9k77khkzx",
+      "req_1777825605272_cib4i9do6"
+    ],
+    "runRepeated": true,
+    "duration": 60,
+    "id": "run_1777833265292_xtaup79",
+    "startTime": 1777833265292,
+    "status": "running",
+    "totalRequests": 0,
+    "completedRequests": 0,
+    "failedRequests": 0
+  },
+  {
+    "name": "Mock",
+    "collectionId": "coll_1777825605272_jitp2s4ru",
+    "collectionName": "",
+    "selectedRequests": [
+      "req_1777825605272_9k77khkzx",
+      "req_1777825605272_cib4i9do6"
+    ],
+    "runRepeated": true,
+    "duration": 60,
+    "id": "run_1777833719626_ekidxva",
+    "startTime": 1777833719626,
+    "status": "running",
+    "totalRequests": 0,
+    "completedRequests": 0,
+    "failedRequests": 0
+  },
+  {
+    "name": "Mock",
+    "collectionId": "coll_1777825605272_jitp2s4ru",
+    "collectionName": "",
+    "selectedRequests": [
+      "req_1777825605272_9k77khkzx",
+      "req_1777825605272_cib4i9do6"
+    ],
+    "runRepeated": true,
+    "duration": 60,
+    "id": "run_1777957621158_6gxnza4",
+    "startTime": 1777957621158,
     "status": "completed",
-    "totalRequests": 10,
-    "completedRequests": 10,
+    "totalRequests": 36,
+    "completedRequests": 36,
     "failedRequests": 0,
-    "endTime": 1777752350105
+    "endTime": 1777957645056
+  },
+  {
+    "name": "Mock",
+    "collectionId": "coll_1777825605272_jitp2s4ru",
+    "collectionName": "",
+    "selectedRequests": [
+      "req_1777825605272_9k77khkzx",
+      "req_1777825605272_cib4i9do6"
+    ],
+    "runRepeated": true,
+    "duration": 60,
+    "id": "run_1777959263881_94iz7nf",
+    "startTime": 1777959263881,
+    "status": "completed",
+    "totalRequests": 240,
+    "completedRequests": 240,
+    "failedRequests": 0,
+    "endTime": 1777959323889
   }
 ]
