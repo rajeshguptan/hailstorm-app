@@ -1,9 +1,25 @@
 <template>
   <div class="collections-panel">
-    <div class="flex gap-2 mb-2">
-      <button class="btn btn-sm border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 flex-1 hover:bg-zinc-100 dark:hover:bg-zinc-800" @click="handleImport">Import</button>
-      <button class="btn btn-sm bg-blue-500 text-white flex-1 hover:bg-blue-600" @click="collectionsStore.addCollection()">+ Collection</button>
+  <div class="flex gap-2 mb-2" @click="showImportMenu = false">
+    <div class="dropdown relative flex-1">
+      <button class="btn btn-sm border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 w-full hover:bg-zinc-100 dark:hover:bg-zinc-800" @click.stop="showImportMenu = !showImportMenu">
+        Import ▼
+      </button>
+      <div v-if="showImportMenu" class="absolute top-full left-0 mt-1 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded shadow-lg z-10 min-w-full">
+        <button class="block w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-sm" @click="handleImport('postman')">
+          Import Postman Collection
+        </button>
+        <button class="block w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-sm" @click="handleImport('openapi')">
+          Import OpenAPI Spec
+        </button>
+        <hr class="border-zinc-300 dark:border-zinc-600">
+        <button class="block w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-sm text-blue-600" @click="handleImport('test')">
+          Load Sample API
+        </button>
+      </div>
     </div>
+    <button class="btn btn-sm bg-blue-500 text-white flex-1 hover:bg-blue-600" @click="collectionsStore.addCollection()">+ Collection</button>
+  </div>
     <div v-if="collections.length === 0" class="text-center text-zinc-400 dark:text-zinc-500 py-4">
       No collections yet
     </div>
@@ -70,6 +86,11 @@
   background-color: rgba(59, 130, 246, 0.05) !important;
   border-radius: 6px;
 }
+
+/* Import dropdown styling */
+.dropdown {
+  position: relative;
+}
 </style>
 
 <script setup lang="ts">
@@ -94,20 +115,183 @@ const collections = computed(() => {
 const expandedCollections = ref<string[]>([]);
 const expandedFolders = ref<string[]>([]);
 const expandedFlavors = ref<string[]>([]);
+const showImportMenu = ref(false);
 
-async function handleImport() {
+async function handleImport(importType: 'postman' | 'openapi' | 'test' = 'postman') {
+  showImportMenu.value = false;
+
+  // For testing - load a sample OpenAPI spec
+  if (importType === 'test') {
+    const sampleSpec = {
+      openapi: '3.0.0',
+      info: {
+        title: 'Sample Pet Store API',
+        version: '1.0.0',
+        description: 'A sample API for testing pet store operations'
+      },
+      servers: [
+        {
+          url: 'https://api.petstore.com/v1',
+          description: 'Production server'
+        }
+      ],
+      paths: {
+        '/pets': {
+          get: {
+            summary: 'List all pets',
+            operationId: 'listPets',
+            tags: ['pets'],
+            parameters: [
+              {
+                name: 'limit',
+                in: 'query',
+                description: 'How many items to return at one time',
+                required: false,
+                schema: {
+                  type: 'integer',
+                  format: 'int32'
+                },
+                example: 10
+              }
+            ],
+            responses: {
+              '200': {
+                description: 'A paged array of pets',
+                content: {
+                  'application/json': {
+                    schema: {
+                      type: 'array',
+                      items: {
+                        $ref: '#/components/schemas/Pet'
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          post: {
+            summary: 'Create a pet',
+            operationId: 'createPet',
+            tags: ['pets'],
+            requestBody: {
+              required: true,
+              content: {
+                'application/json': {
+                  schema: {
+                    $ref: '#/components/schemas/Pet'
+                  }
+                }
+              }
+            },
+            responses: {
+              '201': {
+                description: 'Created pet',
+                content: {
+                  'application/json': {
+                    schema: {
+                      $ref: '#/components/schemas/Pet'
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        '/pets/{petId}': {
+          get: {
+            summary: 'Get a pet by ID',
+            operationId: 'getPetById',
+            tags: ['pets'],
+            parameters: [
+              {
+                name: 'petId',
+                in: 'path',
+                required: true,
+                description: 'The id of the pet to retrieve',
+                schema: {
+                  type: 'string'
+                },
+                example: '12345'
+              }
+            ],
+            responses: {
+              '200': {
+                description: 'Expected response to a valid request',
+                content: {
+                  'application/json': {
+                    schema: {
+                      $ref: '#/components/schemas/Pet'
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      components: {
+        schemas: {
+          Pet: {
+            type: 'object',
+            required: ['name'],
+            properties: {
+              id: {
+                type: 'integer',
+                format: 'int64',
+                example: 10
+              },
+              name: {
+                type: 'string',
+                example: 'Buddy'
+              },
+              category: {
+                type: 'object',
+                properties: {
+                  id: {
+                    type: 'integer',
+                    format: 'int64',
+                    example: 1
+                  },
+                  name: {
+                    type: 'string',
+                    example: 'Dogs'
+                  }
+                }
+              },
+              status: {
+                type: 'string',
+                description: 'pet status in the store',
+                enum: ['available', 'pending', 'sold'],
+                example: 'available'
+              }
+            }
+          }
+        }
+      }
+    };
+    importOpenAPISpec(sampleSpec);
+    return;
+  }
+
   try {
+    const acceptTypes = importType === 'openapi' ? '.json,.yaml,.yml' : '.json';
+
     if (!window.api) {
       const input = document.createElement('input');
       input.type = 'file';
-      input.accept = '.json';
+      input.accept = acceptTypes;
       input.onchange = async (e: any) => {
         const file = e.target.files[0];
         if (!file) return;
         try {
           const text = await file.text();
           const data = JSON.parse(text);
-          importData(data);
+          if (importType === 'openapi') {
+            importOpenAPISpec(data);
+          } else {
+            importData(data);
+          }
         } catch (err) {
           console.error('Failed to import:', err);
         }
@@ -115,13 +299,18 @@ async function handleImport() {
       input.click();
       return;
     }
+
     const content = await window.api.importCollection();
     if (!content) {
       console.log('No content returned from file dialog');
       return;
     }
     const data = JSON.parse(content);
-    importData(data);
+    if (importType === 'openapi') {
+      importOpenAPISpec(data);
+    } else {
+      importData(data);
+    }
   } catch (err) {
     console.error('Import error:', err);
   }
@@ -280,6 +469,255 @@ function importData(data: any) {
   } else {
     console.log('[IMPORT] Unknown collection format:', Object.keys(data));
   }
+}
+
+function importOpenAPISpec(spec: any) {
+  console.log('[OPENAPI] Starting OpenAPI import:', spec.info?.title);
+
+  if (!spec || !spec.info) {
+    console.error('[OPENAPI] Invalid OpenAPI spec - missing info');
+    return;
+  }
+
+  // Extract base server URL
+  const baseUrl = getBaseServerUrl(spec);
+
+  // Group paths by tags for folder organization
+  const tagGroups: Record<string, any[]> = {};
+  const untaggedRequests: any[] = [];
+
+  // Process each path
+  for (const [path, pathItem] of Object.entries(spec.paths || {})) {
+    for (const [method, operation] of Object.entries(pathItem as any)) {
+      if (method === 'parameters') continue; // Skip path-level parameters
+
+      const request = createRequestFromOperation(path, method.toUpperCase(), operation as any, spec, baseUrl);
+
+      // Group by tags
+      const tags = (operation as any).tags || [];
+      if (tags.length > 0) {
+        const tag = tags[0]; // Use first tag
+        if (!tagGroups[tag]) {
+          tagGroups[tag] = [];
+        }
+        tagGroups[tag].push(request);
+      } else {
+        untaggedRequests.push(request);
+      }
+    }
+  }
+
+  // Create collection with folders
+  const collection: any = {
+    id: `coll_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    name: spec.info.title || 'OpenAPI Import',
+    description: spec.info.description,
+    items: [],
+    variables: []
+  };
+
+  // Add tagged folders
+  for (const [tag, requests] of Object.entries(tagGroups)) {
+    const folder: any = {
+      id: `fol_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      name: tag,
+      items: requests
+    };
+    collection.items.push(folder);
+  }
+
+  // Add untagged requests
+  collection.items.push(...untaggedRequests);
+
+  collectionsStore.collections.push(collection);
+  collectionsStore.saveCollections();
+
+  console.log(`[OPENAPI] Successfully imported "${spec.info.title}" with ${Object.keys(tagGroups).length} folders and ${untaggedRequests.length} untagged requests`);
+}
+
+function getBaseServerUrl(spec: any): string {
+  if (!spec.servers || spec.servers.length === 0) {
+    return '';
+  }
+
+  const server = spec.servers[0];
+  let url = server.url;
+
+  // Replace variables with example values
+  if (server.variables) {
+    for (const [key, variable] of Object.entries(server.variables as any)) {
+      const defaultValue = (variable as any).default || (variable as any).example || `{${key}}`;
+      url = url.replace(`{${key}}`, defaultValue);
+    }
+  }
+
+  return url;
+}
+
+function createRequestFromOperation(path: string, method: string, operation: any, spec: any, baseUrl: string): any {
+  // Build full URL
+  const fullUrl = baseUrl ? `${baseUrl}${path}` : path;
+
+  // Extract path parameters and replace with example values
+  let processedUrl = fullUrl;
+  const pathParams = operation.parameters?.filter((p: any) => p.in === 'path') || [];
+
+  for (const param of pathParams) {
+    const example = param.example || param.schema?.example || `{${param.name}}`;
+    processedUrl = processedUrl.replace(`{${param.name}}`, example);
+  }
+
+  // Create request object
+  const request: any = {
+    id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    name: operation.summary || `${method} ${path}`,
+    method,
+    url: processedUrl,
+    headers: [],
+    body: { type: 'none', content: '' },
+    variables: []
+  };
+
+  // Add query parameters
+  const queryParams = operation.parameters?.filter((p: any) => p.in === 'query') || [];
+  if (queryParams.length > 0) {
+    const queryString = queryParams
+      .map((param: any) => {
+        const example = param.example || param.schema?.example || '';
+        return `${param.name}=${encodeURIComponent(example)}`;
+      })
+      .join('&');
+
+    if (queryString) {
+      request.url += (request.url.includes('?') ? '&' : '?') + queryString;
+    }
+  }
+
+  // Add header parameters
+  const headerParams = operation.parameters?.filter((p: any) => p.in === 'header') || [];
+  for (const param of headerParams) {
+    const example = param.example || param.schema?.example || '';
+    request.headers.push({
+      key: param.name,
+      value: example.toString(),
+      enabled: true
+    });
+  }
+
+  // Handle request body
+  if (operation.requestBody) {
+    const content = operation.requestBody.content || {};
+    const contentType = Object.keys(content)[0];
+
+    if (contentType) {
+      request.headers.push({
+        key: 'Content-Type',
+        value: contentType,
+        enabled: true
+      });
+
+      if (contentType === 'application/json') {
+        const schema = content[contentType].schema;
+        const example = generateJsonExample(schema, spec);
+        request.body = {
+          type: 'raw',
+          content: JSON.stringify(example, null, 2)
+        };
+      } else if (contentType === 'application/x-www-form-urlencoded') {
+        const schema = content[contentType].schema;
+        const example = generateFormExample(schema, spec);
+        request.body = {
+          type: 'urlencoded',
+          content: example
+        };
+      } else if (contentType === 'multipart/form-data') {
+        const schema = content[contentType].schema;
+        const example = generateFormDataExample(schema, spec);
+        request.body = {
+          type: 'formdata',
+          content: JSON.stringify(example)
+        };
+      }
+    }
+  }
+
+  return request;
+}
+
+function generateJsonExample(schema: any, spec: any, visitedRefs = new Set()): any {
+  if (!schema) return {};
+
+  // Handle $ref
+  if (schema.$ref) {
+    if (visitedRefs.has(schema.$ref)) {
+      return {}; // Avoid circular references
+    }
+    visitedRefs.add(schema.$ref);
+
+    const refPath = schema.$ref.replace('#/', '').split('/');
+    let refObj = spec;
+    for (const part of refPath) {
+      refObj = refObj[part];
+    }
+
+    return generateJsonExample(refObj, spec, visitedRefs);
+  }
+
+  // Handle different schema types
+  switch (schema.type) {
+    case 'object':
+      const obj: any = {};
+      if (schema.properties) {
+        for (const [key, propSchema] of Object.entries(schema.properties as any)) {
+          obj[key] = generateJsonExample(propSchema, spec, visitedRefs);
+        }
+      }
+      return obj;
+
+    case 'array':
+      return [generateJsonExample(schema.items, spec, visitedRefs)];
+
+    case 'string':
+      return schema.example || schema.default || 'string';
+
+    case 'number':
+    case 'integer':
+      return schema.example || schema.default || 0;
+
+    case 'boolean':
+      return schema.example || schema.default || false;
+
+    default:
+      return schema.example || schema.default || null;
+  }
+}
+
+function generateFormExample(schema: any, spec: any): string {
+  if (!schema || !schema.properties) return '';
+
+  const params = [];
+  for (const [key, propSchema] of Object.entries(schema.properties as any)) {
+    const example = generateJsonExample(propSchema, spec);
+    params.push(`${encodeURIComponent(key)}=${encodeURIComponent(example)}`);
+  }
+
+  return params.join('&');
+}
+
+function generateFormDataExample(schema: any, spec: any): any[] {
+  if (!schema || !schema.properties) return [];
+
+  const formData = [];
+  for (const [key, propSchema] of Object.entries(schema.properties as any)) {
+    const example = generateJsonExample(propSchema, spec);
+    formData.push({
+      key,
+      value: example.toString(),
+      type: 'text'
+    });
+  }
+
+  return formData;
 }
 
 function toggleCollection(id: string) {

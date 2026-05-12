@@ -551,19 +551,21 @@ const colorSchemes = {
 
 // Helper function to get response time value based on selected percentile
 function getResponseTimeValue(point: any, percentile: string): number {
+  if (!point) return 0;
+
   switch (percentile) {
     case 'mean':
       return point.avgResponseTime || 0;
     case 'p50':
-      return point.p50ResponseTime || 0;
+      return point.p50ResponseTime ?? point.avgResponseTime ?? 0;
     case 'p75':
-      return point.p75ResponseTime || 0;
+      return point.p75ResponseTime ?? point.avgResponseTime ?? 0;
     case 'p90':
-      return point.p90ResponseTime || 0;
+      return point.p90ResponseTime ?? point.avgResponseTime ?? 0;
     case 'p95':
-      return point.p95ResponseTime || 0;
+      return point.p95ResponseTime ?? point.avgResponseTime ?? 0;
     case 'p99':
-      return point.p99ResponseTime || 0;
+      return point.p99ResponseTime ?? point.avgResponseTime ?? 0;
     default:
       return point.avgResponseTime || 0;
   }

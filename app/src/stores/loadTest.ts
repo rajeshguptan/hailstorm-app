@@ -30,36 +30,6 @@ export const useLoadTestStore = defineStore('loadTest', {
   }),
 
   getters: {
-    // Calculate percentiles from response times
-    calculatePercentiles(responseTimes: number[]): { p50: number; p75: number; p90: number; p95: number; p99: number; mean: number } {
-      if (responseTimes.length === 0) {
-        return { p50: 0, p75: 0, p90: 0, p95: 0, p99: 0, mean: 0 };
-      }
-
-      const sorted = [...responseTimes].sort((a, b) => a - b);
-      const len = sorted.length;
-
-      const percentile = (p: number) => {
-        const index = (p / 100) * (len - 1);
-        const lower = Math.floor(index);
-        const upper = Math.ceil(index);
-        const weight = index % 1;
-
-        if (upper >= len) return sorted[len - 1];
-        return sorted[lower] * (1 - weight) + sorted[upper] * weight;
-      };
-
-      const mean = responseTimes.reduce((a, b) => a + b, 0) / len;
-
-      return {
-        mean,
-        p50: percentile(50),
-        p75: percentile(75),
-        p90: percentile(90),
-        p95: percentile(95),
-        p99: percentile(99)
-      };
-    },
 
     // Convert rolling window data to LoadTestTimeSeriesPoint format
     rollingWindow(): LoadTestTimeSeriesPoint[] {
@@ -117,6 +87,37 @@ export const useLoadTestStore = defineStore('loadTest', {
         // Don't set isInitialized to true if it failed
         throw error;
       }
+    },
+
+    // Calculate percentiles from response times
+    calculatePercentiles(responseTimes: number[]): { p50: number; p75: number; p90: number; p95: number; p99: number; mean: number } {
+      if (responseTimes.length === 0) {
+        return { p50: 0, p75: 0, p90: 0, p95: 0, p99: 0, mean: 0 };
+      }
+
+      const sorted = [...responseTimes].sort((a, b) => a - b);
+      const len = sorted.length;
+
+      const percentile = (p: number) => {
+        const index = (p / 100) * (len - 1);
+        const lower = Math.floor(index);
+        const upper = Math.ceil(index);
+        const weight = index % 1;
+
+        if (upper >= len) return sorted[len - 1];
+        return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+      };
+
+      const mean = responseTimes.reduce((a, b) => a + b, 0) / len;
+
+      return {
+        mean,
+        p50: percentile(50),
+        p75: percentile(75),
+        p90: percentile(90),
+        p95: percentile(95),
+        p99: percentile(99)
+      };
     },
 
     async startRun(runConfig: Omit<LoadTestRun, 'id' | 'startTime' | 'status' | 'totalRequests' | 'completedRequests' | 'failedRequests'>) {

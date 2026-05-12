@@ -36,6 +36,7 @@ export interface Request {
   flavors?: Request[];
   variables?: RequestVariable[];
   response?: Response;
+  dependsOn?: string; // ID of another request in the same collection
 }
 
 export interface Folder {

@@ -422,7 +422,49 @@ async function runCollection() {
   }
 }
 
+// Execute all dependencies for a request (recursive)
+async function executeRequestDependencies(req: Request, executed = new Set<string>()) {
+  if (!req.dependsOn || executed.has(req.id)) return;
+
+  // Find the dependency request in collections
+  function findRequestById(collections: Collection[], id: string): Request | null {
+    for (const collection of collections) {
+      const findInItems = (items: (Request | Folder)[]): Request | null => {
+        for (const item of items) {
+          if ('method' in item && 'url' in item && item.id === id) {
+            return item;
+          }
+          if ('items' in item) {
+            const found = findInItems(item.items);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+      const found = findInItems(collection.items);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  const dependencyReq = findRequestById(props.collections, req.dependsOn);
+  if (dependencyReq) {
+    // Execute dependency's dependencies first (recursive)
+    await executeRequestDependencies(dependencyReq, executed);
+
+    // Execute this dependency if not already executed
+    if (!executed.has(dependencyReq.id)) {
+      executed.add(dependencyReq.id);
+      console.log(`Executing dependency "${dependencyReq.name}" for "${req.name}"`);
+      await runSingleRequest(dependencyReq);
+    }
+  }
+}
+
 async function runSingleRequest(req: Request): Promise<RunResult> {
+  // Execute dependencies first
+  await executeRequestDependencies(req, new Set([req.id]));
+
   const url = substituteVariables(req.url);
   const headers: Record<string, string> = {};
   (req.headers || []).forEach(h => {

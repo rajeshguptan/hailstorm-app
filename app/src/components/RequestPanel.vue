@@ -3,6 +3,10 @@
     <!-- First row: Request name and action buttons -->
     <div class="flex gap-2 mb-2 items-center">
       <input v-model="name" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-3 py-1 flex-1" placeholder="Request Name" />
+      <select v-model="dependsOn" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1" style="width: 150px;">
+        <option value="">No dependency</option>
+        <option v-for="req in validDependencyOptions" :key="req.id" :value="req.id">{{ req.name }}</option>
+      </select>
       <button class="px-3 py-1.5 border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-sm" @click="copyToClipboard">
         📋 Copy
       </button>
@@ -310,6 +314,68 @@ const name = computed({
   set: (val) => { requestsStore.currentRequest.name = val; }
 });
 
+const dependsOn = computed({
+  get: () => requestsStore.currentRequest.dependsOn || '',
+  set: (val) => { requestsStore.currentRequest.dependsOn = val || undefined; }
+});
+
+// Get all requests in the current collection (excluding the current request)
+const collectionRequests = computed(() => {
+  const currentCollection = collectionsStore.selectedCollection;
+  if (!currentCollection) return [];
+
+  const allRequests: any[] = [];
+
+  function collectRequests(items: any[]) {
+    for (const item of items) {
+      if (item.method && item.url) { // It's a request
+        if (item.id !== requestsStore.selectedRequestId) { // Exclude current request
+          allRequests.push(item);
+        }
+      } else if (item.items) { // It's a folder
+        collectRequests(item.items);
+      }
+    }
+  }
+
+  collectRequests(currentCollection.items);
+  return allRequests;
+});
+
+// Check for circular dependencies
+function hasCircularDependency(startRequestId: string, targetRequestId: string, visited = new Set<string>()): boolean {
+  if (visited.has(startRequestId)) {
+    return true; // Circular dependency detected
+  }
+
+  visited.add(startRequestId);
+
+  // Find the request
+  const request = collectionRequests.value.find((req: any) => req.id === startRequestId) ||
+                  (requestsStore.selectedRequestId === startRequestId ? requestsStore.currentRequest : null);
+
+  if (!request || !request.dependsOn) {
+    return false;
+  }
+
+  // If this request depends on the target, it's a cycle
+  if (request.dependsOn === targetRequestId) {
+    return true;
+  }
+
+  return hasCircularDependency(request.dependsOn, targetRequestId, visited);
+}
+
+// Computed property for valid dependency options (no circular dependencies)
+const validDependencyOptions = computed(() => {
+  return collectionRequests.value.filter((req: any) => {
+    // Check if selecting this request would create a circular dependency
+    // We want to check if following dependencies from req.id leads back to current request
+    const currentId = requestsStore.selectedRequestId || requestsStore.currentRequest.id;
+    return !hasCircularDependency(req.id, currentId || '');
+  });
+});
+
 watch(() => requestsStore.selectedRequestId, () => {
   console.log('[RequestPanel] selectedRequestId changed to:', requestsStore.selectedRequestId);
   if (requestsStore.selectedRequestId) {
@@ -375,143 +441,272 @@ function substituteVariables(text: string): string {
   });
 }
 
-async function sendRequest() {
-    responseStore.isLoading = true;
-    const startTime = Date.now();
+// Execute a request without updating UI (for dependencies)
+async function executeRequest(request: any) {
+    // Prepare request options for execution engine
+    let url = request.url;
+    let bodyContent = request.body.type !== 'none' && request.body.content
+        ? request.body.content
+        : undefined;
 
-    try {
-        // Prepare request options for execution engine
-        let url = requestsStore.currentRequest.url;
-        let bodyContent = requestsStore.currentRequest.body.type !== 'none' && requestsStore.currentRequest.body.content
-            ? requestsStore.currentRequest.body.content
-            : undefined;
+    // Substitute variables
+    url = substituteVariables(url);
+    bodyContent = bodyContent ? substituteVariables(bodyContent) : bodyContent;
 
-        // Substitute variables
-        url = substituteVariables(url);
-        bodyContent = bodyContent ? substituteVariables(bodyContent) : bodyContent;
+    const options = {
+        method: request.method,
+        url: url,
+        headers: {},
+        body: bodyContent
+    };
 
-        const options = {
-            method: requestsStore.currentRequest.method,
-            url: url,
-            headers: {},
-            body: bodyContent
-        };
+    // Create a substituted copy of the request for history
+    const substitutedRequest = JSON.parse(JSON.stringify(request));
+    substitutedRequest.url = url;
+    if (bodyContent !== undefined) {
+      substitutedRequest.body.content = bodyContent;
+    }
 
-        // Create a substituted copy of the request for history
-        const substitutedRequest = JSON.parse(JSON.stringify(requestsStore.currentRequest));
-        substitutedRequest.url = url;
-        if (bodyContent !== undefined) {
-          substitutedRequest.body.content = bodyContent;
+    // Substitute auth fields
+    if (substitutedRequest.auth) {
+        const auth = substitutedRequest.auth;
+        if (auth.type === 'bearer' && auth.bearerToken) {
+          auth.bearerToken = substituteVariables(auth.bearerToken);
+        } else if (auth.type === 'basic') {
+          if (auth.username) auth.username = substituteVariables(auth.username);
+          if (auth.password) auth.password = substituteVariables(auth.password);
+        } else if (auth.type === 'apikey' && auth.apikey) {
+          auth.apikey.key = substituteVariables(auth.apikey.key);
+          auth.apikey.value = substituteVariables(auth.apikey.value);
         }
-        // Substitute auth fields
-        if (substitutedRequest.auth) {
-          const auth = substitutedRequest.auth;
-          if (auth.type === 'bearer' && auth.bearerToken) {
-            auth.bearerToken = substituteVariables(auth.bearerToken);
-          } else if (auth.type === 'basic') {
-            if (auth.username) auth.username = substituteVariables(auth.username);
-            if (auth.password) auth.password = substituteVariables(auth.password);
-          } else if (auth.type === 'apikey' && auth.apikey) {
-            auth.apikey.key = substituteVariables(auth.apikey.key);
-            auth.apikey.value = substituteVariables(auth.apikey.value);
-          }
-        }
-        // Substitute header values
-        if (substitutedRequest.headers) {
-          substitutedRequest.headers.forEach(h => {
-            if (h.value) h.value = substituteVariables(h.value);
-          });
-        }
-        
-        // Add auth headers/params
-        if (requestsStore.currentRequest.auth) {
-            const auth = requestsStore.currentRequest.auth;
-            if (auth.type === 'bearer' && auth.bearerToken) {
-                options.headers['Authorization'] = `Bearer ${substituteVariables(auth.bearerToken)}`;
-            } else if (auth.type === 'basic' && auth.username && auth.password) {
-                const username = substituteVariables(auth.username);
-                const password = substituteVariables(auth.password);
-                const credentials = btoa(`${username}:${password}`);
-                options.headers['Authorization'] = `Basic ${credentials}`;
-            } else if (auth.type === 'apikey' && auth.apikey) {
-                if (auth.apikey.in === 'header') {
-                    options.headers[substituteVariables(auth.apikey.key)] = substituteVariables(auth.apikey.value);
-                } else if (auth.apikey.in === 'query') {
-                    const urlObj = new URL(options.url);
-                    urlObj.searchParams.set(substituteVariables(auth.apikey.key), substituteVariables(auth.apikey.value));
-                    options.url = urlObj.toString();
-                }
+    }
+
+    // Substitute header values
+    if (substitutedRequest.headers) {
+      substitutedRequest.headers.forEach((h: any) => {
+        if (h.value) h.value = substituteVariables(h.value);
+      });
+    }
+
+    // Add auth headers/params
+    if (request.auth) {
+        const auth = request.auth;
+        if (auth.type === 'bearer' && auth.bearerToken) {
+            options.headers['Authorization'] = `Bearer ${substituteVariables(auth.bearerToken)}`;
+        } else if (auth.type === 'basic' && auth.username && auth.password) {
+            const username = substituteVariables(auth.username);
+            const password = substituteVariables(auth.password);
+            const credentials = btoa(`${username}:${password}`);
+            options.headers['Authorization'] = `Basic ${credentials}`;
+        } else if (auth.type === 'apikey' && auth.apikey) {
+            if (auth.apikey.in === 'header') {
+                options.headers[substituteVariables(auth.apikey.key)] = substituteVariables(auth.apikey.value);
+            } else if (auth.apikey.in === 'query') {
+                const urlObj = new URL(options.url);
+                urlObj.searchParams.set(substituteVariables(auth.apikey.key), substituteVariables(auth.apikey.value));
+                options.url = urlObj.toString();
             }
         }
+    }
 
-        // Add headers
-        requestsStore.requestHeaders.forEach(h => {
+    // Add headers from request
+    if (request.headers) {
+        request.headers.forEach((h: any) => {
             if (h.key && h.enabled) {
                 options.headers[h.key] = substituteVariables(h.value);
             }
         });
-        
-        // Set Content-Type based on body type
-        if (requestsStore.currentRequest.body.type === 'json' && options.body) {
-            options.headers['Content-Type'] = 'application/json';
-        } else if (requestsStore.currentRequest.body.type === 'x-www-form-urlencoded' && options.body) {
-            options.headers['Content-Type'] = 'application/x-www-form-urlencoded';
-        } else if (requestsStore.currentRequest.body.type === 'form-data' && options.body) {
-            options.headers['Content-Type'] = 'multipart/form-data';
+    }
+
+    // Set Content-Type based on body type
+    if (request.body.type === 'json' && options.body) {
+        options.headers['Content-Type'] = 'application/json';
+    } else if (request.body.type === 'x-www-form-urlencoded' && options.body) {
+        options.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+    } else if (request.body.type === 'form-data' && options.body) {
+        options.headers['Content-Type'] = 'multipart/form-data';
+    }
+
+    // Call execution engine via IPC
+    const result = await window.api.makeRequest(options);
+    console.log(`Dependency request "${request.name}" completed with status ${result.status}`);
+}
+
+// Execute the main request with UI updates
+async function executeMainRequest() {
+    const startTime = Date.now();
+
+    // Prepare request options for execution engine
+    let url = requestsStore.currentRequest.url;
+    let bodyContent = requestsStore.currentRequest.body.type !== 'none' && requestsStore.currentRequest.body.content
+        ? requestsStore.currentRequest.body.content
+        : undefined;
+
+    // Substitute variables
+    url = substituteVariables(url);
+    bodyContent = bodyContent ? substituteVariables(bodyContent) : bodyContent;
+
+    const options = {
+        method: requestsStore.currentRequest.method,
+        url: url,
+        headers: {},
+        body: bodyContent
+    };
+
+    // Create a substituted copy of the request for history
+    const substitutedRequest = JSON.parse(JSON.stringify(requestsStore.currentRequest));
+    substitutedRequest.url = url;
+    if (bodyContent !== undefined) {
+      substitutedRequest.body.content = bodyContent;
+    }
+    // Substitute auth fields
+    if (substitutedRequest.auth) {
+        const auth = substitutedRequest.auth;
+        if (auth.type === 'bearer' && auth.bearerToken) {
+          auth.bearerToken = substituteVariables(auth.bearerToken);
+        } else if (auth.type === 'basic') {
+          if (auth.username) auth.username = substituteVariables(auth.username);
+          if (auth.password) auth.password = substituteVariables(auth.password);
+        } else if (auth.type === 'apikey' && auth.apikey) {
+          auth.apikey.key = substituteVariables(auth.apikey.key);
+          auth.apikey.value = substituteVariables(auth.apikey.value);
         }
-        
-        // Call execution engine via IPC
-        const result = await window.api.makeRequest(options);
-        const time = Date.now() - startTime;
-        
-        responseStore.response = {
-            status: result.status,
-            statusText: result.statusText,
-            data: result.data,
-            time: result.time,
-            headers: result.headers,
-            error: result.error
-        };
+    }
+    // Substitute header values
+    if (substitutedRequest.headers) {
+      substitutedRequest.headers.forEach(h => {
+        if (h.value) h.value = substituteVariables(h.value);
+      });
+    }
 
-        // Associate response with current request
-        requestsStore.currentRequest.response = responseStore.response;
-
-        // Save the response with the current request to localStorage
-        if (!requestsStore.selectedRequestId) {
-          requestsStore.saveRequest();
-        } else {
-          requestsStore.updateCurrentRequest();
-        }
-
-        // Add to history
-        historyStore.addToHistory({
-            id: Date.now(),
-            method: requestsStore.currentRequest.method,
-            url: options.url,
-            status: result.status,
-            time: result.time,
-            timestamp: Date.now(),
-            request: substitutedRequest,
-            response: responseStore.response!
-        });
-        
-        // Execute test script if exists (placeholder for future implementation)
-        if (requestsStore.currentRequest.testScript) {
-            try {
-                console.log('Test script execution:', requestsStore.currentRequest.testScript);
-                // TODO: Implement actual script execution via isolated VM
-                // For now, just show that tests would run here
-                responseStore.testResults = `Test script would execute:\n${requestsStore.currentRequest.testScript}`;
-            } catch (scriptError) {
-                console.error('Test script error:', scriptError);
-                responseStore.testResults = `Test script error: ${scriptError.message}`;
+    // Add auth headers/params
+    if (requestsStore.currentRequest.auth) {
+        const auth = requestsStore.currentRequest.auth;
+        if (auth.type === 'bearer' && auth.bearerToken) {
+            options.headers['Authorization'] = `Bearer ${substituteVariables(auth.bearerToken)}`;
+        } else if (auth.type === 'basic' && auth.username && auth.password) {
+            const username = substituteVariables(auth.username);
+            const password = substituteVariables(auth.password);
+            const credentials = btoa(`${username}:${password}`);
+            options.headers['Authorization'] = `Basic ${credentials}`;
+        } else if (auth.type === 'apikey' && auth.apikey) {
+            if (auth.apikey.in === 'header') {
+                options.headers[substituteVariables(auth.apikey.key)] = substituteVariables(auth.apikey.value);
+            } else if (auth.apikey.in === 'query') {
+                const urlObj = new URL(options.url);
+                urlObj.searchParams.set(substituteVariables(auth.apikey.key), substituteVariables(auth.apikey.value));
+                options.url = urlObj.toString();
             }
-        } else {
-            responseStore.testResults = '';
         }
-        
-        responseStore.activeResponseTab = 'body';
+    }
+
+    // Add headers
+    requestsStore.requestHeaders.forEach(h => {
+        if (h.key && h.enabled) {
+            options.headers[h.key] = substituteVariables(h.value);
+        }
+    });
+
+    // Set Content-Type based on body type
+    if (requestsStore.currentRequest.body.type === 'json' && options.body) {
+        options.headers['Content-Type'] = 'application/json';
+    } else if (requestsStore.currentRequest.body.type === 'x-www-form-urlencoded' && options.body) {
+        options.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+    } else if (requestsStore.currentRequest.body.type === 'form-data' && options.body) {
+        options.headers['Content-Type'] = 'multipart/form-data';
+    }
+
+    // Call execution engine via IPC
+    const result = await window.api.makeRequest(options);
+    const time = Date.now() - startTime;
+
+    responseStore.response = {
+        status: result.status,
+        statusText: result.statusText,
+        data: result.data,
+        time: result.time,
+        headers: result.headers,
+        error: result.error
+    };
+
+    // Associate response with current request
+    requestsStore.currentRequest.response = responseStore.response;
+
+    // Save the response with the current request to localStorage
+    if (!requestsStore.selectedRequestId) {
+      requestsStore.saveRequest();
+    } else {
+      requestsStore.updateCurrentRequest();
+    }
+
+    // Add to history
+    historyStore.addToHistory({
+        id: Date.now(),
+        method: requestsStore.currentRequest.method,
+        url: options.url,
+        status: result.status,
+        time: result.time,
+        timestamp: Date.now(),
+        request: substitutedRequest,
+        response: responseStore.response!
+    });
+
+    // Execute test script if exists (placeholder for future implementation)
+    if (requestsStore.currentRequest.testScript) {
+        try {
+            console.log('Test script execution:', requestsStore.currentRequest.testScript);
+            // TODO: Implement actual script execution via isolated VM
+            // For now, just show that tests would run here
+            responseStore.testResults = `Test script would execute:\n${requestsStore.currentRequest.testScript}`;
+        } catch (scriptError) {
+            console.error('Test script error:', scriptError);
+            responseStore.testResults = `Test script error: ${scriptError.message}`;
+        }
+    } else {
+        responseStore.testResults = '';
+    }
+
+    responseStore.activeResponseTab = 'body';
+}
+
+// Execute all dependencies in the correct order (recursive)
+async function executeDependencies(requestId: string, executed = new Set<string>()) {
+    if (executed.has(requestId)) {
+        return; // Already executed
+    }
+
+    // Find the request
+    const request = collectionRequests.value.find((req: any) => req.id === requestId) ||
+                    (requestsStore.selectedRequestId === requestId ? requestsStore.currentRequest : null);
+
+    if (!request || !request.dependsOn) {
+        return; // No dependency
+    }
+
+    // Execute dependency first (recursive)
+    await executeDependencies(request.dependsOn, executed);
+
+    // Execute this dependency
+    if (!executed.has(requestId)) {
+        executed.add(requestId);
+        console.log('Executing dependency request:', request.name);
+        await executeRequest(request);
+    }
+}
+
+async function sendRequest() {
+    responseStore.isLoading = true;
+
+    try {
+        // Execute all dependencies in the correct order
+        if (requestsStore.currentRequest.dependsOn) {
+            await executeDependencies(requestsStore.currentRequest.dependsOn);
+        }
+
+        // Execute the main request
+        await executeMainRequest();
     } catch (err: any) {
+        const startTime = Date.now();
         responseStore.response = {
             status: 0,
             statusText: 'Error',
@@ -521,7 +716,6 @@ async function sendRequest() {
             error: err.message
         };
         responseStore.testResults = '';
-    } finally {
         responseStore.isLoading = false;
     }
 }
