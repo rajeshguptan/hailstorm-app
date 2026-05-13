@@ -13,3 +13,7 @@ coverage/
 *.tsbuildinfo
 electron-builder.yml
 data/
+e2e/test-results/
+e2e/screenshots/
+e2e/videos/
+.vscode/

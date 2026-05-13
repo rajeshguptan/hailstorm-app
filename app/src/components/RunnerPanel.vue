@@ -1,27 +1,28 @@
 <template>
-  <div class="runner-panel bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white flex-1 flex flex-col overflow-hidden">
-    <div v-if="!selectedConfig" class="flex-1 flex items-center justify-center text-zinc-500 dark:text-gray-400">
+  <div class="runner-panel bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white flex-1 flex flex-col overflow-hidden" data-testid="runner-panel">
+    <div v-if="!selectedConfig" class="flex-1 flex items-center justify-center text-zinc-500 dark:text-zinc-400" data-testid="runner-empty-state">
       <div class="text-center">
         <p class="mb-2">Select a run configuration from the sidebar</p>
         <p class="text-sm">or create a new one</p>
       </div>
     </div>
+    </div>
     <div v-else class="flex-1 flex flex-col overflow-hidden">
       <div class="p-4 border-b border-zinc-200 dark:border-zinc-700">
         <div class="mb-4">
-          <h3 class="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+          <h3 class="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2" data-testid="runner-config-name">
             <span v-if="!editMode">{{ selectedConfig?.name }}</span>
             <span v-if="editMode" class="flex items-center gap-1">
-              <input v-model="editedName" class="bg-transparent border-b border-zinc-400 dark:border-zinc-600 focus:outline-none text-zinc-900 dark:text-white" />
+              <input v-model="editedName" class="bg-transparent border-b border-zinc-400 dark:border-zinc-600 focus:outline-none text-zinc-900 dark:text-white" data-testid="runner-config-name-input" />
             </span>
           </h3>
           <div class="flex gap-2 mt-4">
-            <button class="btn bg-green-500 text-white" :disabled="isRunning || selectedRequests.length === 0" @click="runCollection">Run</button>
-            <button class="btn bg-red-500 text-white" :disabled="!isRunning" @click="stopRun">Stop</button>
-            <button class="btn bg-gray-500 text-white" :disabled="editMode" @click="startEdit">Edit</button>
-            <button class="btn bg-blue-500 text-white" :disabled="!editMode" @click="saveConfig">Save</button>
-            <button class="btn bg-purple-500 text-white" @click="duplicateConfig">Duplicate</button>
-            <button class="btn bg-gray-500 text-white" :disabled="!editMode" @click="cancelEdit">Cancel</button>
+            <button class="btn bg-green-500 text-white" :disabled="isRunning || selectedRequests.length === 0" @click="runCollection" data-testid="runner-run-btn">Run</button>
+            <button class="btn bg-red-500 text-white" :disabled="!isRunning" @click="stopRun" data-testid="runner-stop-btn">Stop</button>
+            <button class="btn bg-gray-500 text-white" :disabled="editMode" @click="startEdit" data-testid="runner-edit-btn">Edit</button>
+            <button class="btn bg-blue-500 text-white" :disabled="!editMode" @click="saveConfig" data-testid="runner-save-btn">Save</button>
+            <button class="btn bg-purple-500 text-white" @click="duplicateConfig" data-testid="runner-duplicate-btn">Duplicate</button>
+            <button class="btn bg-gray-500 text-white" :disabled="!editMode" @click="cancelEdit" data-testid="runner-cancel-btn">Cancel</button>
           </div>
         </div>
         

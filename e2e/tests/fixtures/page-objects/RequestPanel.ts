@@ -95,6 +95,33 @@ export class RequestPanel {
     return await this.page.locator('.response-panel .response-time').textContent();
   }
 
+  async getMethod(): Promise<string> {
+    return await this.methodSelect.inputValue();
+  }
+
+  async getUrl(): Promise<string> {
+    return await this.urlInput.inputValue();
+  }
+
+  async getHeaders(): Promise<Array<{key: string, value: string, enabled: boolean}>> {
+    const headers: Array<{key: string, value: string, enabled: boolean}> = [];
+    const headerRows = this.page.locator('.request-panel .key-value-editor');
+
+    const count = await headerRows.count();
+    for (let i = 0; i < count; i++) {
+      const row = headerRows.nth(i);
+      const key = await row.locator('input[placeholder="Key"]').inputValue();
+      const value = await row.locator('input[placeholder="Value"]').inputValue();
+      const enabled = await row.locator('input[type="checkbox"]').isChecked();
+
+      if (key && value) {
+        headers.push({ key, value, enabled });
+      }
+    }
+
+    return headers;
+  }
+
   async waitForResponse(): Promise<void> {
     await this.responsePanel.waitFor({ state: 'visible' });
   }

@@ -1,7 +1,7 @@
 import { test, expect } from '../fixtures/base.fixture';
 import { AppLayout } from '../fixtures/page-objects/AppLayout';
 
-test.describe('Secrets Icon Tests', () => {
+test.describe('Theme Tests', () => {
   let appLayout: AppLayout;
   let appLoaded: any;
 

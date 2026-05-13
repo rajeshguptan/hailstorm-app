@@ -2,64 +2,56 @@ import { Page, Locator } from '@playwright/test';
 
 export class SettingsPanel {
   readonly page: Page;
-  readonly settingsContent: Locator;
+  readonly panel: Locator;
   readonly themeSection: Locator;
   readonly lightThemeRadio: Locator;
   readonly darkThemeRadio: Locator;
   readonly systemThemeRadio: Locator;
-  readonly themeOptions: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.settingsContent = page.locator('.settings-content');
-    this.themeSection = page.locator('h3:has-text("Theme")');
-    this.lightThemeRadio = page.locator('input[value="light"]').first();
-    this.darkThemeRadio = page.locator('input[value="dark"]').first();
-    this.systemThemeRadio = page.locator('input[value="system"]').first();
-    this.themeOptions = page.locator('.grid.grid-cols-3.gap-4');
+    this.panel = page.locator('.settings-panel');
+    this.themeSection = page.locator('.setting-group').filter({ hasText: 'Appearance' });
+    this.lightThemeRadio = page.locator('input[type="radio"][value="light"]');
+    this.darkThemeRadio = page.locator('input[type="radio"][value="dark"]');
+    this.systemThemeRadio = page.locator('input[type="radio"][value="system"]');
   }
 
   async waitForLoad(): Promise<void> {
-    await this.settingsContent.waitFor({ state: 'visible', timeout: 5000 });
+    await this.panel.waitFor({ state: 'visible' });
   }
 
-  async selectLightTheme(): Promise<void> {
-    await this.lightThemeRadio.check();
+  async setTheme(theme: 'light' | 'dark' | 'system'): Promise<void> {
+    switch (theme) {
+      case 'light':
+        await this.lightThemeRadio.check();
+        break;
+      case 'dark':
+        await this.darkThemeRadio.check();
+        break;
+      case 'system':
+        await this.systemThemeRadio.check();
+        break;
+    }
   }
 
-  async selectDarkTheme(): Promise<void> {
-    await this.darkThemeRadio.check();
+  async getCurrentTheme(): Promise<string> {
+    if (await this.lightThemeRadio.isChecked()) return 'light';
+    if (await this.darkThemeRadio.isChecked()) return 'dark';
+    if (await this.systemThemeRadio.isChecked()) return 'system';
+    return 'unknown';
   }
 
-  async selectSystemTheme(): Promise<void> {
-    await this.systemThemeRadio.check();
-  }
-
-  async getCurrentTheme(): Promise<string | null> {
-    return await this.page.evaluate(() => {
-      return localStorage.getItem('hailstorm_theme');
-    });
-  }
-
-  async isDarkThemeApplied(): Promise<boolean> {
-    return await this.page.evaluate(() => {
-      return document.documentElement.classList.contains('dark');
-    });
-  }
-
-  async setStoredTheme(theme: 'light' | 'dark' | 'system'): Promise<void> {
-    await this.page.evaluate((t) => {
-      localStorage.setItem('hailstorm_theme', t);
-    }, theme);
-  }
-
-  async applyThemeClass(dark: boolean): Promise<void> {
-    await this.page.evaluate((isDark) => {
-      if (isDark) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-    }, dark);
+  async isThemeSelected(theme: 'light' | 'dark' | 'system'): Promise<boolean> {
+    switch (theme) {
+      case 'light':
+        return await this.lightThemeRadio.isChecked();
+      case 'dark':
+        return await this.darkThemeRadio.isChecked();
+      case 'system':
+        return await this.systemThemeRadio.isChecked();
+      default:
+        return false;
+    }
   }
 }

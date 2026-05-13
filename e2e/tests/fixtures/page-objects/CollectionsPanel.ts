@@ -86,4 +86,33 @@ export class CollectionsPanel {
   async isEmpty(): Promise<boolean> {
     return await this.emptyMessage.isVisible();
   }
+
+  async addFolderToCollection(collectionName: string, folderName?: string): Promise<void> {
+    await this.rightClickCollection(collectionName);
+    await this.page.locator('.context-menu').locator('text=Add Folder').click();
+    if (folderName) {
+      // Rename the newly created folder
+      await this.renameCollection('New Folder', folderName);
+    }
+  }
+
+  async addRequestToCollection(collectionName: string, requestName?: string): Promise<void> {
+    await this.rightClickCollection(collectionName);
+    await this.page.locator('.context-menu').locator('text=Add Request').click();
+    if (requestName) {
+      // The request would be named in the creation flow
+      // For testing, we assume it gets the default name or we can rename it
+    }
+  }
+
+  async addRequestToFolder(collectionName: string, folderName: string, requestName?: string): Promise<void> {
+    await this.expandCollection(collectionName);
+    await this.page.locator(`.request-item:has-text("${folderName}")`).click({ button: 'right' });
+    await this.page.locator('.context-menu').locator('text=Add Request').click();
+  }
+
+  async toggleRequest(requestId: string): Promise<void> {
+    // Helper method for runner panel integration
+    await this.page.locator(`[data-request-id="${requestId}"]`).click();
+  }
 }
