@@ -140,7 +140,7 @@ test.describe('Hailstorm Electron App - Collection Management', () => {
   test.describe('Manual Testing Checklist', () => {
     test('manual: verify collection panel tabs work correctly', async () => {
       // Manual test steps:
-      // 1. Start the app: cd frontend && npm run start
+      // 1. Start the app: cd app && npm run start
       // 2. Click on Collections in the sidebar
       // 3. Click on a collection item
       // 4. Verify CollectionPanel appears with Properties, Description, Scripts, Auth tabs
@@ -156,7 +156,7 @@ test.describe('Hailstorm Electron App - Collection Management', () => {
 
     test('manual: verify collection vs request selection behavior', async () => {
       // Manual test steps:
-      // 1. Start the app: cd frontend && npm run start
+      // 1. Start the app: cd app && npm run start
       // 2. Click on a collection - verify CollectionPanel shows
       // 3. Click on a request - verify CollectionPanel hides, RequestPanel shows
       // 4. Click on collection again - verify RequestPanel hides, CollectionPanel shows
@@ -167,7 +167,7 @@ test.describe('Hailstorm Electron App - Collection Management', () => {
 
     test('manual: verify file-based storage functionality', async () => {
       // Manual test steps:
-      // 1. Start the app: cd frontend && npm run start
+      // 1. Start the app: cd app && npm run start
       // 2. Create a collection with workspace location set
       // 3. Add requests and folders
       // 4. Edit collection properties, description, scripts, auth
@@ -181,7 +181,7 @@ test.describe('Hailstorm Electron App - Collection Management', () => {
 
     test('manual: verify history panel enhancements', async () => {
       // Manual test steps:
-      // 1. Start the app: cd frontend && npm run start
+      // 1. Start the app: cd app && npm run start
       // 2. Execute several requests to build up history
       // 3. Click on History in the sidebar
       // 4. Verify each history item shows timestamp (e.g., "2m ago", "1h ago")

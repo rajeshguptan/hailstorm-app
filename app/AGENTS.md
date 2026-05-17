@@ -1,17 +1,17 @@
 # Kilo Agents for Hailstorm Frontend
 
 ## Overview
-This document provides guidance on using Kilo agents with the Hailstorm frontend application.
+This document provides guidance on using Kilo agents with the Hailstorm app application.
 
 ## Frontend Structure
-- `/frontend/src/components` - Vue components
-- `/frontend/src/views` - Page-level components
-- `/frontend/src/stores` - Pinia state management
-- `/frontend/src/router` - Vue Router configuration
-- `/frontend/src/core` - Execution engine and business logic
-- `/frontend/src/types` - TypeScript interfaces
-- `/frontend/src/preload.ts` - IPC bridge
-- `/frontend/src/main.ts` - Electron main process
+- `/app/src/components` - Vue components
+- `/app/src/views` - Page-level components
+- `/app/src/stores` - Pinia state management
+- `/app/src/router` - Vue Router configuration
+- `/app/src/core` - Execution engine and business logic
+- `/app/src/types` - TypeScript interfaces
+- `/app/src/preload.ts` - IPC bridge
+- `/app/src/main.ts` - Electron main process
 
 ## Available Agents
 
@@ -29,7 +29,7 @@ Best for: Finding where specific functionality is implemented, understanding cod
 ```
 Task: Find all Vue components related to request building
 Agent: explore
-Prompt: "Find all Vue components in frontend/src/components related to request building"
+Prompt: "Find all Vue components in app/src/components related to request building"
 ```
 
 ### Making Changes
@@ -49,26 +49,26 @@ Prompt: "Investigate and fix environment variable substitution not working in re
 ## Project-Specific Guidelines
 
 ### Component Development
-- Components are in `frontend/src/components`
+- Components are in `app/src/components`
 - Follow Vue 3 Composition API with `<script setup>`
 - Use Tailwind CSS for styling
 - Components should be reusable and focused
 
 ### State Management
-- State management uses Pinia in `frontend/src/stores`
+- State management uses Pinia in `app/src/stores`
 - Follow the existing store patterns
 - Actions should be async when dealing with IPC
 - Getters for computed values
 
 ### Routing
-- Routing is configured in `frontend/src/router/index.ts`
+- Routing is configured in `app/src/router/index.ts`
 - Use hash-based routing for Electron compatibility
 - Lazy load views when appropriate
 
 ### Core Logic
-- Business logic is separated in `frontend/src/core/executionEngine.ts`
+- Business logic is separated in `app/src/core/executionEngine.ts`
 - IPC communication handled through preload script
-- Main process in `frontend/src/main.ts`
+- Main process in `app/src/main.ts`
 - Keep UI logic separate from core execution logic
 
 ### Styling

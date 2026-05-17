@@ -9,9 +9,9 @@ This directory contains end-to-end tests for the Hailstorm Electron application 
 npm install
 ```
 
-2. Ensure the frontend is built:
+2. Ensure the app is built:
 ```bash
-cd ../frontend
+cd ../app
 npm run build
 npm run build:electron
 ```
