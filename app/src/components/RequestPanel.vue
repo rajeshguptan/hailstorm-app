@@ -671,7 +671,9 @@ async function executeMainRequest() {
 
 // Execute all dependencies in the correct order (recursive)
 async function executeDependencies(requestId: string, executed = new Set<string>()) {
+    console.log(`[DEP] executeDependencies called with requestId: ${requestId}, executed set:`, Array.from(executed));
     if (executed.has(requestId)) {
+        console.log(`[DEP] Already executed, returning`);
         return; // Already executed
     }
 
@@ -679,45 +681,59 @@ async function executeDependencies(requestId: string, executed = new Set<string>
     const request = collectionRequests.value.find((req: any) => req.id === requestId) ||
                     (requestsStore.selectedRequestId === requestId ? requestsStore.currentRequest : null);
 
-    if (!request || !request.dependsOn) {
-        return; // No dependency
+    console.log(`[DEP] Found request:`, request?.name, request?.dependsOn);
+
+    if (!request) {
+        console.log(`[DEP] Request not found`);
+        return;
     }
 
     // Execute dependency first (recursive)
-    await executeDependencies(request.dependsOn, executed);
+    if (request.dependsOn) {
+        console.log(`[DEP] Request has dependency, recursing`);
+        await executeDependencies(request.dependsOn, executed);
+    }
 
-    // Execute this dependency
+    // Execute this request
     if (!executed.has(requestId)) {
         executed.add(requestId);
-        console.log('Executing dependency request:', request.name);
+        console.log(`[DEP] Executing request:`, request.name);
         await executeRequest(request);
     }
 }
 
 async function sendRequest() {
-    responseStore.isLoading = true;
+  console.log('[SEND] sendRequest called');
+  responseStore.isLoading = true;
 
-    try {
-        // Execute all dependencies in the correct order
-        if (requestsStore.currentRequest.dependsOn) {
-            await executeDependencies(requestsStore.currentRequest.dependsOn);
-        }
-
-        // Execute the main request
-        await executeMainRequest();
-    } catch (err: any) {
-        const startTime = Date.now();
-        responseStore.response = {
-            status: 0,
-            statusText: 'Error',
-            data: err.message || 'Failed to make request',
-            time: Date.now() - startTime,
-            headers: {},
-            error: err.message
-        };
-        responseStore.testResults = '';
-        responseStore.isLoading = false;
+  try {
+    // Execute all dependencies in the correct order
+    console.log('[SEND] Current request dependsOn:', requestsStore.currentRequest.dependsOn);
+    if (requestsStore.currentRequest.dependsOn) {
+      console.log('[SEND] Executing dependencies...');
+      await executeDependencies(requestsStore.currentRequest.dependsOn);
+      console.log('[SEND] Dependencies completed');
     }
+
+    // Execute the main request
+    console.log('[SEND] Executing main request');
+    await executeMainRequest();
+    console.log('[SEND] Main request completed');
+  } catch (err: any) {
+    const startTime = Date.now();
+    console.error('[SEND] Error:', err);
+    responseStore.response = {
+      status: 0,
+      statusText: 'Error',
+      data: err.message || 'Failed to make request',
+      time: Date.now() - startTime,
+      headers: {},
+      error: err.message
+    };
+    responseStore.testResults = '';
+  } finally {
+    responseStore.isLoading = false;
+  }
 }
 
 function addVariable() {

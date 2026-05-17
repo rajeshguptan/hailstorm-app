@@ -54,9 +54,7 @@
                   <span v-else class="text-sm text-zinc-700 dark:text-zinc-300">{{ subItem.name }}</span>
                 </div>
               </div>
-              <div v-else class="text-center text-zinc-400 dark:text-zinc-500 py-1 text-sm">
-                Drop into {{ item.name }}
-              </div>
+              <div v-else class="hidden"></div>
             </div>
             <div v-if="hasMethod(item) && expandedFlavors.includes(item.id) && (item as Request).flavors?.length" class="ml-6">
               <div v-for="flavor in (item as Request).flavors" :key="flavor.id" class="request-item p-1 rounded cursor-pointer mb-1" :class="flavor.id === requestsStore.selectedRequestId ? 'bg-blue-200 dark:bg-blue-800' : 'bg-zinc-100 dark:bg-zinc-800'" :style="{ paddingLeft: '8px' }" @click.stop="requestsStore.openRequest(flavor)" @contextmenu.prevent="uiStore.showContextMenu($event, 'flavor', flavor.id)">

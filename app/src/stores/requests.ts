@@ -161,17 +161,19 @@ export const useRequestsStore = defineStore('requests', {
           this.switchTab(existingTab.id);
         } else {
           console.log('Creating new tab for request:', requestItem.name, 'URL:', requestItem.url);
-          const requestCopy = {
-            id: requestItem.id || this.generateId('req'),
-            name: requestItem.name || 'Untitled',
-            method: requestItem.method || 'GET',
-            url: requestItem.url || '',
-            headers: requestItem.headers || [],
-            body: requestItem.body || { type: 'none', content: '' },
-            preRequestScript: requestItem.preRequestScript || '',
-            testScript: requestItem.testScript || '',
-            flavors: requestItem.flavors || []
-          };
+            const requestCopy = {
+              id: requestItem.id || this.generateId('req'),
+              name: requestItem.name || 'Untitled',
+              method: requestItem.method || 'GET',
+              url: requestItem.url || '',
+              headers: requestItem.headers || [],
+              body: requestItem.body || { type: 'none', content: '' },
+              preRequestScript: requestItem.preRequestScript || '',
+              testScript: requestItem.testScript || '',
+              flavors: requestItem.flavors || [],
+              variables: requestItem.variables || [],
+              dependsOn: requestItem.dependsOn || undefined
+            };
           const tab: Tab = { id: this.generateId('tab'), request: requestCopy };
           console.log('Tab created, request in tab:', tab.request.name, tab.request.url);
           this.tabs.push(tab);
@@ -290,6 +292,7 @@ export const useRequestsStore = defineStore('requests', {
             testScript: request.testScript || '',
             flavors: request.flavors || [],
             variables: request.variables || [],
+            dependsOn: request.dependsOn || undefined,
             response: request.response
           };
           console.log('[REQUESTS] Set currentRequest:', {

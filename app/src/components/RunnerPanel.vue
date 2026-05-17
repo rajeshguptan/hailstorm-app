@@ -6,7 +6,6 @@
         <p class="text-sm">or create a new one</p>
       </div>
     </div>
-    </div>
     <div v-else class="flex-1 flex flex-col overflow-hidden">
       <div class="p-4 border-b border-zinc-200 dark:border-zinc-700">
         <div class="mb-4">
@@ -25,13 +24,13 @@
             <button class="btn bg-gray-500 text-white" :disabled="!editMode" @click="cancelEdit" data-testid="runner-cancel-btn">Cancel</button>
           </div>
         </div>
-        
+
         <div class="flex gap-4 mb-4">
            <div class="flex-1">
              <label class="block text-sm text-zinc-600 dark:text-gray-400 mb-1">Collection</label>
-              <select v-model="currentCollectionId" :disabled="!editMode" class="form-select bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
-                <option v-for="coll in collections || []" :key="coll.id" :value="coll.id">{{ coll.name }}</option>
-              </select>
+             <select v-model="currentCollectionId" :disabled="!editMode" class="form-select bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
+               <option v-for="coll in collections || []" :key="coll.id" :value="coll.id">{{ coll.name }}</option>
+             </select>
            </div>
          </div>
 
@@ -46,7 +45,7 @@
           </div>
         </div>
       </div>
-      
+
       <div class="flex-1 overflow-auto p-4">
         <div class="flex-1 flex flex-col mb-4">
           <h4 class="text-sm font-bold mb-2">Select Requests to Run:</h4>
@@ -105,7 +104,7 @@
             </table>
           </div>
         </div>
-        
+
         <div v-if="results.length > 0" class="mt-4">
           <h4 class="text-sm font-bold mb-2">Results:</h4>
           <div class="bg-zinc-800 rounded p-2 max-h-64 overflow-auto">
@@ -135,7 +134,6 @@ const loadTestStore = useLoadTestStore();
 // Initialize load test store and selectedRequests
 onMounted(() => {
   loadTestStore.initialize();
-  // Initialize selectedRequests based on current config
   if (selectedConfig.value) {
     selectedRequests.value = [...selectedConfig.value.selectedRequests];
   }
@@ -157,6 +155,7 @@ interface Request {
   preRequestScript?: string;
   testScript?: string;
   flavors?: Request[];
+  dependsOn?: string;
 }
 
 interface Folder {
@@ -186,8 +185,6 @@ interface Environment {
   active: boolean;
 }
 
-
-
 const props = defineProps<{
   collections: Collection[];
   environments: Environment[];
@@ -209,7 +206,6 @@ const editedName = ref('');
 const selectedRequests = ref<string[]>([]);
 const requestConfigs = ref<Record<string, RequestConfig>>({});
 
-// Track request sequence for load testing
 let requestSequence = 0;
 
 const selectedConfig = computed(() => {
@@ -295,6 +291,156 @@ function validateRPS(requestId: string) {
   }
 }
 
+// Execute all dependencies for a request (recursive)
+async function executeRequestDependencies(req: Request, executed = new Set<string>()) {
+  if (!req.dependsOn || executed.has(req.id)) return;
+
+  function findRequestById(collections: Collection[], id: string): Request | null {
+    for (const collection of collections) {
+      const findInItems = (items: (Request | Folder)[]): Request | null => {
+        for (const item of items) {
+          if ('method' in item && 'url' in item && item.id === id) {
+            return item;
+          }
+          if ('items' in item) {
+            const found = findInItems(item.items);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+      const found = findInItems(collection.items);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  const dependencyReq = findRequestById(props.collections, req.dependsOn);
+  if (dependencyReq) {
+    await executeRequestDependencies(dependencyReq, executed);
+    if (!executed.has(dependencyReq.id)) {
+      executed.add(dependencyReq.id);
+      console.log(`Executing dependency "${dependencyReq.name}" for "${req.name}"`);
+      await runSingleRequest(dependencyReq);
+    }
+  }
+}
+
+async function runSingleRequest(req: Request): Promise<RunResult> {
+  await executeRequestDependencies(req, new Set([req.id]));
+
+  const url = substituteVariables(req.url);
+  const headers: Record<string, string> = {};
+  (req.headers || []).forEach(h => {
+    headers[substituteVariables(h.key)] = substituteVariables(h.value);
+  });
+
+  let body = req.body.type !== 'none' ? substituteVariables(req.body.content) : undefined;
+  if (req.body.type === 'json' && body) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  const startTime = Date.now();
+  const requestTimestamp = startTime;
+
+  try {
+    const result = await window.api.makeRequest({
+      method: req.method,
+      url: url.startsWith('http') ? url : 'https://' + url,
+      headers,
+      body,
+      rps: requestConfigs.value[req.id]?.rps || 1,
+      requestId: req.id
+    });
+
+    const runResult: RunResult = {
+      name: req.name,
+      method: req.method,
+      status: result.status,
+      time: result.time
+    };
+    results.value.push(runResult);
+
+    const requestDetail: LoadTestRequestDetail = {
+      requestIndexId: '',
+      request: {
+        method: req.method,
+        url: url,
+        headers: headers,
+        body: body
+      },
+      response: {
+        status: result.status,
+        statusText: result.statusText || '',
+        headers: result.headers || {},
+        body: result.data,
+        size: result.data ? result.data.length : 0
+      },
+      timestamp: requestTimestamp,
+      latency: result.time
+    };
+
+    await loadTestStore.recordRequest({
+      requestId: req.id,
+      requestName: req.name,
+      method: req.method,
+      url: url,
+      status: result.status,
+      latency: result.time,
+      responseSize: result.data ? result.data.length : 0,
+      timestamp: requestTimestamp,
+      requestDetail: requestDetail,
+      shouldCaptureFullDetail: result.status >= 500 || Math.random() < 0.1
+    });
+
+    return runResult;
+  } catch (error) {
+    const latency = Date.now() - startTime;
+    const runResult: RunResult = {
+      name: req.name,
+      method: req.method,
+      status: 0,
+      time: latency
+    };
+    results.value.push(runResult);
+
+    const requestDetail: LoadTestRequestDetail = {
+      requestIndexId: '',
+      request: {
+        method: req.method,
+        url: url,
+        headers: headers,
+        body: body
+      },
+      response: {
+        status: 0,
+        statusText: 'Network Error',
+        headers: {},
+        body: undefined,
+        size: 0
+      },
+      timestamp: requestTimestamp,
+      latency: latency,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+
+    await loadTestStore.recordRequest({
+      requestId: req.id,
+      requestName: req.name,
+      method: req.method,
+      url: url,
+      status: 0,
+      latency: latency,
+      responseSize: 0,
+      timestamp: requestTimestamp,
+      requestDetail: requestDetail,
+      shouldCaptureFullDetail: true
+    });
+
+    return runResult;
+  }
+}
+
 // Create an asynchronous scheduler for a request type
 function createRequestScheduler(req: Request, rps: number, testStartTime: number, totalDuration: number): Promise<void> {
   return new Promise((resolve) => {
@@ -308,39 +454,34 @@ function createRequestScheduler(req: Request, rps: number, testStartTime: number
         return;
       }
 
-      // Check if we've exceeded the test duration
       const now = Date.now();
       if (totalDuration > 0 && (now - testStartTime) >= totalDuration) {
         resolve();
         return;
       }
 
-      // Check if we've reached the max requests for non-repeated runs
       if (totalDuration === 0 && requestCount >= 1) {
         resolve();
         return;
       }
 
-      // If we're behind schedule, execute immediately
       if (now >= nextExecutionTime) {
         runSingleRequest(req).catch(error => {
           console.error(`[SCHEDULER] Error running request ${req.name}:`, error);
         });
 
         requestCount++;
-        nextExecutionTime += 1000 / rps; // Schedule next based on RPS
+        nextExecutionTime += 1000 / rps;
       }
 
-      // Schedule the next check
       if (requestCount < maxRequests || totalDuration > 0) {
         const delay = Math.max(0, nextExecutionTime - Date.now());
-        setTimeout(scheduleNext, Math.min(delay, 100)); // Check at least every 100ms
+        setTimeout(scheduleNext, Math.min(delay, 100));
       } else {
         resolve();
       }
     };
 
-    // Start scheduling
     scheduleNext();
   });
 }
@@ -390,7 +531,6 @@ async function runCollection() {
   results.value = [];
   requestSequence = 0;
 
-  // Start load test run
   const runConfig = {
     name: selectedConfig.value.name,
     collectionId: selectedConfig.value.collectionId,
@@ -407,177 +547,16 @@ async function runCollection() {
   try {
     const startTime = Date.now();
 
-    // Create asynchronous request schedulers for each request type
     const schedulers = requests.map(req => {
       const rps = requestConfigs.value[req.id]?.rps || 1;
       return createRequestScheduler(req, rps, startTime, totalDuration * 1000);
     });
 
-    // Wait for all schedulers to complete
     await Promise.all(schedulers);
 
   } finally {
-    // End the load test run
     await loadTestStore.endRun();
     isRunning.value = false;
-  }
-}
-
-// Execute all dependencies for a request (recursive)
-async function executeRequestDependencies(req: Request, executed = new Set<string>()) {
-  if (!req.dependsOn || executed.has(req.id)) return;
-
-  // Find the dependency request in collections
-  function findRequestById(collections: Collection[], id: string): Request | null {
-    for (const collection of collections) {
-      const findInItems = (items: (Request | Folder)[]): Request | null => {
-        for (const item of items) {
-          if ('method' in item && 'url' in item && item.id === id) {
-            return item;
-          }
-          if ('items' in item) {
-            const found = findInItems(item.items);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-      const found = findInItems(collection.items);
-      if (found) return found;
-    }
-    return null;
-  }
-
-  const dependencyReq = findRequestById(props.collections, req.dependsOn);
-  if (dependencyReq) {
-    // Execute dependency's dependencies first (recursive)
-    await executeRequestDependencies(dependencyReq, executed);
-
-    // Execute this dependency if not already executed
-    if (!executed.has(dependencyReq.id)) {
-      executed.add(dependencyReq.id);
-      console.log(`Executing dependency "${dependencyReq.name}" for "${req.name}"`);
-      await runSingleRequest(dependencyReq);
-    }
-  }
-}
-
-async function runSingleRequest(req: Request): Promise<RunResult> {
-  // Execute dependencies first
-  await executeRequestDependencies(req, new Set([req.id]));
-
-  const url = substituteVariables(req.url);
-  const headers: Record<string, string> = {};
-  (req.headers || []).forEach(h => {
-    headers[substituteVariables(h.key)] = substituteVariables(h.value);
-  });
-
-  let body = req.body.type !== 'none' ? substituteVariables(req.body.content) : undefined;
-  if (req.body.type === 'json' && body) {
-    headers['Content-Type'] = 'application/json';
-  }
-
-  const startTime = Date.now();
-  const requestTimestamp = startTime;
-
-  try {
-    const result = await window.api.makeRequest({
-      method: req.method,
-      url: url.startsWith('http') ? url : 'https://' + url,
-      headers,
-      body,
-      rps: requestConfigs.value[req.id]?.rps || 1,
-      requestId: req.id
-    });
-
-    const runResult: RunResult = {
-      name: req.name,
-      method: req.method,
-      status: result.status,
-      time: result.time
-    };
-    results.value.push(runResult);
-
-    // Record request in load testing store
-    const requestDetail: LoadTestRequestDetail = {
-      requestIndexId: '', // Will be set by the store
-      request: {
-        method: req.method,
-        url: url,
-        headers: headers,
-        body: body
-      },
-      response: {
-        status: result.status,
-        statusText: result.statusText || '',
-        headers: result.headers || {},
-        body: result.data,
-        size: result.data ? result.data.length : 0
-      },
-      timestamp: requestTimestamp,
-      latency: result.time
-    };
-
-    await loadTestStore.recordRequest({
-      requestId: req.id,
-      requestName: req.name,
-      method: req.method,
-      url: url,
-      status: result.status,
-      latency: result.time,
-      responseSize: result.data ? result.data.length : 0,
-      timestamp: requestTimestamp,
-      requestDetail: requestDetail,
-      // Capture full details for errors, sample for successful requests
-      shouldCaptureFullDetail: result.status >= 500 || Math.random() < 0.1
-    });
-
-    return runResult;
-  } catch (error) {
-    const latency = Date.now() - startTime;
-    const runResult: RunResult = {
-      name: req.name,
-      method: req.method,
-      status: 0,
-      time: latency
-    };
-    results.value.push(runResult);
-
-    // Record failed request
-    const requestDetail: LoadTestRequestDetail = {
-      requestIndexId: '',
-      request: {
-        method: req.method,
-        url: url,
-        headers: headers,
-        body: body
-      },
-      response: {
-        status: 0,
-        statusText: 'Network Error',
-        headers: {},
-        body: undefined,
-        size: 0
-      },
-      timestamp: requestTimestamp,
-      latency: latency,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    };
-
-    await loadTestStore.recordRequest({
-      requestId: req.id,
-      requestName: req.name,
-      method: req.method,
-      url: url,
-      status: 0,
-      latency: latency,
-      responseSize: 0,
-      timestamp: requestTimestamp,
-      requestDetail: requestDetail,
-      shouldCaptureFullDetail: true // Always capture full details for failures
-    });
-
-    return runResult;
   }
 }
 
@@ -633,12 +612,11 @@ function duplicateConfig() {
 function initializeRequestConfigs() {
   const configs: Record<string, RequestConfig> = {};
   collectionRequests.value.forEach(req => {
-    // Load from saved config if available, otherwise use defaults
     const savedConfig = selectedConfig.value?.requestConfigs?.[req.id];
     configs[req.id] = {
       id: req.id,
-      rps: savedConfig?.rps || 1, // Default RPS
-      datafile: savedConfig?.datafile || '' // Default empty datafile
+      rps: savedConfig?.rps || 1,
+      datafile: savedConfig?.datafile || ''
     };
   });
   requestConfigs.value = configs;
@@ -661,7 +639,6 @@ watch(() => selectedConfig.value, (newConfig) => {
     selectedRequests.value = [];
     lastEmitted.value = null;
   }
-  // Reset editing when config changes
   editMode.value = false;
   editingConfig.value = null;
 }, { immediate: true });
@@ -680,43 +657,39 @@ watch(collectionRequests, () => {
 </script>
 
 <style scoped>
-/* Standard checkbox styling for form inputs */
 .form-checkbox {
   @apply w-4 h-4 rounded border-2 transition-colors duration-200 cursor-pointer;
-  background-color: rgb(255 255 255); /* Pure white background for light mode */
-  border-color: rgb(161 161 170); /* zinc-400 */
-  accent-color: rgb(37 99 235); /* blue-600 for checked state */
+  background-color: rgb(255 255 255);
+  border-color: rgb(161 161 170);
+  accent-color: rgb(37 99 235);
 }
 
 .dark .form-checkbox {
-  background-color: rgb(39 39 42); /* zinc-800 for dark mode */
-  border-color: rgb(82 82 91); /* zinc-600 */
-  accent-color: rgb(37 99 235); /* blue-600 for checked state */
+  background-color: rgb(39 39 42);
+  border-color: rgb(82 82 91);
+  accent-color: rgb(37 99 235);
 }
 
-/* Custom checkbox styling for better visibility in both light and dark modes */
 .checkbox-custom {
   @apply w-4 h-4 rounded border-2 transition-colors duration-200 cursor-pointer;
-  background-color: rgb(255 255 255); /* Pure white background for light mode */
-  border-color: rgb(161 161 170); /* zinc-400 */
+  background-color: rgb(255 255 255);
+  border-color: rgb(161 161 170);
 }
 
 .dark .checkbox-custom {
-  background-color: rgb(39 39 42); /* zinc-800 for dark mode */
-  border-color: rgb(82 82 91); /* zinc-600 */
+  background-color: rgb(39 39 42);
+  border-color: rgb(82 82 91);
 }
 
-/* Checked state styling */
 .checkbox-custom.checked {
-  background-color: rgb(37 99 235); /* blue-600 */
-  border-color: rgb(37 99 235); /* blue-600 */
+  background-color: rgb(37 99 235);
+  border-color: rgb(37 99 235);
   background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='m13.854 3.646-7.5 7.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 0 1 .708-.708L6 10.293l7.146-7.147a.5.5 0 0 1 .708.708z'/%3e%3c/svg%3e");
   background-size: 0.75rem;
   background-position: center;
   background-repeat: no-repeat;
 }
 
-/* Better contrast for checkbox labels */
 .checkbox-label {
   @apply text-zinc-900 dark:text-white;
 }
