@@ -7,6 +7,7 @@ import { exec } from 'child_process';
 import fs from 'fs';
 import os from 'node:os';
 import * as zlib from 'zlib';
+import type { SendRequestContext } from '../types';
 
 // Load Testing Service - Simple JSON file-based storage
 class LoadTestingService {
@@ -470,6 +471,10 @@ export function initializeExecutionEngine() {
     return makeHttpRequest(options);
   });
 
+  ipcMain.handle('send-request', async (_event, context) => {
+    return sendRequest(context);
+  });
+
   ipcMain.handle('run-shell', async (_event, command) => {
     console.log('[EXECUTION_ENGINE] runShell received', { command });
     return new Promise((resolve) => {
@@ -848,6 +853,432 @@ export function initializeExecutionEngine() {
       throw error;
     }
   });
+}
+
+// ─── Types for store data received via IPC ───────────────────────────────────
+
+interface RequestHeaderData {
+  key: string;
+  value: string;
+  enabled: boolean;
+}
+
+interface AuthData {
+  type: string;
+  bearerToken?: string;
+  username?: string;
+  password?: string;
+  apikey?: { key: string; value: string; in: string };
+}
+
+interface RequestBodyData {
+  type: string;
+  content: string;
+}
+
+interface RequestVariableData {
+  key: string;
+  value: string;
+  enabled: boolean;
+  dataset?: string;
+}
+
+// Snapshot of the current request as plain data (no reactive Pinia store)
+interface RequestSnapshot {
+  id: string;
+  name: string;
+  method: string;
+  url: string;
+  headers: RequestHeaderData[];
+  body: RequestBodyData;
+  auth?: AuthData;
+  preRequestScript?: string;
+  testScript?: string;
+  variables?: RequestVariableData[];
+  dependsOn?: string; // dependency request id
+}
+
+// Snapshot of the requests-store data segment
+interface RequestsStoreData {
+  currentRequest: RequestSnapshot;
+  requestHeaders: RequestHeaderData[];
+}
+
+// Snapshots of single-value stores used for variable resolution
+interface ResponseStoreData {
+  response: unknown;
+  testResults: string;
+  activeResponseTab: string;
+  isLoading: boolean;
+}
+
+interface EnvironmentsStoreData {
+  environments: { id: string; name: string; variables: VariableData[]; active: boolean }[];
+  activeEnvironmentId: string | null;
+}
+
+interface CollectionsStoreData {
+  collections: { id: string; name: string; items: any[]; variables: VariableData[] }[];
+  selectedCollectionId: string | null;
+}
+
+interface AppStoreData {
+  secrets: { id: string; name: string; env: string; value: string }[];
+  selectedSecretId: string | null;
+}
+
+interface SecretsStoreData {
+  // No runtime secrets data needed; unlocked state only
+  isUnlocked: boolean;
+}
+
+interface VariableData {
+  key: string;
+  value: string;
+  enabled: boolean;
+}
+
+// ─── sendRequest: core execution logic ───────────────────────────────────────
+
+function substituteVariable(
+  match: string,
+  varName: string,
+  envVars: VariableData[],
+  reqVars: RequestVariableData[],
+  secrets: { name: string; value: string }[] | undefined,
+): string {
+  // 1) Environment variables
+  const envVar = envVars.find((v) => v.key === varName);
+  if (envVar) return envVar.value;
+
+  // 2) Request variables
+  const reqVar = reqVars.find((v) => v.key === varName);
+  if (reqVar) return reqVar.value;
+
+  // 3) Secrets
+  if (secrets) {
+    const secret = secrets.find((s) => s.name === varName);
+    if (secret && secret.value) return secret.value;
+  }
+
+  return match;
+}
+
+function substituteAll(
+  text: string,
+  envVars: VariableData[],
+  reqVars: RequestVariableData[],
+  secrets: { name: string; value: string }[] | undefined,
+): string {
+  if (!text) return text;
+  return text.replace(/\{\{(\w+)\}\}/g, (_match, varName: string) =>
+    substituteVariable(_match, varName, envVars, reqVars, secrets),
+  );
+}
+
+function resolveEnvVars(envStore: EnvironmentsStoreData): VariableData[] {
+  const active = envStore.environments.find((e) => e.id === envStore.activeEnvironmentId);
+  return active ? active.variables : [];
+}
+
+function applyAuthAndHeaders(
+  opts: { headers: Record<string, string> },
+  auth: AuthData | undefined,
+  seVars: VariableData[],
+  reqVars: RequestVariableData[],
+  secrets: { name: string; value: string }[] | undefined,
+): void {
+  if (!auth) return;
+
+  if (auth.type === 'bearer' && auth.bearerToken) {
+    opts.headers['Authorization'] = `Bearer ${substituteAll(auth.bearerToken, seVars, reqVars, secrets)}`;
+  } else if (auth.type === 'basic' && auth.username && auth.password) {
+    const u = substituteAll(auth.username, seVars, reqVars, secrets);
+    const p = substituteAll(auth.password, seVars, reqVars, secrets);
+    opts.headers['Authorization'] = `Basic ${Buffer.from(`${u}:${p}`).toString('base64')}`;
+  } else if (auth.type === 'apikey' && auth.apikey) {
+    const k = substituteAll(auth.apikey.key, seVars, reqVars, secrets);
+    const v = substituteAll(auth.apikey.value, seVars, reqVars, secrets);
+    if (auth.apikey.in === 'header') {
+      opts.headers[k] = v;
+    } else {
+      const urlObj = new URL(opts.url);
+      urlObj.searchParams.set(k, v);
+      opts.url = urlObj.toString();
+    }
+  }
+}
+
+function setContentType(
+  headers: Record<string, string>,
+  bodyType: string,
+  hasBody: boolean,
+): void {
+  if (!hasBody) return;
+  if (bodyType === 'json') headers['Content-Type'] = 'application/json';
+  else if (bodyType === 'x-www-form-urlencoded') headers['Content-Type'] = 'application/x-www-form-urlencoded';
+  else if (bodyType === 'form-data') headers['Content-Type'] = 'multipart/form-data';
+}
+
+// Build a flat, indexable collection of (id → request) for dependency resolution
+function flatRequests(items: any[]): Map<string, any> {
+  const map = new Map<string, any>();
+  for (const item of items) {
+    if (item && item.method && item.url) {
+      map.set(item.id, item);
+    }
+    if (item && item.items && Array.isArray(item.items)) {
+      flatRequests(item.items).forEach((v, k) => map.set(k, v));
+    }
+  }
+  return map;
+}
+
+interface ExecutedRequest {
+  id: string;
+  name: string;
+  status: number;
+  statusText: string;
+  time: number;
+  error?: string;
+}
+
+interface SendRequestResult {
+  response: {
+    status: number;
+    statusText: string;
+    data: string;
+    time: number;
+    headers: Record<string, string | string[]>;
+    error?: string;
+  };
+  substitutedRequest: RequestSnapshot;
+  executedDependencies: ExecutedRequest[];
+  historyEntries: unknown[];
+  testResults: string;
+}
+
+async function executeDepRequest(
+  request: any,
+  seVars: VariableData[],
+  reqVars: RequestVariableData[],
+  secrets: { name: string; value: string }[] | undefined,
+): Promise<ExecutedRequest> {
+  let url = substituteAll(request.url, seVars, reqVars, secrets);
+  let body = request.body && request.body.type !== 'none' && request.body.content
+    ? substituteAll(request.body.content, seVars, reqVars, secrets)
+    : undefined;
+
+  const headers: Record<string, string> = {};
+
+  // Auth
+  if (request.auth) {
+    applyAuthAndHeaders({ headers, url }, request.auth, seVars, reqVars, secrets);
+  }
+
+  // Per-request headers
+  if (request.headers && Array.isArray(request.headers)) {
+    for (const h of request.headers) {
+      if (h.key && h.enabled) headers[h.key] = substituteAll(h.value, seVars, reqVars, secrets);
+    }
+  }
+
+  setContentType(headers, request.body?.type || 'none', !!body);
+
+  const result = await makeHttpRequest({
+    method: request.method,
+    url,
+    headers,
+    body,
+  });
+
+  return {
+    id: request.id,
+    name: request.name,
+    status: result.status,
+    statusText: result.statusText,
+    time: result.time,
+    error: result.error,
+  };
+}
+
+/**
+ * sendRequest
+ *
+ * Core request-execution logic extracted from the renderer panel.  All requests,
+ * variable substitution, auth handling, dependency resolution and test-script
+ * evaluation happen here so that the renderer is merely a thin orchestration
+ * layer.
+ *
+ * @param context Store data received from the renderer via IPC.  Because the
+ *                execution engine runs in the main process it cannot hold
+ *                references to live reactive Pinia stores; instead the
+ *                renderer passes plain serialisable snapshots.
+ */
+async function sendRequest(context: SendRequestContext): Promise<SendRequestResult> {
+  const {
+    requestsStore,
+    responseStore: _responseStore,
+    historyStore: _historyStore,
+    environmentsStore,
+    appStore,
+    collectionsStore,
+    secretsStore,
+  } = context;
+
+  const reqStore = requestsStore as RequestsStoreData;
+  const envStore = environmentsStore as EnvironmentsStoreData;
+  const appData = appStore as AppStoreData;
+  const secStore = secretsStore as SecretsStoreData | undefined;
+  const collStore = collectionsStore as CollectionsStoreData | undefined;
+
+  let mainRequest = reqStore.currentRequest;
+  const mainId = mainRequest.id;
+
+  // Resolve variable sources once
+  const seVars = resolveEnvVars(envStore);
+  const secrets = appData.secrets;
+  const secUnlocked = secStore?.isUnlocked ?? false;
+  const accessibleSecrets = secUnlocked ? secrets : undefined;
+
+  // ── Dependency resolution ───────────────────────────────────────────────
+
+  const requestMapper = collStore ? flatRequests(collStore.collections) : new Map<string, any>();
+  const executedIds = new Set<string>();
+  const executedDeps: ExecutedRequest[] = [];
+  const historyEntries: unknown[] = [];
+
+  async function resolveAndRunDep(depId: string): Promise<void> {
+    if (executedIds.has(depId)) return;
+
+    const depRequest = requestMapper.get(depId);
+    if (!depRequest) return;
+
+    if (depRequest.dependsOn && depRequest.dependsOn !== depId) {
+      await resolveAndRunDep(depRequest.dependsOn);
+    }
+
+    const reqVars: RequestVariableData[] = [...(depRequest.variables || [])];
+    const result = await executeDepRequest(depRequest, seVars, reqVars, accessibleSecrets);
+    executedIds.add(depId);
+    executedDeps.push(result);
+
+    // Build canned history entry for the dependency
+    historyEntries.push({
+      id: Date.now() + executedIds.size,
+      method: depRequest.method,
+      url: result.status !== 0 && result.time !== undefined ? mainRequest.url : depRequest.url,
+      status: result.status,
+      time: result.time,
+      timestamp: Date.now(),
+      request: depRequest,
+      response: {
+        status: result.status,
+        statusText: result.statusText,
+        data: '',
+        time: result.time,
+        headers: {},
+        error: result.error,
+      },
+    });
+  }
+
+  if (mainRequest.dependsOn) {
+    await resolveAndRunDep(mainRequest.dependsOn);
+  }
+
+  // ── Execute main request ────────────────────────────────────────────────
+
+  let url = substituteAll(mainRequest.url, seVars, [...(mainRequest.variables || [])], accessibleSecrets);
+  let body = mainRequest.body && mainRequest.body.type !== 'none' && mainRequest.body.content
+    ? substituteAll(mainRequest.body.content, seVars, [...(mainRequest.variables || [])], accessibleSecrets)
+    : undefined;
+
+  const headers: Record<string, string> = {};
+
+  const substRequest = JSON.parse(JSON.stringify(mainRequest));
+  substRequest.url = url;
+  if (body !== undefined) substRequest.body.content = body;
+
+  // Auth on substituted request snapshot
+  if (substRequest.auth) {
+    const a = substRequest.auth;
+    if (a.type === 'bearer' && a.bearerToken) a.bearerToken = substituteAll(a.bearerToken, seVars, [...(substRequest.variables || [])], accessibleSecrets);
+    else if (a.type === 'basic') {
+      if (a.username) a.username = substituteAll(a.username, seVars, [...(substRequest.variables || [])], accessibleSecrets);
+      if (a.password) a.password = substituteAll(a.password, seVars, [...(substRequest.variables || [])], accessibleSecrets);
+    } else if (a.type === 'apikey' && a.apikey) {
+      a.apikey.key = substituteAll(a.apikey.key, seVars, [...(substRequest.variables || [])], accessibleSecrets);
+      a.apikey.value = substituteAll(a.apikey.value, seVars, [...(substRequest.variables || [])], accessibleSecrets);
+    }
+  }
+
+  // Per-request header substitution
+  if (substRequest.headers) {
+    substRequest.headers.forEach((h: any) => { if (h.value) h.value = substituteAll(h.value, seVars, [...(substRequest.variables || [])], accessibleSecrets); });
+  }
+
+  // Auth headers / query params on execution options
+  applyAuthAndHeaders({ headers, url }, mainRequest.auth, seVars, [...(mainRequest.variables || [])], accessibleSecrets);
+
+  // Request-panel headers (enabled only)
+  for (const h of reqStore.requestHeaders) {
+    if (h.key && h.enabled) headers[h.key] = substituteAll(h.value, seVars, [...(mainRequest.variables || [])], accessibleSecrets);
+  }
+
+  setContentType(headers, mainRequest.body?.type || 'none', !!body);
+
+  const mainResult = await makeHttpRequest({
+    method: mainRequest.method,
+    url,
+    headers,
+    body,
+  });
+
+  const now = Date.now();
+
+  historyEntries.push({
+    id: now,
+    method: mainRequest.method,
+    url,
+    status: mainResult.status,
+    time: mainResult.time,
+    timestamp: now,
+    request: substRequest,
+    response: {
+      status: mainResult.status,
+      statusText: mainResult.statusText,
+      data: mainResult.data,
+      time: mainResult.time,
+      headers: mainResult.headers,
+      error: mainResult.error,
+    },
+  });
+
+  // Run test script (placeholder)
+  let testResults = '';
+  if (mainRequest.testScript) {
+    try {
+      testResults = `Test script would execute:\n${mainRequest.testScript}`;
+    } catch (scriptError: any) {
+      testResults = `Test script error: ${scriptError.message}`;
+    }
+  }
+
+  return {
+    response: {
+      status: mainResult.status,
+      statusText: mainResult.statusText,
+      data: mainResult.data,
+      time: mainResult.time,
+      headers: mainResult.headers,
+      error: mainResult.error,
+    },
+    substitutedRequest: substRequest,
+    executedDependencies: executedDeps,
+    historyEntries,
+    testResults,
+  };
 }
 
 async function makeHttpRequest(options: { method: string; url: string; headers: Record<string, string>; body?: string; rps?: number; requestId?: string }): Promise<{ status: number; statusText: string; headers: Record<string, string | string[]>; data: string; time: number; error?: string }> {

@@ -1,3 +1,18 @@
+// Store-like data objects passed across IPC to the execution engine
+export type StoreLike = Record<string, unknown>;
+
+export interface SendRequestContext {
+  requestsStore: StoreLike;
+  responseStore: StoreLike;
+  historyStore: StoreLike;
+  environmentsStore: StoreLike;
+  appStore: StoreLike;
+  collectionsStore?: StoreLike;
+  secretsStore?: StoreLike;
+}
+
+// ─── existing types below ─────────────────────────────────────────────────────
+
 export interface Variable {
   key: string;
   value: string;

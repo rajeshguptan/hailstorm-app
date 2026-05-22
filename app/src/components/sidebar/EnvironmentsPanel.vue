@@ -104,6 +104,12 @@ async function handleImport() {
   }
 }
 
+function handleEnvironmentChange(envId: string) {
+  if (envId && environmentsStore.environments.find(e => e.id === envId)) {
+    environmentsStore.selectEnvironment(envId);
+  }
+}
+
 function importData(data: any) {
   if (!data) return;
   if (data.environment) {

@@ -14,7 +14,15 @@
         >
         <div class="flex gap-2">
           <button @click="saveCollection" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm">Save</button>
-          <button @click="exportCollection" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded text-sm">Export</button>
+          <div class="relative">
+            <button @click="showExportMenu = !showExportMenu" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded text-sm flex items-center gap-1">
+              Export ▾
+            </button>
+            <div v-if="showExportMenu" class="absolute right-0 mt-1 w-48 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded shadow-lg z-10">
+              <button class="block w-full text-left px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700" @click="exportPostmanFormat">Postman 2.1 Format</button>
+              <button class="block w-full text-left px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700" @click="exportHailstormFormat">HailStorm 1.0 Format</button>
+            </div>
+          </div>
           <button @click="cancelChanges" class="px-4 py-2 bg-zinc-300 hover:bg-zinc-400 dark:bg-zinc-600 dark:hover:bg-zinc-500 text-zinc-700 dark:text-zinc-300 rounded text-sm">Cancel</button>
         </div>
       </div>
@@ -309,31 +317,36 @@ const selectWorkspaceLocation = async () => {
 const saveCollection = async () => {
   if (selectedCollection.value) {
     collectionsStore.updateCollection(editingCollection.value);
-
-    // Auto-save to files if workspace location is set
-    if (editingCollection.value.workspaceLocation) {
-      try {
-        const success = await window.api.saveCollectionToFiles(editingCollection.value, editingCollection.value.workspaceLocation);
-        if (!success) {
-          console.error('Failed to save collection to files');
-        }
-      } catch (error) {
-        console.error('Error saving collection to files:', error);
-      }
-    }
   }
 };
 
-const exportCollection = () => {
+const showExportMenu = ref(false);
+
+const exportPostmanFormat = () => {
+  showExportMenu.value = false;
   if (!selectedCollection.value) return;
 
   const postmanCollection = convertToPostmanFormat(selectedCollection.value);
 
-  // Create and download the JSON file
   const dataStr = JSON.stringify(postmanCollection, null, 2);
   const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
 
   const exportFileDefaultName = `${selectedCollection.value.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_postman_collection.json`;
+
+  const linkElement = document.createElement('a');
+  linkElement.setAttribute('href', dataUri);
+  linkElement.setAttribute('download', exportFileDefaultName);
+  linkElement.click();
+};
+
+const exportHailstormFormat = () => {
+  showExportMenu.value = false;
+  if (!selectedCollection.value) return;
+
+  const dataStr = JSON.stringify(editingCollection.value, null, 2);
+  const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+
+  const exportFileDefaultName = `${selectedCollection.value.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`;
 
   const linkElement = document.createElement('a');
   linkElement.setAttribute('href', dataUri);

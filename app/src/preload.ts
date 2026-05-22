@@ -18,8 +18,33 @@ export interface ResponseData {
   error?: string;
 }
 
+export interface SendRequestContext {
+  requestsStore: Record<string, unknown>;
+  responseStore: Record<string, unknown>;
+  historyStore: Record<string, unknown>;
+  environmentsStore: Record<string, unknown>;
+  appStore: Record<string, unknown>;
+  collectionsStore?: Record<string, unknown>;
+  secretsStore?: Record<string, unknown>;
+}
+
+export interface SendRequestResult {
+  response: {
+    status: number;
+    statusText: string;
+    data: string;
+    time: number;
+    headers: Record<string, string | string[]>;
+    error?: string;
+  };
+  substitutedRequest: unknown;
+  executedDependencies: { id: string; name: string; status: number; statusText: string; time: number; error?: string }[];
+  historyEntries: unknown[];
+  testResults: string;
+}
+
 const api = {
-  makeRequest: async (options: RequestOptions): Promise<ResponseData> => {
+  makeRequest: async (options: import('./types').RequestOptions): Promise<import('./types').ResponseData> => {
     console.log('[PRELOAD] makeRequest called', { method: options.method, url: options.url });
     try {
       const result = await ipcRenderer.invoke('make-request', options);
@@ -241,6 +266,22 @@ const api = {
       return result;
     } catch (error) {
       console.error('[PRELOAD] showOpenDialog failed', error);
+      throw error;
+    }
+  },
+
+  // ─── Send Request via execution engine ───────────────────────────────────
+  // The execution engine handles variable substitution, dependency resolution,
+  // header/auth construction, the actual HTTP call and history recording.
+  // All that is delegated from the renderer through this IPC bridge.
+  sendRequest: async (context: SendRequestContext): Promise<SendRequestResult> => {
+    console.log('[PRELOAD] sendRequest called');
+    try {
+      const result = await ipcRenderer.invoke('send-request', context);
+      console.log('[PRELOAD] sendRequest completed', { status: result.response.status });
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] sendRequest failed', error);
       throw error;
     }
   },

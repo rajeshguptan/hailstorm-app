@@ -189,6 +189,7 @@ import { useCollectionsStore } from '../stores/collections';
 import { useHistoryStore } from '../stores/history';
 import { useSecretsStore } from '../stores/secrets';
 import { useAppStore } from '../stores';
+import type { SendRequestContext } from '../types';
 
 const requestsStore = useRequestsStore();
 const environmentsStore = useEnvironmentsStore();
@@ -405,320 +406,99 @@ const filteredVariables = computed(() => {
   return (requestsStore.currentRequest.variables || []).filter(v => v.dataset === selectedDataset.value);
 });
 
-function substituteVariables(text: string): string {
-  if (!text) return text;
-
-  return text.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
-    // First check environment variables
-    if (environmentsStore.activeEnvironment && environmentsStore.activeEnvironment.variables) {
-      const envVar = environmentsStore.activeEnvironment.variables.find(v => v.key === varName);
-      if (envVar) {
-        return envVar.value;
-      }
-    }
-
-    // Then check request variables
-    if (requestsStore.currentRequest.variables) {
-      const variables = selectedDataset.value
-        ? requestsStore.currentRequest.variables.filter(v => v.enabled && v.dataset === selectedDataset.value)
-        : requestsStore.currentRequest.variables.filter(v => v.enabled);
-      const reqVar = variables.find(v => v.key === varName);
-      if (reqVar) {
-        return reqVar.value;
-      }
-    }
-
-    // Then check secrets (only if unlocked)
-    if (secretsStore.isUnlocked) {
-      const secret = appStore.secrets.find(s => s.name === varName);
-      if (secret && secret.value) {
-        return secret.value;
-      }
-    }
-
-    // Return original match if no variable/secret found
-    return match;
-  });
-}
-
-// Execute a request without updating UI (for dependencies)
-async function executeRequest(request: any) {
-    // Prepare request options for execution engine
-    let url = request.url;
-    let bodyContent = request.body.type !== 'none' && request.body.content
-        ? request.body.content
-        : undefined;
-
-    // Substitute variables
-    url = substituteVariables(url);
-    bodyContent = bodyContent ? substituteVariables(bodyContent) : bodyContent;
-
-    const options = {
-        method: request.method,
-        url: url,
-        headers: {},
-        body: bodyContent
-    };
-
-    // Create a substituted copy of the request for history
-    const substitutedRequest = JSON.parse(JSON.stringify(request));
-    substitutedRequest.url = url;
-    if (bodyContent !== undefined) {
-      substitutedRequest.body.content = bodyContent;
-    }
-
-    // Substitute auth fields
-    if (substitutedRequest.auth) {
-        const auth = substitutedRequest.auth;
-        if (auth.type === 'bearer' && auth.bearerToken) {
-          auth.bearerToken = substituteVariables(auth.bearerToken);
-        } else if (auth.type === 'basic') {
-          if (auth.username) auth.username = substituteVariables(auth.username);
-          if (auth.password) auth.password = substituteVariables(auth.password);
-        } else if (auth.type === 'apikey' && auth.apikey) {
-          auth.apikey.key = substituteVariables(auth.apikey.key);
-          auth.apikey.value = substituteVariables(auth.apikey.value);
-        }
-    }
-
-    // Substitute header values
-    if (substitutedRequest.headers) {
-      substitutedRequest.headers.forEach((h: any) => {
-        if (h.value) h.value = substituteVariables(h.value);
-      });
-    }
-
-    // Add auth headers/params
-    if (request.auth) {
-        const auth = request.auth;
-        if (auth.type === 'bearer' && auth.bearerToken) {
-            options.headers['Authorization'] = `Bearer ${substituteVariables(auth.bearerToken)}`;
-        } else if (auth.type === 'basic' && auth.username && auth.password) {
-            const username = substituteVariables(auth.username);
-            const password = substituteVariables(auth.password);
-            const credentials = btoa(`${username}:${password}`);
-            options.headers['Authorization'] = `Basic ${credentials}`;
-        } else if (auth.type === 'apikey' && auth.apikey) {
-            if (auth.apikey.in === 'header') {
-                options.headers[substituteVariables(auth.apikey.key)] = substituteVariables(auth.apikey.value);
-            } else if (auth.apikey.in === 'query') {
-                const urlObj = new URL(options.url);
-                urlObj.searchParams.set(substituteVariables(auth.apikey.key), substituteVariables(auth.apikey.value));
-                options.url = urlObj.toString();
-            }
-        }
-    }
-
-    // Add headers from request
-    if (request.headers) {
-        request.headers.forEach((h: any) => {
-            if (h.key && h.enabled) {
-                options.headers[h.key] = substituteVariables(h.value);
-            }
-        });
-    }
-
-    // Set Content-Type based on body type
-    if (request.body.type === 'json' && options.body) {
-        options.headers['Content-Type'] = 'application/json';
-    } else if (request.body.type === 'x-www-form-urlencoded' && options.body) {
-        options.headers['Content-Type'] = 'application/x-www-form-urlencoded';
-    } else if (request.body.type === 'form-data' && options.body) {
-        options.headers['Content-Type'] = 'multipart/form-data';
-    }
-
-    // Call execution engine via IPC
-    const result = await window.api.makeRequest(options);
-    console.log(`Dependency request "${request.name}" completed with status ${result.status}`);
-}
-
-// Execute the main request with UI updates
-async function executeMainRequest() {
-    const startTime = Date.now();
-
-    // Prepare request options for execution engine
-    let url = requestsStore.currentRequest.url;
-    let bodyContent = requestsStore.currentRequest.body.type !== 'none' && requestsStore.currentRequest.body.content
-        ? requestsStore.currentRequest.body.content
-        : undefined;
-
-    // Substitute variables
-    url = substituteVariables(url);
-    bodyContent = bodyContent ? substituteVariables(bodyContent) : bodyContent;
-
-    const options = {
-        method: requestsStore.currentRequest.method,
-        url: url,
-        headers: {},
-        body: bodyContent
-    };
-
-    // Create a substituted copy of the request for history
-    const substitutedRequest = JSON.parse(JSON.stringify(requestsStore.currentRequest));
-    substitutedRequest.url = url;
-    if (bodyContent !== undefined) {
-      substitutedRequest.body.content = bodyContent;
-    }
-    // Substitute auth fields
-    if (substitutedRequest.auth) {
-        const auth = substitutedRequest.auth;
-        if (auth.type === 'bearer' && auth.bearerToken) {
-          auth.bearerToken = substituteVariables(auth.bearerToken);
-        } else if (auth.type === 'basic') {
-          if (auth.username) auth.username = substituteVariables(auth.username);
-          if (auth.password) auth.password = substituteVariables(auth.password);
-        } else if (auth.type === 'apikey' && auth.apikey) {
-          auth.apikey.key = substituteVariables(auth.apikey.key);
-          auth.apikey.value = substituteVariables(auth.apikey.value);
-        }
-    }
-    // Substitute header values
-    if (substitutedRequest.headers) {
-      substitutedRequest.headers.forEach(h => {
-        if (h.value) h.value = substituteVariables(h.value);
-      });
-    }
-
-    // Add auth headers/params
-    if (requestsStore.currentRequest.auth) {
-        const auth = requestsStore.currentRequest.auth;
-        if (auth.type === 'bearer' && auth.bearerToken) {
-            options.headers['Authorization'] = `Bearer ${substituteVariables(auth.bearerToken)}`;
-        } else if (auth.type === 'basic' && auth.username && auth.password) {
-            const username = substituteVariables(auth.username);
-            const password = substituteVariables(auth.password);
-            const credentials = btoa(`${username}:${password}`);
-            options.headers['Authorization'] = `Basic ${credentials}`;
-        } else if (auth.type === 'apikey' && auth.apikey) {
-            if (auth.apikey.in === 'header') {
-                options.headers[substituteVariables(auth.apikey.key)] = substituteVariables(auth.apikey.value);
-            } else if (auth.apikey.in === 'query') {
-                const urlObj = new URL(options.url);
-                urlObj.searchParams.set(substituteVariables(auth.apikey.key), substituteVariables(auth.apikey.value));
-                options.url = urlObj.toString();
-            }
-        }
-    }
-
-    // Add headers
-    requestsStore.requestHeaders.forEach(h => {
-        if (h.key && h.enabled) {
-            options.headers[h.key] = substituteVariables(h.value);
-        }
-    });
-
-    // Set Content-Type based on body type
-    if (requestsStore.currentRequest.body.type === 'json' && options.body) {
-        options.headers['Content-Type'] = 'application/json';
-    } else if (requestsStore.currentRequest.body.type === 'x-www-form-urlencoded' && options.body) {
-        options.headers['Content-Type'] = 'application/x-www-form-urlencoded';
-    } else if (requestsStore.currentRequest.body.type === 'form-data' && options.body) {
-        options.headers['Content-Type'] = 'multipart/form-data';
-    }
-
-    // Call execution engine via IPC
-    const result = await window.api.makeRequest(options);
-    const time = Date.now() - startTime;
-
-    responseStore.response = {
-        status: result.status,
-        statusText: result.statusText,
-        data: result.data,
-        time: result.time,
-        headers: result.headers,
-        error: result.error
-    };
-
-    // Associate response with current request
-    requestsStore.currentRequest.response = responseStore.response;
-
-    // Save the response with the current request to localStorage
-    if (!requestsStore.selectedRequestId) {
-      requestsStore.saveRequest();
-    } else {
-      requestsStore.updateCurrentRequest();
-    }
-
-    // Add to history
-    historyStore.addToHistory({
-        id: Date.now(),
-        method: requestsStore.currentRequest.method,
-        url: options.url,
-        status: result.status,
-        time: result.time,
-        timestamp: Date.now(),
-        request: substitutedRequest,
-        response: responseStore.response!
-    });
-
-    // Execute test script if exists (placeholder for future implementation)
-    if (requestsStore.currentRequest.testScript) {
-        try {
-            console.log('Test script execution:', requestsStore.currentRequest.testScript);
-            // TODO: Implement actual script execution via isolated VM
-            // For now, just show that tests would run here
-            responseStore.testResults = `Test script would execute:\n${requestsStore.currentRequest.testScript}`;
-        } catch (scriptError) {
-            console.error('Test script error:', scriptError);
-            responseStore.testResults = `Test script error: ${scriptError.message}`;
-        }
-    } else {
-        responseStore.testResults = '';
-    }
-
-    responseStore.activeResponseTab = 'body';
-}
-
-// Execute all dependencies in the correct order (recursive)
-async function executeDependencies(requestId: string, executed = new Set<string>()) {
-    console.log(`[DEP] executeDependencies called with requestId: ${requestId}, executed set:`, Array.from(executed));
-    if (executed.has(requestId)) {
-        console.log(`[DEP] Already executed, returning`);
-        return; // Already executed
-    }
-
-    // Find the request
-    const request = collectionRequests.value.find((req: any) => req.id === requestId) ||
-                    (requestsStore.selectedRequestId === requestId ? requestsStore.currentRequest : null);
-
-    console.log(`[DEP] Found request:`, request?.name, request?.dependsOn);
-
-    if (!request) {
-        console.log(`[DEP] Request not found`);
-        return;
-    }
-
-    // Execute dependency first (recursive)
-    if (request.dependsOn) {
-        console.log(`[DEP] Request has dependency, recursing`);
-        await executeDependencies(request.dependsOn, executed);
-    }
-
-    // Execute this request
-    if (!executed.has(requestId)) {
-        executed.add(requestId);
-        console.log(`[DEP] Executing request:`, request.name);
-        await executeRequest(request);
-    }
-}
-
+// async sendRequest: delegate all execution logic to the execution engine.
+// The engine handles variable substitution, dependency resolution, auth/header
+// construction, the HTTP call, history recording and test-script evaluation.
 async function sendRequest() {
   console.log('[SEND] sendRequest called');
   responseStore.isLoading = true;
 
   try {
-    // Execute all dependencies in the correct order
-    console.log('[SEND] Current request dependsOn:', requestsStore.currentRequest.dependsOn);
-    if (requestsStore.currentRequest.dependsOn) {
-      console.log('[SEND] Executing dependencies...');
-      await executeDependencies(requestsStore.currentRequest.dependsOn);
-      console.log('[SEND] Dependencies completed');
+    const context: SendRequestContext = {
+      requestsStore: {
+        currentRequest: JSON.parse(JSON.stringify(requestsStore.currentRequest)),
+        requestHeaders: JSON.parse(JSON.stringify(requestsStore.requestHeaders)),
+        urlParams: JSON.parse(JSON.stringify(requestsStore.urlParams)),
+        activeRequestTab: requestsStore.activeRequestTab,
+      },
+      responseStore: {
+        response: JSON.parse(JSON.stringify(responseStore.response)),
+        testResults: responseStore.testResults,
+        activeResponseTab: responseStore.activeResponseTab,
+        isLoading: responseStore.isLoading,
+      },
+      historyStore: {
+        history: JSON.parse(JSON.stringify(historyStore.history ?? [])),
+      },
+      environmentsStore: {
+        environments: JSON.parse(JSON.stringify(environmentsStore.environments ?? [])),
+        activeEnvironmentId: environmentsStore.activeEnvironmentId,
+      },
+      appStore: {
+        secrets: JSON.parse(JSON.stringify(appStore.secrets ?? [])),
+        selectedSecretId: appStore.selectedSecretId,
+      },
+      collectionsStore: {
+        collections: JSON.parse(JSON.stringify(collectionsStore.collections ?? [])),
+        selectedCollectionId: collectionsStore.selectedCollectionId,
+      },
+      secretsStore: {
+        isUnlocked: secretsStore.isUnlocked,
+      },
+    };
+
+    const result = await window.api.sendRequest(context);
+
+    // ── Apply response ────────────────────────────────────────────────────
+    responseStore.response = {
+      status: result.response.status,
+      statusText: result.response.statusText,
+      data: result.response.data,
+      time: result.response.time,
+      headers: result.response.headers,
+      error: result.response.error,
+    };
+
+    if (requestsStore.selectedRequestId) {
+      requestsStore.currentRequest.response = responseStore.response;
+      requestsStore.updateCurrentRequest();
+    } else {
+      requestsStore.currentRequest = {
+        ...requestsStore.currentRequest,
+        response: responseStore.response,
+      };
+      requestsStore.saveRequest();
     }
 
-    // Execute the main request
-    console.log('[SEND] Executing main request');
-    await executeMainRequest();
-    console.log('[SEND] Main request completed');
+    // ── Apply dependency responses ────────────────────────────────────────
+    for (const dep of result.executedDependencies) {
+      const depItem = collectionsStore.findItemById(dep.id);
+      if (depItem) {
+        if ('request' in depItem) {
+          depItem.request.response = {
+            status: dep.status, statusText: dep.statusText, data: '', time: dep.time,
+            headers: {}, error: dep.error,
+          };
+        } else {
+          depItem.response = {
+            status: dep.status, statusText: dep.statusText, data: '', time: dep.time,
+            headers: {}, error: dep.error,
+          };
+        }
+        collectionsStore.saveCollections();
+      }
+    }
+
+    // ── Apply history ─────────────────────────────────────────────────────
+    for (const entry of result.historyEntries) {
+      historyStore.addToHistory(entry);
+    }
+
+    // ── Test results ──────────────────────────────────────────────────────
+    responseStore.testResults = result.testResults;
+    responseStore.activeResponseTab = 'body';
+
+    console.log('[SEND] sendRequest completed successfully');
   } catch (err: any) {
     const startTime = Date.now();
     console.error('[SEND] Error:', err);
@@ -728,7 +508,7 @@ async function sendRequest() {
       data: err.message || 'Failed to make request',
       time: Date.now() - startTime,
       headers: {},
-      error: err.message
+      error: err.message,
     };
     responseStore.testResults = '';
   } finally {
@@ -744,11 +524,9 @@ function addVariable() {
     key: '',
     value: '',
     dataset: '',
-    enabled: true
+    enabled: true,
   });
 }
-
-
 
 function removeVariable(index: number) {
   const variable = filteredVariables.value[index];

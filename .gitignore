@@ -1,6 +1,7 @@
 node_modules/
 dist/
 out/
+repo/
 .vite/
 *.log
 .DS_Store
@@ -14,6 +15,7 @@ coverage/
 electron-builder.yml
 data/
 e2e/test-results/
+e2e/playwright-report/**/*
 e2e/screenshots/
 e2e/videos/
 .vscode/
