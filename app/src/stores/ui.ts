@@ -29,6 +29,8 @@ export const useUIStore = defineStore('ui', {
     fileInput: null as HTMLInputElement | null,
 
     hoveredTreeItemId: '' as string,
+
+    recentRequestCount: parseInt(localStorage.getItem('recentRequestCount') || '6'),
   }),
 
   getters: {
@@ -52,6 +54,11 @@ export const useUIStore = defineStore('ui', {
 
     setHoveredTreeItem(id: string) {
       this.hoveredTreeItemId = id;
+    },
+
+    setRecentRequestCount(count: number) {
+      this.recentRequestCount = Math.max(1, Math.min(50, count));
+      localStorage.setItem('recentRequestCount', this.recentRequestCount.toString());
     }
   }
 });

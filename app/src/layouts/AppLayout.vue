@@ -39,7 +39,7 @@
   <!-- Main content area -->
   <div class="main-content flex-1 flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
     <!-- Request interface for collections and history -->
-    <div v-if="showRequestDetail" class="flex flex-col h-full">
+    <div v-if="showRequestDetail" class="flex flex-col flex-1 min-h-0">
       <RequestPanel />
       <ResponsePanel />
     </div>
@@ -61,7 +61,24 @@
       :selectedConfigId="runnerStore.selectedConfigId"
       @update-run-config="runnerStore.updateRunConfig"
     />
-     <!-- Other main content can go here -->
+    <!-- Recent Requests Tabs at Bottom (always visible) -->
+    <div class="border-t border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 flex-shrink-0">
+      <div class="px-3 py-1.5 overflow-x-auto whitespace-nowrap scrollbar-thin">
+        <div class="flex gap-1">
+          <button
+            v-for="request in recentRequests"
+            :key="request.historyId"
+            @click="loadRecentRequest(request)"
+            class="px-2 py-1 text-xs bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded hover:bg-zinc-100 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-300 truncate"
+            :title="request.name"
+          >
+            <span class="font-mono text-blue-600 dark:text-blue-400">{{ request.method }}</span>
+            <span class="ml-1">{{ request.name }}</span>
+          </button>
+          <span v-if="recentRequests.length === 0" class="text-xs text-zinc-400 dark:text-zinc-500 whitespace-nowrap">No recent requests</span>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -101,6 +118,7 @@ import { useUtilitiesStore } from '../stores/utilities';
 import { useCollectionsStore } from '../stores/collections';
 import { useRunnerStore } from '../stores/runner';
 import { useSecretsStore } from '../stores/secrets';
+import { useHistoryStore } from '../stores/history';
 import ContextMenu from '../components/ContextMenu.vue';
 import EnvModal from '../components/EnvModal.vue';
 import RenameModal from '../components/RenameModal.vue';
@@ -126,6 +144,39 @@ const utilitiesStore = useUtilitiesStore();
 const collectionsStore = useCollectionsStore();
 const runnerStore = useRunnerStore();
 const secretsStore = useSecretsStore();
+const historyStore = useHistoryStore();
+
+// Get the N most recent requests from history
+const recentRequests = computed(() => {
+  return historyStore.history.slice(0, uiStore.recentRequestCount).map(item => ({
+    historyId: item.id,
+    id: item.request.id,
+    name: item.request.name || item.request.url,
+    name: item.request.name || item.request.url,
+    method: item.request.method,
+    url: item.request.url,
+    headers: item.request.headers,
+    body: item.request.body,
+    auth: item.request.auth,
+    variables: item.request.variables,
+    preRequestScript: item.request.preRequestScript,
+    testScript: item.request.testScript
+  }));
+});
+
+// Load a recent request into the current request panel
+function loadRecentRequest(request: any) {
+  if (!request) return;
+  const reqId = request.id || requestsStore.generateId('req');
+  requestsStore.currentRequest = {
+    ...request,
+    id: reqId
+  };
+  requestsStore.selectedRequestId = reqId;
+  requestsStore.urlParams = requestsStore.extractParams(request.url || '');
+  requestsStore.requestHeaders = request.headers ? [...request.headers] : [];
+  requestsStore.activeRequestTab = 'params';
+}
 
 // Sync activeSidebar with route when navigation happens (not via ribbon click)
 watch(

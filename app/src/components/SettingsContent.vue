@@ -155,6 +155,31 @@
         </div>
       </div>
       
+      <div v-else-if="activeSection === 'recent-requests'" class="max-w-xl">
+        <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Recent Requests</h3>
+        <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">Configure recent requests display</p>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+              Max Recent Requests: {{ uiStore.recentRequestCount }}
+            </label>
+            <input 
+              type="range" 
+              min="1" 
+              max="20" 
+              v-model.number="uiStore.recentRequestCount" 
+              @input="uiStore.setRecentRequestCount(uiStore.recentRequestCount)"
+              class="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer"
+            >
+            <div class="flex justify-between text-xs text-zinc-400 mt-1">
+              <span>1</span>
+              <span>20</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <div v-else-if="activeSection === 'network'" class="max-w-xl">
         <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Network</h3>
         <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">Configure network settings</p>
@@ -425,6 +450,9 @@
 import { ref } from 'vue';
 import { useTheme } from '../composables/useTheme';
 import { useSecretsStore } from '../stores/secrets';
+import { useUIStore } from '../stores/ui';
+
+const uiStore = useUIStore();
 
 const activeSection = ref('theme');
 
@@ -432,6 +460,7 @@ const uiItems = [
   { id: 'theme', label: 'Theme' },
   { id: 'font', label: 'Font Size' },
   { id: 'layout', label: 'Layout' },
+  { id: 'recent-requests', label: 'Recent Requests' },
 ];
 
 const appItems = [
