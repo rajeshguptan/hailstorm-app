@@ -1,8 +1,11 @@
 <template>
   <div class="response-panel bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white flex-1 flex flex-col overflow-hidden">
     <div class="response-status p-2 border-b border-zinc-200 dark:border-zinc-700 flex items-center gap-2">
-      <span v-if="store.response" :class="store.response.status >= 200 && store.response.status < 300 ? 'text-green-500' : 'text-red-500'">
-        {{ store.response.status }} {{ store.response.statusText }}
+      <span v-if="store.response" :class="store.response.status >= 200 && store.response.status < 300 ? 'text-green-500 font-bold' : 'text-red-500 font-bold'">
+        {{ store.response.status }}
+      </span>
+      <span v-if="store.response" :class="store.response.status >= 200 && store.response.status < 300 ? 'text-green-600' : 'text-red-600'">
+        {{ store.response.statusText }}
       </span>
       <span v-else class="text-zinc-400 dark:text-zinc-500">Ready to send request</span>
       <span v-if="store.response" class="text-zinc-400 dark:text-zinc-500 text-sm">{{ store.response.time }}ms</span>

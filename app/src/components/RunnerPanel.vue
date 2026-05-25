@@ -105,18 +105,15 @@
           </div>
         </div>
 
-        <div v-if="results.length > 0" class="mt-4">
-          <h4 class="text-sm font-bold mb-2">Results:</h4>
-          <div class="bg-zinc-800 rounded p-2 max-h-64 overflow-auto">
-            <div v-for="(result, index) in results" :key="index" class="text-sm mb-1 flex items-center gap-2">
-              <span class="badge" :class="getMethodClass(result)">{{ result.method }}</span>
-              <span :class="result.status >= 200 && result.status < 300 ? 'text-green-500' : 'text-red-500'">{{ result.status }}</span>
-              <span class="text-gray-400">{{ result.name }}</span>
-              <span class="text-gray-500">{{ result.time }}ms</span>
+        <div v-if="liveStats.totalRequests > 0" class="mt-4">
+          <h4 class="text-sm font-bold mb-2">Live Stats:</h4>
+          <div class="bg-zinc-800 rounded p-2">
+            <div class="text-sm text-gray-400">
+              Total: {{ liveStats.totalRequests }} | Passed: {{ liveStats.successfulRequests }} | Failed: {{ liveStats.failedRequests }}
             </div>
-          </div>
-          <div class="mt-2 text-sm text-gray-400">
-            Passed: {{ passedCount }} / {{ results.length }}
+            <div class="text-sm text-gray-400">
+              Avg Response: {{ Math.round(liveStats.avgResponseTime) }}ms | RPS: {{ Math.round(liveStats.requestsPerSecond) }}
+            </div>
           </div>
         </div>
       </div>
@@ -127,11 +124,14 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import { useLoadTestStore } from '../stores/loadTest';
-import type { RunConfig, RequestConfig, LoadTestRequestDetail } from '../types';
+import { useRunnerStore } from '../stores/runner';
+import { useAppStore } from '../stores/index';
+import type { RunConfig, RequestConfig } from '../types';
 
 const loadTestStore = useLoadTestStore();
+const runnerStore = useRunnerStore();
+const appStore = useAppStore();
 
-// Initialize load test store and selectedRequests
 onMounted(() => {
   loadTestStore.initialize();
   if (selectedConfig.value) {
@@ -139,18 +139,12 @@ onMounted(() => {
   }
 });
 
-interface Variable {
-  key: string;
-  value: string;
-  enabled: boolean;
-}
-
 interface Request {
   id: string;
   name: string;
   method: string;
   url: string;
-  headers: Variable[];
+  headers: any[];
   body: { type: string; content: string };
   preRequestScript?: string;
   testScript?: string;
@@ -168,26 +162,12 @@ interface Collection {
   id: string;
   name: string;
   items: (Request | Folder)[];
-  variables: Variable[];
-}
-
-interface RunResult {
-  name: string;
-  method: string;
-  status: number;
-  time: number;
-}
-
-interface Environment {
-  id: string;
-  name: string;
-  variables: Variable[];
-  active: boolean;
+  variables: any[];
 }
 
 const props = defineProps<{
   collections: Collection[];
-  environments: Environment[];
+  environments: any[];
   activeEnvironmentId: string | null;
   runConfigs: RunConfig[];
   selectedConfigId: string | null;
@@ -197,8 +177,7 @@ const emit = defineEmits<{
   (e: 'update-run-config', config: RunConfig): void;
 }>();
 
-const isRunning = ref(false);
-const results = ref<RunResult[]>([]);
+const isRunning = computed(() => runnerStore.isRunning);
 const lastEmitted = ref<RunConfig | null>(null);
 const editMode = ref(false);
 const editingConfig = ref<RunConfig | null>(null);
@@ -206,16 +185,12 @@ const editedName = ref('');
 const selectedRequests = ref<string[]>([]);
 const requestConfigs = ref<Record<string, RequestConfig>>({});
 
-let requestSequence = 0;
-
 const selectedConfig = computed(() => {
   if (!props.runConfigs || !props.selectedConfigId) return null;
   return props.runConfigs.find(c => c.id === props.selectedConfigId) || null;
 });
 
-const passedCount = computed(() => {
-  return results.value.filter(r => r.status >= 200 && r.status < 300).length;
-});
+const liveStats = computed(() => loadTestStore.liveStats);
 
 const currentCollection = computed(() => {
   if (!selectedConfig.value || !props.collections) return null;
@@ -291,201 +266,6 @@ function validateRPS(requestId: string) {
   }
 }
 
-// Execute all dependencies for a request (recursive)
-async function executeRequestDependencies(req: Request, executed = new Set<string>()) {
-  if (!req.dependsOn || executed.has(req.id)) return;
-
-  function findRequestById(collections: Collection[], id: string): Request | null {
-    for (const collection of collections) {
-      const findInItems = (items: (Request | Folder)[]): Request | null => {
-        for (const item of items) {
-          if ('method' in item && 'url' in item && item.id === id) {
-            return item;
-          }
-          if ('items' in item) {
-            const found = findInItems(item.items);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-      const found = findInItems(collection.items);
-      if (found) return found;
-    }
-    return null;
-  }
-
-  const dependencyReq = findRequestById(props.collections, req.dependsOn);
-  if (dependencyReq) {
-    await executeRequestDependencies(dependencyReq, executed);
-    if (!executed.has(dependencyReq.id)) {
-      executed.add(dependencyReq.id);
-      console.log(`Executing dependency "${dependencyReq.name}" for "${req.name}"`);
-      await runSingleRequest(dependencyReq);
-    }
-  }
-}
-
-async function runSingleRequest(req: Request): Promise<RunResult> {
-  await executeRequestDependencies(req, new Set([req.id]));
-
-  const url = substituteVariables(req.url);
-  const headers: Record<string, string> = {};
-  (req.headers || []).forEach(h => {
-    headers[substituteVariables(h.key)] = substituteVariables(h.value);
-  });
-
-  let body = req.body.type !== 'none' ? substituteVariables(req.body.content) : undefined;
-  if (req.body.type === 'json' && body) {
-    headers['Content-Type'] = 'application/json';
-  }
-
-  const startTime = Date.now();
-  const requestTimestamp = startTime;
-
-  try {
-    const result = await window.api.makeRequest({
-      method: req.method,
-      url: url.startsWith('http') ? url : 'https://' + url,
-      headers,
-      body,
-      rps: requestConfigs.value[req.id]?.rps || 1,
-      requestId: req.id
-    });
-
-    const runResult: RunResult = {
-      name: req.name,
-      method: req.method,
-      status: result.status,
-      time: result.time
-    };
-    results.value.push(runResult);
-
-    const requestDetail: LoadTestRequestDetail = {
-      requestIndexId: '',
-      request: {
-        method: req.method,
-        url: url,
-        headers: headers,
-        body: body
-      },
-      response: {
-        status: result.status,
-        statusText: result.statusText || '',
-        headers: result.headers || {},
-        body: result.data,
-        size: result.data ? result.data.length : 0
-      },
-      timestamp: requestTimestamp,
-      latency: result.time
-    };
-
-    await loadTestStore.recordRequest({
-      requestId: req.id,
-      requestName: req.name,
-      method: req.method,
-      url: url,
-      status: result.status,
-      latency: result.time,
-      responseSize: result.data ? result.data.length : 0,
-      timestamp: requestTimestamp,
-      requestDetail: requestDetail,
-      shouldCaptureFullDetail: result.status >= 500 || Math.random() < 0.1
-    });
-
-    return runResult;
-  } catch (error) {
-    const latency = Date.now() - startTime;
-    const runResult: RunResult = {
-      name: req.name,
-      method: req.method,
-      status: 0,
-      time: latency
-    };
-    results.value.push(runResult);
-
-    const requestDetail: LoadTestRequestDetail = {
-      requestIndexId: '',
-      request: {
-        method: req.method,
-        url: url,
-        headers: headers,
-        body: body
-      },
-      response: {
-        status: 0,
-        statusText: 'Network Error',
-        headers: {},
-        body: undefined,
-        size: 0
-      },
-      timestamp: requestTimestamp,
-      latency: latency,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    };
-
-    await loadTestStore.recordRequest({
-      requestId: req.id,
-      requestName: req.name,
-      method: req.method,
-      url: url,
-      status: 0,
-      latency: latency,
-      responseSize: 0,
-      timestamp: requestTimestamp,
-      requestDetail: requestDetail,
-      shouldCaptureFullDetail: true
-    });
-
-    return runResult;
-  }
-}
-
-// Create an asynchronous scheduler for a request type
-function createRequestScheduler(req: Request, rps: number, testStartTime: number, totalDuration: number): Promise<void> {
-  return new Promise((resolve) => {
-    let requestCount = 0;
-    const maxRequests = totalDuration > 0 ? Math.ceil((totalDuration / 1000) * rps) : 1;
-    let nextExecutionTime = testStartTime;
-
-    const scheduleNext = () => {
-      if (!isRunning.value) {
-        resolve();
-        return;
-      }
-
-      const now = Date.now();
-      if (totalDuration > 0 && (now - testStartTime) >= totalDuration) {
-        resolve();
-        return;
-      }
-
-      if (totalDuration === 0 && requestCount >= 1) {
-        resolve();
-        return;
-      }
-
-      if (now >= nextExecutionTime) {
-        runSingleRequest(req).catch(error => {
-          console.error(`[SCHEDULER] Error running request ${req.name}:`, error);
-        });
-
-        requestCount++;
-        nextExecutionTime += 1000 / rps;
-      }
-
-      if (requestCount < maxRequests || totalDuration > 0) {
-        const delay = Math.max(0, nextExecutionTime - Date.now());
-        setTimeout(scheduleNext, Math.min(delay, 100));
-      } else {
-        resolve();
-      }
-    };
-
-    scheduleNext();
-  });
-}
-
 async function selectDatafile(requestId: string) {
   try {
     const result = await window.api.showOpenDialog({
@@ -506,65 +286,21 @@ async function selectDatafile(requestId: string) {
   }
 }
 
-function substituteVariables(text: string): string {
-  if (!text) return text;
-  const activeEnv = props.environments.find(e => e.id === props.activeEnvironmentId);
-  if (!activeEnv) return text;
-  return text.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
-    const variable = activeEnv.variables.find(v => v.key === varName && v.enabled);
-    return variable ? variable.value : match;
-  });
-}
-
 async function runCollection() {
-  console.log('[RUNNER_PANEL] runCollection called', { selectedConfig: selectedConfig.value, selectedRequests: selectedRequests.value });
-  if (!selectedConfig.value) {
-    console.log('[RUNNER_PANEL] No selected config');
-    return;
-  }
+  if (!selectedConfig.value) return;
 
   const requests = collectionRequests.value.filter(r => selectedConfig.value!.selectedRequests.includes(r.id));
-  console.log('[RUNNER_PANEL] Requests to run:', requests.length, requests.map(r => r.name));
   if (requests.length === 0) return;
 
-  isRunning.value = true;
-  results.value = [];
-  requestSequence = 0;
-
-  const runConfig = {
-    name: selectedConfig.value.name,
-    collectionId: selectedConfig.value.collectionId,
-    collectionName: selectedConfig.value.collectionName,
-    selectedRequests: selectedConfig.value.selectedRequests,
-    runRepeated: selectedConfig.value.runRepeated,
-    duration: selectedConfig.value.duration
-  };
-
-  await loadTestStore.startRun(runConfig);
-
-  const totalDuration = selectedConfig.value.runRepeated ? selectedConfig.value.duration : 0;
-
   try {
-    const startTime = Date.now();
-
-    const schedulers = requests.map(req => {
-      const rps = requestConfigs.value[req.id]?.rps || 1;
-      return createRequestScheduler(req, rps, startTime, totalDuration * 1000);
-    });
-
-    await Promise.all(schedulers);
-
-  } finally {
-    await loadTestStore.endRun();
-    isRunning.value = false;
+    await runnerStore.runLoadTest(selectedConfig.value, props.collections, props.environments);
+  } catch (error) {
+    console.error('Run failed:', error);
   }
 }
 
 async function stopRun() {
-  isRunning.value = false;
-  if (loadTestStore.currentRun) {
-    await loadTestStore.endRun();
-  }
+  runnerStore.stopRun();
 }
 
 function startEdit() {

@@ -118,13 +118,18 @@
           <span style="width: 30px;"></span>
         </div>
         <div v-for="(header, index) in requestsStore.requestHeaders" :key="index" class="flex gap-2 mb-1">
-          <input v-model="header.key" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="Key" />
+          <input v-model="header.key" type="text" list="common-headers" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="Key" @change="onHeaderKeyChange(header)" />
           <input v-model="header.value" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="Value" />
           <button class="btn btn-sm border border-red-500 text-red-500 px-2" @click="requestsStore.removeHeader(index)">×</button>
         </div>
         <button class="btn btn-sm border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 mt-2 hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="requestsStore.addHeader()">+ Add Header</button>
       </div>
-      
+      <datalist id="common-headers">
+        <option v-for="h in uniqueCommonHeaders" :key="h" :value="h">
+          {{ h }}
+        </option>
+      </datalist>
+
       <div v-if="requestsStore.activeRequestTab === 'body'">
         <div class="mb-2">
           <select v-model="requestsStore.currentRequest.body.type" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
@@ -138,35 +143,33 @@
         <div v-if="requestsStore.currentRequest.body.type !== 'none'" class="mt-2">
           <textarea v-model="requestsStore.currentRequest.body.content" class="form-textarea bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded w-full" rows="5" placeholder='{"key": "value"}'></textarea>
         </div>
-       </div>
+      </div>
 
-        <div v-if="requestsStore.activeRequestTab === 'variables'" class="key-value-editor">
-          <div class="flex gap-2 mb-2">
-            <span style="width: 30px;"></span>
-            <span class="flex-1 text-sm text-zinc-500">Key</span>
-            <span class="flex-1 text-sm text-zinc-500">Value</span>
-            <div class="flex items-center flex-1">
-              <span class="text-sm text-zinc-500 mr-2">Dataset</span>
-              <select v-model="selectedDataset" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1">
-                <option value="">All</option>
-                <option v-for="dataset in uniqueDatasets" :key="dataset" :value="dataset">{{ dataset }}</option>
-              </select>
-            </div>
-            <span style="width: 30px;"></span>
+      <div v-if="requestsStore.activeRequestTab === 'variables'" class="key-value-editor">
+        <div class="flex gap-2 mb-2">
+          <span style="width: 30px;"></span>
+          <span class="flex-1 text-sm text-zinc-500">Key</span>
+          <span class="flex-1 text-sm text-zinc-500">Value</span>
+          <div class="flex items-center flex-1">
+            <span class="text-sm text-zinc-500 mr-2">Dataset</span>
+            <select v-model="selectedDataset" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1">
+              <option value="">All</option>
+              <option v-for="dataset in uniqueDatasets" :key="dataset" :value="dataset">{{ dataset }}</option>
+            </select>
           </div>
-         <div v-for="(variable, index) in filteredVariables" :key="index" class="flex gap-2 mb-1">
-           <input type="checkbox" v-model="variable.enabled" class="rounded border-zinc-300 dark:border-zinc-600">
-           <input v-model="variable.key" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="Key" />
-           <input v-model="variable.value" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="Value" />
-           <input v-model="variable.dataset" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="Dataset" />
-           <button class="btn btn-sm border border-red-500 text-red-500 px-2" @click="removeVariable(index)">×</button>
-         </div>
-          <button class="btn btn-sm border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 mt-2 hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="addVariable()">+ Add Variable</button>
+          <span style="width: 30px;"></span>
         </div>
+        <div v-for="(variable, index) in filteredVariables" :key="index" class="flex gap-2 mb-1">
+          <input type="checkbox" v-model="variable.enabled" class="rounded border-zinc-300 dark:border-zinc-600">
+          <input v-model="variable.key" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="Key" />
+          <input v-model="variable.value" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="Value" />
+          <input v-model="variable.dataset" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="Dataset" />
+          <button class="btn btn-sm border border-red-500 text-red-500 px-2" @click="removeVariable(index)">×</button>
+        </div>
+        <button class="btn btn-sm border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 mt-2 hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="addVariable()">+ Add Variable</button>
+      </div>
 
-
-
-        <div v-if="requestsStore.activeRequestTab === 'scripts'">
+      <div v-if="requestsStore.activeRequestTab === 'scripts'">
         <div class="mb-2">
           <label class="block text-sm text-zinc-500 mb-1">Pre-request Script</label>
           <textarea v-model="requestsStore.currentRequest.preRequestScript" class="form-textarea bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded font-mono w-full" rows="3" placeholder="// Runs before request is sent"></textarea>
@@ -292,6 +295,36 @@ watch(
 );
 
 const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
+
+const commonHeaders = [
+  { key: 'Accept', value: 'application/json' },
+  { key: 'Accept', value: 'application/xml' },
+  { key: 'Accept', value: 'text/html' },
+  { key: 'Accept-Encoding', value: 'gzip, deflate, br' },
+  { key: 'Accept-Language', value: 'en-US,en;q=0.9' },
+  { key: 'Authorization', value: 'Bearer ' },
+  { key: 'Content-Type', value: 'application/json' },
+  { key: 'Content-Type', value: 'application/x-www-form-urlencoded' },
+  { key: 'Content-Type', value: 'multipart/form-data' },
+  { key: 'Content-Type', value: 'text/plain' },
+  { key: 'Cache-Control', value: 'no-cache' },
+  { key: 'Cache-Control', value: 'max-age=0' },
+  { key: 'Connection', value: 'keep-alive' },
+  { key: 'Connection', value: 'close' },
+  { key: 'Cookie', value: '' },
+  { key: 'Host', value: '' },
+  { key: 'Origin', value: '' },
+  { key: 'Referer', value: '' },
+  { key: 'User-Agent', value: 'Mozilla/5.0' },
+  { key: 'X-Requested-With', value: 'XMLHttpRequest' },
+  { key: 'X-CSRF-Token', value: '' },
+  { key: 'X-API-Key', value: '' },
+  { key: 'X-Auth-Token', value: '' },
+  { key: 'If-None-Match', value: '' },
+  { key: 'If-Match', value: '' },
+];
+
+const uniqueCommonHeaders = [...new Set(commonHeaders.map(h => h.key))];
 
 const method = computed({
   get: () => requestsStore.currentRequest.method,
@@ -551,5 +584,12 @@ function saveRequest() {
 function saveNewRequest() {
   showSaveMenu.value = false;
   requestsStore.saveRequest();
+}
+
+function onHeaderKeyChange(header: { key: string; value: string }) {
+  const matched = commonHeaders.find(h => h.key === header.key && h.value);
+  if (matched && !header.value) {
+    header.value = matched.value;
+  }
 }
 </script>

@@ -26,7 +26,8 @@
 <!-- Sidebar + main content layout -->
 <div v-else-if="showSidebarMain" class="flex-1 flex">
   <!-- Sidebar -->
-  <div class="sidebar-main flex flex-col overflow-hidden" style="width: 280px;">
+  <div class="sidebar-main relative flex flex-col overflow-hidden" :style="{ width: uiStore.sidebarWidth + 'px' }">
+    <div class="sidebar-resize-handle absolute right-0 top-0 h-full w-[0.1rem] bg-zinc-300 hover:bg-zinc-500 dark:bg-zinc-600 dark:hover:bg-zinc-400 cursor-col-resize" @mousedown="startResize"></div>
     <div class="sidebar-header p-3 border-b border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 flex items-center justify-between">
       <h5 class="mb-0 text-zinc-900 dark:text-white">{{ sidebarTitle }}</h5>
     </div>
@@ -34,7 +35,7 @@
       <RouterView />
     </div>
   </div>
-
+  
   <!-- Main content area -->
   <div class="main-content flex-1 flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
     <!-- Request interface for collections and history -->
@@ -47,7 +48,7 @@
 
     <EnvironmentsDetail v-if="uiStore.activeSidebar === 'environments' && environmentsStore.activeEnvironmentId !== null" />
 
-    <CollectionPanel v-if="uiStore.activeSidebar === 'collections' && appStore.selectedCollectionId !== null && requestsStore.selectedRequestId === null" />
+    <CollectionPanel v-if="uiStore.activeSidebar === 'collections' && collectionsStore.selectedCollectionId !== null && requestsStore.selectedRequestId === null" />
 
        <UtilityContent v-if="uiStore.activeSidebar === 'utilities' && utilitiesStore.selectedUtilityId !== null" />
     <!-- Runner panel -->
@@ -181,6 +182,28 @@ const showRequestDetail = computed(() => {
 const sidebarTitle = computed(() => {
   return uiStore.sidebarTitle;
 });
+
+let resizeStartX = 0;
+let resizeStartWidth = 0;
+
+function startResize(e: MouseEvent) {
+  resizeStartX = e.clientX;
+  resizeStartWidth = uiStore.sidebarWidth;
+  document.addEventListener('mousemove', doResize);
+  document.addEventListener('mouseup', stopResize);
+}
+
+function doResize(e: MouseEvent) {
+  const deltaX = e.clientX - resizeStartX;
+  const newWidth = resizeStartWidth + deltaX;
+  uiStore.sidebarWidth = Math.max(200, Math.min(600, newWidth));
+  localStorage.setItem('sidebarWidth', uiStore.sidebarWidth.toString());
+}
+
+function stopResize() {
+  document.removeEventListener('mousemove', doResize);
+  document.removeEventListener('mouseup', stopResize);
+}
 
 function isActive(id: string): boolean {
   return uiStore.activeSidebar === id;

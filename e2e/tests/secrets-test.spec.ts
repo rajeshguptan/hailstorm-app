@@ -1,5 +1,5 @@
-import { test, expect } from '../fixtures/base.fixture';
-import { AppLayout } from '../fixtures/page-objects/AppLayout';
+import { test, expect } from './fixtures/base.fixture';
+import { AppLayout } from './fixtures/page-objects/AppLayout';
 
 test.describe('Secrets Icon Tests', () => {
   let appLayout: AppLayout;

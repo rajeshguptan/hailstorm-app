@@ -5,6 +5,7 @@ export const useUIStore = defineStore('ui', {
   state: () => ({
     activeSidebar: 'collections' as SidebarView,
     sidebarTitle: 'Collections',
+    sidebarWidth: parseInt(localStorage.getItem('sidebarWidth') || '280'),
 
     contextMenu: {
       show: false,

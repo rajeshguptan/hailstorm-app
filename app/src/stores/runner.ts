@@ -1,12 +1,63 @@
 import { defineStore } from 'pinia';
 import type { RunConfig } from '../types';
 import { useAppStore } from './index';
+import { useSecretsStore } from './secrets';
+
+class RunnerScheduler {
+  private _activeRun: RunConfig | null = null;
+
+  get activeRun() {
+    return this._activeRun;
+  }
+
+  async startLoadTest(
+    config: RunConfig,
+    collections: any[],
+    environments: any[],
+    secrets: any[],
+    isSecretsUnlocked: boolean
+  ): Promise<void> {
+    this._activeRun = config;
+
+    try {
+      // Run load test via IPC in main process
+      // The main process handles starting/ending the run and recording requests
+      // Deep clone all data to avoid passing reactive proxies through IPC
+      await window.api.runLoadTest({
+        config: JSON.parse(JSON.stringify(config)),
+        collections: JSON.parse(JSON.stringify(collections)),
+        environments: JSON.parse(JSON.stringify(environments)),
+        secrets: JSON.parse(JSON.stringify(secrets)),
+        isSecretsUnlocked,
+      });
+    } finally {
+      this._activeRun = null;
+    }
+  }
+
+  stop(): void {
+    this._activeRun = null;
+  }
+}
+
+const scheduler = new RunnerScheduler();
 
 export const useRunnerStore = defineStore('runner', {
   state: () => ({
     runConfigs: [] as RunConfig[],
     selectedConfigId: null as string | null,
+    isRunning: false as boolean,
   }),
+
+  getters: {
+    activeRunConfig(): RunConfig | null {
+      return this.runConfigs.find(c => c.id === this.selectedConfigId) || null;
+    },
+
+    scheduler(): RunnerScheduler {
+      return scheduler;
+    },
+  },
 
   actions: {
     generateId(prefix: string): string {
@@ -56,6 +107,29 @@ export const useRunnerStore = defineStore('runner', {
       }
       const appStore = useAppStore();
       appStore.saveToLocalStorage();
-    }
+    },
+
+    async runLoadTest(
+      config: RunConfig,
+      collections: any[],
+      environments: any[]
+    ): Promise<void> {
+      this.isRunning = true;
+      try {
+        const appStore = useAppStore();
+        const secretsStore = useSecretsStore();
+        const secrets = JSON.parse(JSON.stringify(appStore.secrets || []));
+        const isSecretsUnlocked = secretsStore.isUnlocked || false;
+
+        await scheduler.startLoadTest(config, collections, environments, secrets, isSecretsUnlocked);
+      } finally {
+        this.isRunning = false;
+      }
+    },
+
+    stopRun(): void {
+      scheduler.stop();
+      this.isRunning = false;
+    },
   }
 });

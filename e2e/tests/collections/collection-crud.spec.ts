@@ -70,10 +70,10 @@ test.describe('Collection CRUD Operations', () => {
     await collectionsPanel.addRequestToCollection('Test Collection', 'Test Request');
 
     // Initially collapsed
-    expect(await collectionsPanel.page.locator('.request-item').isVisible()).toBe(false);
+    expect(await collectionsPanel.page.locator('.tree-node').isVisible()).toBe(false);
 
     await collectionsPanel.expandCollection('Test Collection');
-    expect(await collectionsPanel.page.locator('.request-item').isVisible()).toBe(true);
+    expect(await collectionsPanel.page.locator('.tree-node').isVisible()).toBe(true);
   });
 
   test('should show correct context menu options for collection', async () => {

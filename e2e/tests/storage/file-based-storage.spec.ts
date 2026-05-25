@@ -36,7 +36,7 @@ test.describe('File-based Storage', () => {
     await collectionsPanel.addCollection('Load Test Collection');
     await collectionsPanel.expandCollection('Load Test Collection');
 
-    expect(await collectionsPanel.page.locator('.collection-item').isVisible()).toBe(true);
+    expect(await collectionsPanel.page.locator('.collection-node').isVisible()).toBe(true);
   });
 
   test('should handle file-based storage errors gracefully', async () => {

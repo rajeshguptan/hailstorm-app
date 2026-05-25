@@ -45,8 +45,8 @@ test.describe('Folder Management', () => {
       await collectionsPanel.addRequestToFolder('Test Collection', 'Large Folder', `Request ${i}`);
     }
 
-    // Check scrolling or pagination if implemented
-    const requestCount = await collectionsPanel.page.locator('.request-item').count();
-    expect(requestCount).toBeGreaterThan(10);
+    // Check that all 20 items appear in the tree
+    const requestCount = await collectionsPanel.page.locator('.tree-node').count();
+    expect(requestCount).toBe(21); // 1 folder node + 20 request nodes
   });
 });

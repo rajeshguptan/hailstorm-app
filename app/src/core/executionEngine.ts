@@ -8,6 +8,7 @@ import fs from 'fs';
 import os from 'node:os';
 import * as zlib from 'zlib';
 import type { SendRequestContext } from '../types';
+import type { RunnerEngine } from './runnerEngine';
 
 // Load Testing Service - Simple JSON file-based storage
 class LoadTestingService {
@@ -1281,6 +1282,8 @@ async function sendRequest(context: SendRequestContext): Promise<SendRequestResu
   };
 }
 
+// Export sendRequest for use by runnerEngine and other modules
+export { sendRequest };
 async function makeHttpRequest(options: { method: string; url: string; headers: Record<string, string>; body?: string; rps?: number; requestId?: string }): Promise<{ status: number; statusText: string; headers: Record<string, string | string[]>; data: string; time: number; error?: string }> {
   return new Promise(async (resolve) => {
     const startTime = Date.now();
@@ -1382,3 +1385,80 @@ function sanitizeFilename(name: string): string {
 function generateId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
+
+// IPC handler for running load tests in the main process
+let runnerEngine: RunnerEngine | null = null;
+
+function getRunnerEngine(): RunnerEngine {
+  if (!runnerEngine) {
+    // Use require to avoid circular dependency - runnerEngine imports sendRequest from here
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { RunnerEngine } = require('./runnerEngine');
+    runnerEngine = new RunnerEngine({ threadCount: 4 });
+  }
+  return runnerEngine;
+}
+
+interface RunLoadTestParams {
+  config: any;
+  collections: any[];
+  environments: any[];
+  secrets: any[];
+  isSecretsUnlocked: boolean;
+}
+
+ipcMain.handle('run-load-test', async (_event, params: RunLoadTestParams) => {
+  console.log('[EXECUTION_ENGINE] runLoadTest called');
+  const { config, collections, environments, secrets, isSecretsUnlocked } = params;
+  
+  // Start the run to get a runId
+  const run = await loadTestingService.startRun({
+    name: config.name,
+    collectionId: config.collectionId,
+    collectionName: config.collectionName || '',
+    selectedRequests: config.selectedRequests,
+    runMode: 'parallel',
+    delay: 0,
+    runRepeated: config.runRepeated || false,
+    iterations: 1,
+  });
+  
+  const runId = run.id;
+  console.log('[EXECUTION_ENGINE] runLoadTest started with runId:', runId);
+  
+  const engine = getRunnerEngine();
+  
+  // Track results
+  const results: any[] = [];
+  
+  // Execute load test with request recording callback
+  await engine.executeLoadTest(
+    config,
+    collections,
+    environments,
+    secrets,
+    isSecretsUnlocked,
+    async (result) => {
+      results.push(result);
+      
+      // Record the request in the load test service
+      await loadTestingService.recordRequest(runId, {
+        requestId: config.selectedRequests[0] || 'unknown',
+        requestName: result.requestName,
+        method: result.method,
+        url: '',
+        status: result.status,
+        latency: result.time,
+        responseSize: 0,
+        timestamp: Date.now(),
+        shouldCaptureFullDetail: result.status >= 500,
+      });
+    }
+  );
+  
+  // End the run
+  await loadTestingService.endRun(runId);
+  console.log('[EXECUTION_ENGINE] runLoadTest completed');
+  
+  return results;
+});

@@ -43,6 +43,14 @@ export interface SendRequestResult {
   testResults: string;
 }
 
+export type RunLoadTestParams = {
+  config: any;
+  collections: any[];
+  environments: any[];
+  secrets: any[];
+  isSecretsUnlocked: boolean;
+};
+
 const api = {
   makeRequest: async (options: import('./types').RequestOptions): Promise<import('./types').ResponseData> => {
     console.log('[PRELOAD] makeRequest called', { method: options.method, url: options.url });
@@ -282,6 +290,20 @@ const api = {
       return result;
     } catch (error) {
       console.error('[PRELOAD] sendRequest failed', error);
+      throw error;
+    }
+  },
+
+  // ─── Run Load Test via IPC ───────────────────────────────────────────────
+  // Delegates load test execution to the main process through executionEngine.
+  runLoadTest: async (params: RunLoadTestParams): Promise<any[]> => {
+    console.log('[PRELOAD] runLoadTest called');
+    try {
+      const result = await ipcRenderer.invoke('run-load-test', params);
+      console.log('[PRELOAD] runLoadTest completed');
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] runLoadTest failed', error);
       throw error;
     }
   },
