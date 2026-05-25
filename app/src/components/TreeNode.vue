@@ -1,10 +1,12 @@
 <template>
-  <div class="tree-node" :data-id="item.id" :data-testid="`node-${item.id}`">
+  <div class="tree-node" :data-id="item.id" :data-testid="`node-${item.id}`"
+    @mouseenter="onMouseEnter"
+    @mouseleave="onMouseLeave">
     <div 
-      class="flex items-center py-1 px-2 rounded cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 group"
+      class="flex items-center py-1 px-2 rounded cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 group relative"
       :class="isSelected ? 'bg-blue-100 dark:bg-blue-800' : ''"
       @click="handleItemClick"
-      @contextmenu.prevent="uiStore.showContextMenu($event, getItemType(), item.id)"
+      @contextmenu.prevent.stop="showContextMenu($event)"
       role="button"
       tabindex="0"
       draggable="true"
@@ -14,22 +16,26 @@
       @dragleave="onDragLeave"
       @drop="onDrop"
     >
-<span 
-  v-if="isFolder" 
-  class="chevron mr-1 text-zinc-500 cursor-pointer"
-  @click.stop="toggleFolder"
->
-  {{ isExpanded ? '▼' : '▶' }}
-</span>
+      <span 
+        v-if="isFolder" 
+        class="chevron mr-1 text-zinc-500 cursor-pointer"
+        @click.stop="toggleFolder"
+      >
+        {{ isExpanded ? '▼' : '▶' }}
+      </span>
       <span v-else class="w-4 mr-1"></span>
       
       <span v-if="isRequest" :class="getMethodClass(item.method)" class="method-badge mr-2 text-xs font-bold min-w-[60px]">
         {{ item.method }}
       </span>
       
-      <span class="item-name text-zinc-900 dark:text-white text-sm">
+      <span class="item-name text-zinc-900 dark:text-white text-sm flex-1">
         {{ item.name }}
       </span>
+      
+      <span class="ellipsis-menu text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 cursor-pointer" 
+            @click.stop="showContextMenu($event)" title="More options"
+            :style="{ visibility: isHovered ? 'visible' : 'hidden' }">•••</span>
     </div>
     
     <div v-if="isFolder && isExpanded" class="folder-children ml-3 pl-2 border-l border-zinc-300 dark:border-zinc-600">
@@ -84,9 +90,21 @@ const isFolder = 'items' in props.item && Array.isArray(props.item.items) && !('
 const isRequest = 'method' in props.item;
 const isExpanded = computed(() => props.expandedFolders.includes(props.item.id));
 const isSelected = computed(() => props.item.id === props.selectedRequestId);
+const isHovered = computed(() => uiStore.hoveredTreeItemId === props.item.id);
+
+function onMouseEnter() {
+  uiStore.setHoveredTreeItem(props.item.id);
+}
+
+function onMouseLeave() {
+  setTimeout(() => {
+    if (uiStore.hoveredTreeItemId === props.item.id) {
+      uiStore.setHoveredTreeItem('');
+    }
+  }, 0);
+}
 
 function toggleFolder() {
-  console.log('[TreeNode] toggleFolder called for item.id:', props.item.id);
   emit('toggle-folder', props.item.id);
 }
 
@@ -181,6 +199,16 @@ function getItemType(): string {
   return isRequest ? 'request' : 'folder';
 }
 
+function showContextMenu(event: MouseEvent) {
+  event.preventDefault();
+  event.stopPropagation();
+  uiStore.contextMenu.type = getItemType();
+  uiStore.contextMenu.id = props.item.id;
+  uiStore.contextMenu.show = true;
+  uiStore.contextMenu.x = event.clientX;
+  uiStore.contextMenu.y = event.clientY;
+}
+
 function getMethodClass(method: string): string {
   const m = method.toLowerCase();
   if (m === 'get') return 'method-get';
@@ -216,5 +244,9 @@ function getMethodClass(method: string): string {
   background-color: rgba(59, 130, 246, 0.1) !important;
   border: 2px dashed #3b82f6 !important;
   border-radius: 4px;
+}
+
+.ellipsis-menu {
+  padding: 2px 6px;
 }
 </style>

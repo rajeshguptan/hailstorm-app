@@ -21,12 +21,14 @@ export const useUIStore = defineStore('ui', {
       name: '',
       variables: [],
       active: false
-    } as any, // Using any to avoid import issues
+    } as any,
 
     showRenameModal: false,
     renameTarget: { id: '', currentName: '' } as { id: string; currentName: string },
 
     fileInput: null as HTMLInputElement | null,
+
+    hoveredTreeItemId: '' as string,
   }),
 
   getters: {
@@ -46,6 +48,10 @@ export const useUIStore = defineStore('ui', {
 
     hideContextMenu() {
       this.contextMenu.show = false;
+    },
+
+    setHoveredTreeItem(id: string) {
+      this.hoveredTreeItemId = id;
     }
   }
 });

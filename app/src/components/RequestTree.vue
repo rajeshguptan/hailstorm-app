@@ -1,10 +1,10 @@
 <template>
   <div class="request-tree w-full">
     <div v-for="collection in collections" :key="collection.id" class="collection-node mb-2" :data-collection-id="collection.id" :data-testid="`collection-${collection.id}`">
-      <div class="collection-header flex items-center p-2 rounded bg-zinc-200 dark:bg-zinc-800 cursor-pointer hover:bg-zinc-300 dark:hover:bg-zinc-700" @click="toggleCollection(collection.id)" :data-collection-id="collection.id" @contextmenu.prevent="uiStore.showContextMenu($event, 'collection', collection.id)" @dragover.prevent @dragenter="onDragEnter" @dragleave="onDragLeave" @drop="onDrop($event, collection.id, 'collection')">
+      <div class="collection-header flex items-center p-2 rounded bg-zinc-200 dark:bg-zinc-800 cursor-pointer hover:bg-zinc-300 dark:hover:bg-zinc-700" @click="toggleCollection(collection.id)" :data-collection-id="collection.id" @contextmenu.prevent="uiStore.showContextMenu($event, 'collection', collection.id)" @mouseenter="onCollectionMouseEnter(collection.id)" @mouseleave="onCollectionMouseLeave" @dragover.prevent @dragenter="onDragEnter" @dragleave="onDragLeave" @drop="onDrop($event, collection.id, 'collection')">
         <span class="chevron mr-1 text-zinc-500">{{ expandedCollections.includes(collection.id) ? '▼' : '▶' }}</span>
         <span class="collection-name flex-1 text-zinc-900 dark:text-white font-medium">{{ collection.name }}</span>
-        <span class="ellipsis-menu text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300" @contextmenu.prevent.stop="showCollectionMenu(collection.id, $event)">•••</span>
+        <span class="ellipsis-menu text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300" @click.stop="showCollectionMenu(collection.id, $event)" :style="{ visibility: isCollectionHovered(collection.id) ? 'visible' : 'hidden' }">•••</span>
       </div>
       
       <div v-if="expandedCollections.includes(collection.id)" class="collection-children ml-3 pl-2 border-l border-zinc-300 dark:border-zinc-600">
@@ -56,6 +56,25 @@ const uiStore = useUIStore();
 const collectionsStore = useCollectionsStore();
 const requestsStore = useRequestsStore();
 
+function isCollectionHovered(id: string) {
+  return uiStore.hoveredTreeItemId === id;
+}
+
+function onCollectionMouseEnter(id: string) {
+  uiStore.setHoveredTreeItem(id);
+}
+
+function onCollectionMouseLeave() {
+  setTimeout(() => {
+    if (uiStore.hoveredTreeItemId) {
+      const stillHovered = document.querySelector(`[data-collection-id="${uiStore.hoveredTreeItemId}"]`);
+      if (!stillHovered?.matches(':hover')) {
+        uiStore.setHoveredTreeItem('');
+      }
+    }
+  }, 0);
+}
+
 function toggleCollection(id: string) {
   // Clear request selection when selecting a collection
   if (requestsStore.selectedRequestId) {
@@ -75,7 +94,6 @@ function toggleCollection(id: string) {
 }
 
 function toggleFolder(id: string) {
-  console.log('[RequestTree] toggleFolder called with id:', id, 'current expandedFolders:', props.expandedFolders);
   const expanded = [...props.expandedFolders];
   const index = expanded.indexOf(id);
   if (index > -1) {
@@ -83,7 +101,6 @@ function toggleFolder(id: string) {
   } else {
     expanded.push(id);
   }
-  console.log('[RequestTree] new expandedFolders:', expanded);
   emit('update:expanded-folders', expanded);
 }
 
@@ -160,12 +177,8 @@ function onDrop(event: DragEvent, targetContainerId: string, targetContainerType
   transition: transform 0.15s ease;
 }
 
-.collection-header:hover .ellipsis-menu {
-  visibility: visible;
-}
-
 .ellipsis-menu {
-  visibility: hidden;
+  padding: 2px 6px;
 }
 
 .collection-node.drag-over {
