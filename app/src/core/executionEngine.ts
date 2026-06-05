@@ -7,7 +7,7 @@ import { exec } from 'child_process';
 import fs from 'fs';
 import os from 'node:os';
 import * as zlib from 'zlib';
-import type { SendRequestContext } from '../types';
+import type { SendRequestContext, LoadTestRun } from '../types';
 import type { RunnerEngine } from './runnerEngine';
 
 // Load Testing Service - Simple JSON file-based storage
@@ -1116,7 +1116,7 @@ async function executeDepRequest(
  *                references to live reactive Pinia stores; instead the
  *                renderer passes plain serialisable snapshots.
  */
-async function sendRequest(context: SendRequestContext): Promise<SendRequestResult> {
+async function sendRequest(context: SendRequestContext, rps: number = 0, requestId: string = ''): Promise<SendRequestResult> {
   const {
     requestsStore,
     responseStore: _responseStore,
@@ -1227,14 +1227,16 @@ async function sendRequest(context: SendRequestContext): Promise<SendRequestResu
     if (h.key && h.enabled) headers[h.key] = substituteAll(h.value, seVars, [...(mainRequest.variables || [])], accessibleSecrets);
   }
 
-  setContentType(headers, mainRequest.body?.type || 'none', !!body);
+setContentType(headers, mainRequest.body?.type || 'none', !!body);
 
-  const mainResult = await makeHttpRequest({
-    method: mainRequest.method,
-    url,
-    headers,
-    body,
-  });
+   const mainResult = await makeHttpRequest({
+     method: mainRequest.method,
+     url,
+     headers,
+     body,
+     rps,
+     requestId,
+   });
 
   const now = Date.now();
 
@@ -1389,15 +1391,22 @@ function generateId(prefix: string): string {
 // IPC handler for running load tests in the main process
 let runnerEngine: RunnerEngine | null = null;
 
-function getRunnerEngine(): RunnerEngine {
+async function getRunnerEngine(): Promise<RunnerEngine> {
   if (!runnerEngine) {
-    // Use require to avoid circular dependency - runnerEngine imports sendRequest from here
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { RunnerEngine } = require('./runnerEngine');
+    // Import dynamically - Vite bundles this module together, avoiding runtime file lookup
+    const { RunnerEngine } = await import('./runnerEngine');
     runnerEngine = new RunnerEngine({ threadCount: 4 });
   }
   return runnerEngine;
 }
+
+// IPC handler to stop the running load test
+ipcMain.handle('stop-load-test', async () => {
+  console.log('[EXECUTION_ENGINE] stopLoadTest called');
+  if (runnerEngine) {
+    runnerEngine.stop();
+  }
+});
 
 interface RunLoadTestParams {
   config: any;
@@ -1405,28 +1414,38 @@ interface RunLoadTestParams {
   environments: any[];
   secrets: any[];
   isSecretsUnlocked: boolean;
+  runId?: string;
+  runRepeated?: boolean;
 }
 
 ipcMain.handle('run-load-test', async (_event, params: RunLoadTestParams) => {
   console.log('[EXECUTION_ENGINE] runLoadTest called');
-  const { config, collections, environments, secrets, isSecretsUnlocked } = params;
+  const { config, collections, environments, secrets, isSecretsUnlocked, runId: existingRunId } = params;
   
-  // Start the run to get a runId
-  const run = await loadTestingService.startRun({
-    name: config.name,
-    collectionId: config.collectionId,
-    collectionName: config.collectionName || '',
-    selectedRequests: config.selectedRequests,
-    runMode: 'parallel',
-    delay: 0,
-    runRepeated: config.runRepeated || false,
-    iterations: 1,
-  });
+  // Use existing runId if provided, otherwise create a new run
+  let runId = existingRunId;
+  let newRun: LoadTestRun | null = null;
   
-  const runId = run.id;
+  if (!runId) {
+    newRun = await loadTestingService.startRun({
+      name: config.name,
+      collectionId: config.collectionId,
+      collectionName: config.collectionName || '',
+      selectedRequests: config.selectedRequests,
+      runMode: 'parallel',
+      delay: 0,
+      runRepeated: config.runRepeated || false,
+      iterations: 1
+    });
+    runId = newRun.id;
+  }
+  
   console.log('[EXECUTION_ENGINE] runLoadTest started with runId:', runId);
   
-  const engine = getRunnerEngine();
+  const engine = await getRunnerEngine();
+  
+  // Get RPS configs from config (passed from runner.ts)
+  const rpsConfigs = config.requestConfigs || {};
   
   // Track results
   const results: any[] = [];
@@ -1438,6 +1457,7 @@ ipcMain.handle('run-load-test', async (_event, params: RunLoadTestParams) => {
     environments,
     secrets,
     isSecretsUnlocked,
+    rpsConfigs,
     async (result) => {
       results.push(result);
       
@@ -1453,12 +1473,26 @@ ipcMain.handle('run-load-test', async (_event, params: RunLoadTestParams) => {
         timestamp: Date.now(),
         shouldCaptureFullDetail: result.status >= 500,
       });
+      
+      // Get updated stats and send to renderer
+      const stats = await loadTestingService.getRunStats(runId);
+      if (stats && _event.sender.isDestroyed() === false) {
+        // Add the last request info for rolling window update
+        stats.lastLatency = result.time;
+        stats.lastStatus = result.status;
+        stats.lastRequestName = result.requestName;
+        _event.sender.send('load-test-stats-update', { runId, stats });
+      }
     }
   );
   
-  // End the run
-  await loadTestingService.endRun(runId);
   console.log('[EXECUTION_ENGINE] runLoadTest completed');
   
-  return results;
+  // End the run only if we created it
+  if (newRun) {
+    await loadTestingService.endRun(runId);
+  }
+  
+  // Return both run and results so renderer can set currentRun
+  return { run: newRun, results };
 });

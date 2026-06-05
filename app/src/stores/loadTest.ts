@@ -286,6 +286,33 @@ export const useLoadTestStore = defineStore('loadTest', {
 
     async deleteRun(runId: string) {
       return await window.api.deleteLoadTestRun(runId);
+    },
+
+    setupStatsListener() {
+      // Listen for live stats updates from main process
+      window.api.onLoadTestStatsUpdate(({ runId, stats }) => {
+        // Only update if this matches the current run
+        if (this.currentRun && this.currentRun.id === runId) {
+          // Update live stats
+          this.liveStats = {
+            totalRequests: stats.totalRequests,
+            successfulRequests: stats.successfulRequests,
+            failedRequests: stats.failedRequests,
+            avgResponseTime: stats.avgResponseTime,
+            requestsPerSecond: stats.requestsPerSecond || 0,
+            startTime: this.liveStats.startTime,
+            recentRequests: this.liveStats.recentRequests
+          };
+          
+          // Update rolling window for charts
+          this.updateRollingWindow(
+            Date.now(),
+            stats.lastLatency || 0,
+            stats.lastStatus >= 500,
+            stats.lastRequestName || ''
+          );
+        }
+      });
     }
   }
 });

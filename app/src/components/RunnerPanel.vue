@@ -60,47 +60,47 @@
                   <th class="px-2 sm:px-4 py-2 text-left font-medium text-zinc-700 dark:text-zinc-300 min-w-0">Datafile</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr v-for="req in collectionRequests.filter(r => requestConfigs[r.id])" :key="req.id" class="border-b border-zinc-100 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800">
-                  <td class="px-2 sm:px-4 py-2">
-                    <div :class="selectedRequests.includes(req.id) ? 'checkbox-custom checked' : 'checkbox-custom'" class="form-checkbox" @click="toggleRequest(req.id)"></div>
-                  </td>
-                  <td class="px-2 sm:px-4 py-2">
-                    <span class="badge" :class="getMethodClass(req)">{{ req.method }}</span>
-                  </td>
-                  <td class="px-2 sm:px-4 py-2 text-zinc-900 dark:text-white truncate">{{ req.name }}</td>
-                  <td class="px-2 sm:px-4 py-2">
-                    <input
-                      v-model.number="requestConfigs[req.id].rps"
-                      type="number"
-                      min="1"
-                      step="1"
-                      class="w-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border border-zinc-300 dark:border-zinc-600 rounded px-1 sm:px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      :disabled="!selectedRequests.includes(req.id)"
-                      @input="validateRPS(req.id)"
-                    />
-                  </td>
-                  <td class="px-2 sm:px-4 py-2">
-                    <div class="flex items-center gap-1 sm:gap-2">
-                      <input
-                        v-model="requestConfigs[req.id].datafile"
-                        type="text"
-                        readonly
-                        class="flex-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border border-zinc-300 dark:border-zinc-600 rounded px-1 sm:px-2 py-1 text-xs sm:text-sm focus:outline-none truncate"
-                        :disabled="!selectedRequests.includes(req.id)"
-                        placeholder="Select file..."
-                      />
-                      <button
-                        class="px-1 sm:px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 disabled:opacity-50 whitespace-nowrap"
-                        :disabled="!selectedRequests.includes(req.id)"
-                        @click="selectDatafile(req.id)"
-                      >
-                        Browse
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
+<tbody>
+                 <tr v-for="req in collectionRequests" :key="req.id" class="border-b border-zinc-100 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                   <td class="px-2 sm:px-4 py-2">
+                     <div :class="selectedRequests.includes(req.id) ? 'checkbox-custom checked' : 'checkbox-custom'" class="form-checkbox" @click="toggleRequest(req.id)"></div>
+                   </td>
+                   <td class="px-2 sm:px-4 py-2">
+                     <span class="badge" :class="getMethodClass(req)">{{ req.method }}</span>
+                   </td>
+                   <td class="px-2 sm:px-4 py-2 text-zinc-900 dark:text-white truncate">{{ req.name }}</td>
+                   <td class="px-2 sm:px-4 py-2">
+                     <input
+                       v-model.number="requestConfigs[req.id].rps"
+                       type="number"
+                       min="1"
+                       step="1"
+                       class="w-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border border-zinc-300 dark:border-zinc-600 rounded px-1 sm:px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       :disabled="!selectedRequests.includes(req.id)"
+                       @input="validateRPS(req.id)"
+                     />
+                   </td>
+                   <td class="px-2 sm:px-4 py-2">
+                     <div class="flex items-center gap-1 sm:gap-2">
+                       <input
+                         v-model="requestConfigs[req.id].datafile"
+                         type="text"
+                         readonly
+                         class="flex-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border border-zinc-300 dark:border-zinc-600 rounded px-1 sm:px-2 py-1 text-xs sm:text-sm focus:outline-none truncate"
+                         :disabled="!selectedRequests.includes(req.id)"
+                         placeholder="Select file..."
+                       />
+                       <button
+                         class="px-1 sm:px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 disabled:opacity-50 whitespace-nowrap"
+                         :disabled="!selectedRequests.includes(req.id)"
+                         @click="selectDatafile(req.id)"
+                       >
+                         Browse
+                       </button>
+                     </div>
+                   </td>
+                 </tr>
+               </tbody>
             </table>
           </div>
         </div>
@@ -287,17 +287,26 @@ async function selectDatafile(requestId: string) {
 }
 
 async function runCollection() {
-  if (!selectedConfig.value) return;
+   if (!selectedConfig.value) return;
 
-  const requests = collectionRequests.value.filter(r => selectedConfig.value!.selectedRequests.includes(r.id));
-  if (requests.length === 0) return;
+   // Sync the latest requestConfigs to the config before running
+   const updatedConfig = {
+     ...selectedConfig.value,
+     requestConfigs: JSON.parse(JSON.stringify(requestConfigs.value)),
+     selectedRequests: [...selectedRequests.value]
+   };
+   lastEmitted.value = JSON.parse(JSON.stringify(updatedConfig));
+   emit('update-run-config', updatedConfig);
 
-  try {
-    await runnerStore.runLoadTest(selectedConfig.value, props.collections, props.environments);
-  } catch (error) {
-    console.error('Run failed:', error);
-  }
-}
+   const requests = collectionRequests.value.filter(r => updatedConfig.selectedRequests.includes(r.id));
+   if (requests.length === 0) return;
+
+   try {
+     await runnerStore.runLoadTest(updatedConfig, props.collections, props.environments);
+   } catch (error) {
+     console.error('Run failed:', error);
+   }
+ }
 
 async function stopRun() {
   runnerStore.stopRun();

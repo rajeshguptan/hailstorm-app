@@ -4,7 +4,7 @@ import started from 'electron-squirrel-startup';
 import { initializeExecutionEngine } from './core/executionEngine';
 import { existsSync } from 'node:fs';
 
-// Side-effect import to ensure runnerEngine is bundled by Vite (even though it's dynamically loaded)
+// Side-effect import to ensure runnerEngine is bundled by Vite
 import './core/runnerEngine';
 
 console.log('[MAIN] Application starting...');

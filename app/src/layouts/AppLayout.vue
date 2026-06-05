@@ -152,7 +152,6 @@ const recentRequests = computed(() => {
     historyId: item.id,
     id: item.request.id,
     name: item.request.name || item.request.url,
-    name: item.request.name || item.request.url,
     method: item.request.method,
     url: item.request.url,
     headers: item.request.headers,

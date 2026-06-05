@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import type { RunConfig } from '../types';
 import { useAppStore } from './index';
 import { useSecretsStore } from './secrets';
+import { useLoadTestStore } from './loadTest';
 
 class RunnerScheduler {
   private _activeRun: RunConfig | null = null;
@@ -10,30 +11,30 @@ class RunnerScheduler {
     return this._activeRun;
   }
 
-  async startLoadTest(
-    config: RunConfig,
-    collections: any[],
-    environments: any[],
-    secrets: any[],
-    isSecretsUnlocked: boolean
-  ): Promise<void> {
-    this._activeRun = config;
+async startLoadTest(
+      config: RunConfig,
+      collections: any[],
+      environments: any[],
+      secrets: any[],
+      isSecretsUnlocked: boolean,
+      runId: string
+    ): Promise<void> {
+      this._activeRun = config;
 
-    try {
-      // Run load test via IPC in main process
-      // The main process handles starting/ending the run and recording requests
-      // Deep clone all data to avoid passing reactive proxies through IPC
-      await window.api.runLoadTest({
-        config: JSON.parse(JSON.stringify(config)),
-        collections: JSON.parse(JSON.stringify(collections)),
-        environments: JSON.parse(JSON.stringify(environments)),
-        secrets: JSON.parse(JSON.stringify(secrets)),
-        isSecretsUnlocked,
-      });
-    } finally {
-      this._activeRun = null;
+      try {
+        // Run load test via IPC in main process
+        await window.api.runLoadTest({
+          config,
+          collections,
+          environments,
+          secrets,
+          isSecretsUnlocked,
+          runId,
+        });
+      } finally {
+        this._activeRun = null;
+      }
     }
-  }
 
   stop(): void {
     this._activeRun = null;
@@ -109,27 +110,50 @@ export const useRunnerStore = defineStore('runner', {
       appStore.saveToLocalStorage();
     },
 
-    async runLoadTest(
-      config: RunConfig,
-      collections: any[],
-      environments: any[]
-    ): Promise<void> {
-      this.isRunning = true;
-      try {
-        const appStore = useAppStore();
-        const secretsStore = useSecretsStore();
-        const secrets = JSON.parse(JSON.stringify(appStore.secrets || []));
-        const isSecretsUnlocked = secretsStore.isUnlocked || false;
+async runLoadTest(
+       config: RunConfig,
+       collections: any[],
+       environments: any[]
+     ): Promise<void> {
+        this.isRunning = true;
+        try {
+          const appStore = useAppStore();
+          const secretsStore = useSecretsStore();
+          const loadTestStore = useLoadTestStore();
+          
+          // Deep clone everything to remove Proxy objects
+          const clonedConfig = JSON.parse(JSON.stringify(config));
+          const clonedCollections = JSON.parse(JSON.stringify(collections));
+          const clonedEnvironments = JSON.parse(JSON.stringify(environments));
+          
+          // Start the run in loadTestStore to establish currentRun for StatsPanel
+          const run = await loadTestStore.startRun({
+            name: clonedConfig.name,
+            collectionId: clonedConfig.collectionId,
+            collectionName: clonedConfig.collectionName || '',
+            selectedRequests: clonedConfig.selectedRequests,
+          });
 
-        await scheduler.startLoadTest(config, collections, environments, secrets, isSecretsUnlocked);
-      } finally {
-        this.isRunning = false;
-      }
-    },
+          // Setup listener for live stats updates
+          loadTestStore.setupStatsListener();
 
-    stopRun(): void {
-      scheduler.stop();
-      this.isRunning = false;
-    },
+          const secrets = JSON.parse(JSON.stringify(appStore.secrets || []));
+          const isSecretsUnlocked = secretsStore.isUnlocked || false;
+
+          // Run the load test with the existing runId and requestConfigs for RPS
+          await scheduler.startLoadTest(clonedConfig, clonedCollections, clonedEnvironments, secrets, isSecretsUnlocked, run.id);
+          
+          // End the run
+          await loadTestStore.endRun(run.id);
+        } finally {
+          this.isRunning = false;
+        }
+      },
+
+     stopRun(): void {
+       window.api.stopLoadTest();
+       scheduler.stop();
+       this.isRunning = false;
+     },
   }
 });

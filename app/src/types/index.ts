@@ -213,6 +213,9 @@ export interface LoadTestStats {
   startTime: number;
   endTime: number;
   duration: number;
+  lastLatency?: number;
+  lastStatus?: number;
+  lastRequestName?: string;
 }
 
 export interface LoadTestTimeSeriesPoint {

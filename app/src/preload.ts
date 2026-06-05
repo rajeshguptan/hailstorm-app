@@ -49,6 +49,7 @@ export type RunLoadTestParams = {
   environments: any[];
   secrets: any[];
   isSecretsUnlocked: boolean;
+  runId?: string; // Optional existing runId to continue recording to
 };
 
 const api = {
@@ -306,6 +307,23 @@ const api = {
       console.error('[PRELOAD] runLoadTest failed', error);
       throw error;
     }
+  },
+
+  // Stop the running load test
+  stopLoadTest: async (): Promise<void> => {
+    console.log('[PRELOAD] stopLoadTest called');
+    try {
+      await ipcRenderer.invoke('stop-load-test');
+      console.log('[PRELOAD] stopLoadTest completed');
+    } catch (error) {
+      console.error('[PRELOAD] stopLoadTest failed', error);
+      throw error;
+    }
+  },
+
+  // Subscribe to live stats updates during load test
+  onLoadTestStatsUpdate: (callback: (data: { runId: string; stats: any }) => void) => {
+    ipcRenderer.on('load-test-stats-update', (_event, data) => callback(data));
   },
 };
 
