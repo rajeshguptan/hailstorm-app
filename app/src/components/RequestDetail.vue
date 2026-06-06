@@ -240,11 +240,16 @@
                   </td>
                 </tr>
               </tbody>
-            </table>
-          </div>
+</table>
+           </div>
 
-          <!-- Scripts Tab -->
-          <div v-if="activeRequestTab === 'scripts'" class="p-3">
+           <!-- Description Tab -->
+           <div v-if="activeRequestTab === 'description'" class="p-3">
+             <MarkdownDescription v-model="editingRequest.description" />
+           </div>
+
+           <!-- Scripts Tab -->
+           <div v-if="activeRequestTab === 'scripts'" class="p-3">
             <div class="mb-4">
               <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Pre-request Script</label>
               <textarea
@@ -281,13 +286,14 @@ import { useAppStore } from '../stores';
 import { useRequestsStore } from '../stores/requests';
 import { useResponseStore } from '../stores/response';
 import { useHistoryStore } from '../stores/history';
+import MarkdownDescription from './MarkdownDescription.vue';
 
 const appStore = useAppStore();
 const requestsStore = useRequestsStore();
 const responseStore = useResponseStore();
 const historyStore = useHistoryStore();
 
-const activeRequestTab = ref<'params' | 'auth' | 'headers' | 'body' | 'variables' | 'scripts'>('params');
+const activeRequestTab = ref<'params' | 'auth' | 'headers' | 'body' | 'variables' | 'scripts' | 'description'>('params');
 
 const requestTabs = [
   { id: 'params' as const, name: 'Parameters' },
@@ -295,19 +301,21 @@ const requestTabs = [
   { id: 'headers' as const, name: 'Headers' },
   { id: 'body' as const, name: 'Body' },
   { id: 'variables' as const, name: 'Variables' },
-  { id: 'scripts' as const, name: 'Scripts' }
+  { id: 'scripts' as const, name: 'Scripts' },
+  { id: 'description' as const, name: 'Description' }
 ];
 
 const editingRequest = ref<Request>({
-  id: '',
-  name: '',
-  method: 'GET',
-  url: '',
-  headers: [],
-  body: { type: 'none', content: '' },
-  auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' } },
-  variables: []
-});
+   id: '',
+   name: '',
+   method: 'GET',
+   url: '',
+   headers: [],
+   body: { type: 'none', content: '' },
+   auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' } },
+   variables: [],
+   description: ''
+ });
 
 const urlParams = ref<Variable[]>([]);
 const requestHeaders = ref<Variable[]>([]);
@@ -342,21 +350,22 @@ watch(() => requestsStore.selectedRequestId, (newId) => {
       requestHeaders.value = (request.headers && request.headers.length > 0) ? [...request.headers] : [];
       requestVariables.value = (request.variables && request.variables.length > 0) ? [...request.variables] : [];
     }
-    } else {
-      editingRequest.value = {
-        id: '',
-        name: '',
-        method: 'GET',
-        url: '',
-        headers: [],
-        body: { type: 'none', content: '' },
-        auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' } },
-        variables: []
-      };
-      urlParams.value = [];
-      requestHeaders.value = [];
-      requestVariables.value = [];
-    }
+} else {
+       editingRequest.value = {
+         id: '',
+         name: '',
+         method: 'GET',
+         url: '',
+         headers: [],
+         body: { type: 'none', content: '' },
+         auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' } },
+         variables: [],
+         description: ''
+       };
+       urlParams.value = [];
+       requestHeaders.value = [];
+       requestVariables.value = [];
+     }
 }, { immediate: true });
 
 function addParam() {

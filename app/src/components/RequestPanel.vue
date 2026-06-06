@@ -42,8 +42,10 @@
 
            <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': requestsStore.activeRequestTab === 'variables' }" @click="requestsStore.activeRequestTab = 'variables'">Variables</button>
 
-           <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': requestsStore.activeRequestTab === 'scripts' }" @click="requestsStore.activeRequestTab = 'scripts'">Scripts</button>
-       </li>
+<button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': requestsStore.activeRequestTab === 'scripts' }" @click="requestsStore.activeRequestTab = 'scripts'">Scripts</button>
+
+            <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': requestsStore.activeRequestTab === 'description' }" @click="requestsStore.activeRequestTab = 'description'">Description</button>
+        </li>
     </ul>
     
     <div class="tab-content p-2" style="max-height: 200px; overflow-y: auto;">
@@ -240,18 +242,22 @@
         <button class="btn btn-sm border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 mt-2 hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="addVariable()">+ Add Variable</button>
       </div>
 
-      <div v-if="requestsStore.activeRequestTab === 'scripts'">
-        <div class="mb-2">
-          <label class="block text-sm text-zinc-500 mb-1">Pre-request Script</label>
-          <textarea v-model="requestsStore.currentRequest.preRequestScript" class="form-textarea bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded font-mono w-full" rows="3" placeholder="// Runs before request is sent"></textarea>
-        </div>
-        <div>
-          <label class="block text-sm text-zinc-500 mb-1">Test Script</label>
-          <textarea v-model="requestsStore.currentRequest.testScript" class="form-textarea bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded font-mono w-full" rows="3" placeholder="// Runs after response is received"></textarea>
-        </div>
-      </div>
-    </div>
-  </div>
+<div v-if="requestsStore.activeRequestTab === 'scripts'" class="p-2">
+         <div class="mb-2">
+           <label class="block text-sm text-zinc-500 mb-1">Pre-request Script</label>
+           <textarea v-model="requestsStore.currentRequest.preRequestScript" class="form-textarea bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded font-mono w-full" rows="3" placeholder="// Runs before request is sent"></textarea>
+         </div>
+         <div>
+           <label class="block text-sm text-zinc-500 mb-1">Test Script</label>
+           <textarea v-model="requestsStore.currentRequest.testScript" class="form-textarea bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded font-mono w-full" rows="3" placeholder="// Runs after response is received"></textarea>
+         </div>
+       </div>
+
+       <div v-if="requestsStore.activeRequestTab === 'description'" class="p-2">
+         <MarkdownDescription v-model="requestsStore.currentRequest.description" />
+       </div>
+     </div>
+   </div>
 </template>
 
 <script setup lang="ts">
@@ -264,6 +270,7 @@ import { useHistoryStore } from '../stores/history';
 import { useSecretsStore } from '../stores/secrets';
 import { useAppStore } from '../stores';
 import OAuthConfig from './OAuthConfig.vue';
+import MarkdownDescription from './MarkdownDescription.vue';
 import type { SendRequestContext } from '../types';
 
 const requestsStore = useRequestsStore();

@@ -122,12 +122,7 @@
 
         <!-- Description Tab -->
         <div v-if="activeTab === 'description'" class="p-4">
-          <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Description</label>
-          <textarea
-            v-model="editingCollection.description"
-            class="w-full h-64 px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white resize-none"
-            placeholder="Enter collection description..."
-          ></textarea>
+          <MarkdownDescription v-model="editingCollection.description" />
         </div>
 
         <!-- Scripts Tab -->
@@ -378,6 +373,7 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { useAppStore } from '../stores';
 import { useCollectionsStore } from '../stores/collections';
+import MarkdownDescription from './MarkdownDescription.vue';
 import type { Collection, Variable, Auth } from '../types';
 
 const appStore = useAppStore();

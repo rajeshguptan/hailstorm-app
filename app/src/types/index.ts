@@ -79,20 +79,21 @@ export interface CertificateInfo {
 }
 
 export interface Request {
-  id: string;
-  name: string;
-  method: string;
-  url: string;
-  headers: Variable[];
-  body: { type: 'none' | 'form-data' | 'x-www-form-urlencoded' | 'raw' | 'binary' | 'graphql'; content: string };
-  auth?: Auth;
-  preRequestScript?: string;
-  testScript?: string;
-  flavors?: Request[];
-  variables?: RequestVariable[];
-  response?: Response;
-  dependsOn?: string;
-}
+   id: string;
+   name: string;
+   method: string;
+   url: string;
+   headers: Variable[];
+   body: { type: 'none' | 'form-data' | 'x-www-form-urlencoded' | 'raw' | 'binary' | 'graphql'; content: string };
+   auth?: Auth;
+   preRequestScript?: string;
+   testScript?: string;
+   flavors?: Request[];
+   variables?: RequestVariable[];
+   response?: Response;
+   dependsOn?: string;
+   description?: string;
+ }
 
 export interface Folder {
   id: string;
@@ -330,5 +331,5 @@ export interface Utility {
   postProcessScript?: string;
 }
 
-export type RequestTab = 'params' | 'auth' | 'headers' | 'body' | 'variables' | 'scripts';
+export type RequestTab = 'params' | 'auth' | 'headers' | 'body' | 'variables' | 'scripts' | 'description';
 export type ResponseTab = 'body' | 'headers' | 'tests';

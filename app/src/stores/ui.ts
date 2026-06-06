@@ -7,6 +7,8 @@ export const useUIStore = defineStore('ui', {
     sidebarTitle: 'Collections',
     sidebarWidth: parseInt(localStorage.getItem('sidebarWidth') || '280'),
 
+    requestPanelHeight: parseInt(localStorage.getItem('requestPanelHeight') || '300'),
+
     contextMenu: {
       show: false,
       x: 0,
@@ -59,6 +61,11 @@ export const useUIStore = defineStore('ui', {
     setRecentRequestCount(count: number) {
       this.recentRequestCount = Math.max(1, Math.min(50, count));
       localStorage.setItem('recentRequestCount', this.recentRequestCount.toString());
+    },
+
+    setRequestPanelHeight(height: number) {
+      this.requestPanelHeight = Math.max(100, Math.min(800, height));
+      localStorage.setItem('requestPanelHeight', this.requestPanelHeight.toString());
     }
   }
 });

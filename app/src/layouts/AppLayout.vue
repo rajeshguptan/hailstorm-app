@@ -36,14 +36,17 @@
     </div>
   </div>
   
-  <!-- Main content area -->
-  <div class="main-content flex-1 flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
-    <!-- Request interface for collections and history -->
-    <div v-if="showRequestDetail" class="flex flex-col flex-1 min-h-0">
-      <RequestPanel />
-      <ResponsePanel />
-    </div>
-    <!-- Secrets detail when selected -->
+<!-- Main content area -->
+   <div class="main-content flex-1 flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
+     <!-- Request interface for collections and history -->
+     <div v-if="showRequestDetail" class="flex flex-col flex-1 min-h-0">
+       <div :style="{ height: uiStore.requestPanelHeight + 'px', flexShrink: 0 }">
+         <RequestPanel />
+       </div>
+       <div class="panel-resize-handle w-full h-[0.1rem] bg-zinc-300 hover:bg-zinc-500 dark:bg-zinc-600 dark:hover:bg-zinc-400 cursor-row-resize" @mousedown="startPanelResize"></div>
+       <ResponsePanel class="flex-1 min-h-0" />
+     </div>
+     <!-- Secrets detail when selected -->
     <SecretsDetail v-if="uiStore.activeSidebar === 'secrets' && appStore.selectedSecretId !== null" />
 
     <EnvironmentsDetail v-if="uiStore.activeSidebar === 'environments' && environmentsStore.activeEnvironmentId !== null" />
@@ -253,6 +256,27 @@ function doResize(e: MouseEvent) {
 function stopResize() {
   document.removeEventListener('mousemove', doResize);
   document.removeEventListener('mouseup', stopResize);
+}
+
+let panelResizeStartY = 0;
+let panelResizeStartHeight = 0;
+
+function startPanelResize(e: MouseEvent) {
+  panelResizeStartY = e.clientY;
+  panelResizeStartHeight = uiStore.requestPanelHeight;
+  document.addEventListener('mousemove', doPanelResize);
+  document.addEventListener('mouseup', stopPanelResize);
+}
+
+function doPanelResize(e: MouseEvent) {
+  const deltaY = e.clientY - panelResizeStartY;
+  const newHeight = panelResizeStartHeight + deltaY;
+  uiStore.setRequestPanelHeight(newHeight);
+}
+
+function stopPanelResize() {
+  document.removeEventListener('mousemove', doPanelResize);
+  document.removeEventListener('mouseup', stopPanelResize);
 }
 
 function isActive(id: string): boolean {
