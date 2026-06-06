@@ -13,7 +13,7 @@ export const useRequestsStore = defineStore('requests', {
       url: '',
       headers: [],
       body: { type: 'none', content: '' },
-      auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' } },
+      auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' }, oauth2: { grantType: 'client_credentials' } },
       variables: []
     } as Request,
 
@@ -91,7 +91,7 @@ export const useRequestsStore = defineStore('requests', {
         url: '',
         headers: [],
         body: { type: 'none', content: '' },
-        auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' } }
+        auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' } }
       };
       this.urlParams = [];
       this.requestHeaders = [];
@@ -247,7 +247,7 @@ export const useRequestsStore = defineStore('requests', {
       console.log('updateCurrentRequest: after update, collections[0] items:', JSON.stringify(collectionsStore.collections[0]?.items));
     },
 
-    selectRequest(id: string | null) {
+selectRequest(id: string | null) {
       console.log('[REQUESTS] selectRequest called with id:', id);
       if (!id) {
         console.log('[REQUESTS] No id provided, resetting currentRequest');
@@ -259,9 +259,11 @@ export const useRequestsStore = defineStore('requests', {
           url: '',
           headers: [],
           body: { type: 'none', content: '' },
-          auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' } },
+          auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' } },
           variables: []
         };
+        this.requestHeaders = [];
+        this.urlParams = [];
         const appStore = useAppStore();
         appStore.saveToLocalStorage();
         return;
@@ -287,7 +289,7 @@ export const useRequestsStore = defineStore('requests', {
             url: request.url || '',
             headers: request.headers || [],
             body: request.body || { type: 'none', content: '' },
-            auth: request.auth || { type: 'noauth', apikey: { key: '', value: '', in: 'header' } },
+            auth: request.auth || { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' } },
             preRequestScript: request.preRequestScript || '',
             testScript: request.testScript || '',
             flavors: request.flavors || [],
@@ -311,25 +313,25 @@ export const useRequestsStore = defineStore('requests', {
           this.requestHeaders = request.headers ? request.headers.map(h => ({ ...h, enabled: h.enabled !== false })) : [];
           // Extract URL params
           this.urlParams = this.extractParams(request.url || '');
+        } else {
+          // Reset to default request when no request is selected
+          this.currentRequest = {
+            id: '',
+            name: '',
+            method: 'GET',
+            url: '',
+            headers: [],
+            body: { type: 'none', content: '' },
+            auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' } },
+            variables: []
+          };
+          this.requestHeaders = [];
+          this.urlParams = [];
         }
-      } else {
-        // Reset to default request when no request is selected
-        this.currentRequest = {
-          id: '',
-          name: '',
-          method: 'GET',
-          url: '',
-          headers: [],
-          body: { type: 'none', content: '' },
-          auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' } },
-          variables: []
-        };
-        this.requestHeaders = [];
-        this.urlParams = [];
-      }
 
-      const appStore = useAppStore();
-      appStore.saveToLocalStorage();
+        const appStore = useAppStore();
+        appStore.saveToLocalStorage();
+      }
     }
   }
 });

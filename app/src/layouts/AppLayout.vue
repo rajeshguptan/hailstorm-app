@@ -61,8 +61,8 @@
       :selectedConfigId="runnerStore.selectedConfigId"
       @update-run-config="runnerStore.updateRunConfig"
     />
-    <!-- Recent Requests Tabs at Bottom (always visible) -->
-    <div class="border-t border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 flex-shrink-0">
+    <!-- Recent Requests Tabs at Bottom (only visible in Collections) -->
+    <div v-if="uiStore.activeSidebar === 'collections'" class="border-t border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 flex-shrink-0">
       <div class="px-3 py-1.5 overflow-x-auto whitespace-nowrap scrollbar-thin">
         <div class="flex gap-1">
           <button

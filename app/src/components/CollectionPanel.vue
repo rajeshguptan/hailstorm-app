@@ -166,6 +166,8 @@
               <option value="oauth1">OAuth 1.0</option>
               <option value="oauth2">OAuth 2.0</option>
               <option value="apikey">API Key</option>
+              <option value="ntlm">NTLM Auth</option>
+              <option value="clientcertificate">Client Certificate</option>
             </select>
           </div>
 
@@ -231,6 +233,141 @@
               </select>
             </div>
           </div>
+
+          <!-- OAuth 2.0 -->
+          <div v-if="editingCollection.auth?.type === 'oauth2'" class="mb-4">
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Grant Type</label>
+              <select
+                v-model="editingCollection.auth.oauth2.grantType"
+                class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+              >
+                <option value="client_credentials">Client Credentials</option>
+                <option value="authorization_code">Authorization Code</option>
+              </select>
+            </div>
+            <div v-if="editingCollection.auth.oauth2.grantType === 'authorization_code'" class="mb-4">
+              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Authorization URL</label>
+              <input
+                v-model="editingCollection.auth.oauth2.authorizationUrl"
+                class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                placeholder="https://auth.example.com/oauth/authorize"
+              >
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Token URL</label>
+              <input
+                v-model="editingCollection.auth.oauth2.tokenUrl"
+                class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                placeholder="https://auth.example.com/oauth/token"
+              >
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Client ID</label>
+              <input
+                v-model="editingCollection.auth.oauth2.clientId"
+                class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                placeholder="Client ID"
+              >
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Client Secret</label>
+              <input
+                v-model="editingCollection.auth.oauth2.clientSecret"
+                type="password"
+                class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                placeholder="Client Secret"
+              >
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Scope (optional)</label>
+              <input
+                v-model="editingCollection.auth.oauth2.scope"
+                class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                placeholder="openid profile"
+              >
+            </div>
+          </div>
+
+          <!-- NTLM Auth -->
+          <div v-if="editingCollection.auth?.type === 'ntlm'" class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Domain (optional)</label>
+              <input
+                v-model="editingCollection.auth.ntlm.domain"
+                class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                placeholder="Domain"
+              >
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Username</label>
+              <input
+                v-model="editingCollection.auth.ntlm.username"
+                class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                placeholder="Username"
+              >
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Password</label>
+              <input
+                v-model="editingCollection.auth.ntlm.password"
+                type="password"
+                class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                placeholder="Password"
+              >
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Workstation (optional)</label>
+              <input
+                v-model="editingCollection.auth.ntlm.workstation"
+                class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                placeholder="Workstation"
+              >
+            </div>
+          </div>
+
+          <!-- Client Certificate -->
+          <div v-if="editingCollection.auth?.type === 'clientcertificate'" class="mb-4">
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Certificate Format</label>
+              <select
+                v-model="editingCollection.auth.clientCertificate.type"
+                class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+              >
+                <option value="pkcs12">PKCS#12 (.pfx/.p12)</option>
+                <option value="pem">PEM (cert + key)</option>
+              </select>
+            </div>
+            <div v-if="editingCollection.auth.clientCertificate.type === 'pkcs12'" class="mb-4">
+              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">PFX File Path</label>
+              <input
+                v-model="editingCollection.auth.clientCertificate.filePath"
+                class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                placeholder="/path/to/cert.pfx"
+              >
+              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2 mt-2">Passphrase (optional)</label>
+              <input
+                v-model="editingCollection.auth.clientCertificate.passphrase"
+                type="password"
+                class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                placeholder="PFX passphrase"
+              >
+            </div>
+            <div v-else class="mb-4">
+              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Certificate File Path</label>
+              <input
+                v-model="editingCollection.auth.clientCertificate.certPath"
+                class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                placeholder="/path/to/cert.pem"
+              >
+              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2 mt-2">Private Key File Path</label>
+              <input
+                v-model="editingCollection.auth.clientCertificate.keyPath"
+                class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                placeholder="/path/to/key.pem"
+              >
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -284,6 +421,20 @@ watch(selectedCollection, () => {
   if (selectedCollection.value) {
     initializeEditingCollection();
     activeTab.value = 'properties';
+  }
+});
+
+watch(() => editingCollection.value?.auth?.type, (newType) => {
+  const auth = editingCollection.value?.auth;
+  if (!auth) return;
+  if (newType === 'ntlm' && !auth.ntlm) {
+    auth.ntlm = { domain: '', username: '', password: '', workstation: '' };
+  }
+  if (newType === 'clientcertificate' && !auth.clientCertificate) {
+    auth.clientCertificate = { type: 'pkcs12', filePath: '', passphrase: '' };
+  }
+  if (newType === 'oauth2' && !auth.oauth2) {
+    auth.oauth2 = { grantType: 'client_credentials', tokenUrl: '', clientId: '' };
   }
 });
 

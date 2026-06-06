@@ -110,6 +110,18 @@ const api = {
     }
   },
 
+  showOpenDialog: async (options: { filters?: { name: string; extensions: string[] }[] }): Promise<{ canceled: boolean; filePaths: string[] }> => {
+    console.log('[PRELOAD] showOpenDialog called');
+    try {
+      const result = await ipcRenderer.invoke('show-open-dialog', options.filters);
+      console.log('[PRELOAD] showOpenDialog result:', result.canceled ? 'cancelled' : 'selected file');
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] showOpenDialog failed', error);
+      throw error;
+    }
+  },
+
   saveCollectionToFiles: async (collection: any, workspacePath: string): Promise<boolean> => {
     console.log('[PRELOAD] saveCollectionToFiles called');
     try {
@@ -279,6 +291,21 @@ const api = {
     }
   },
 
+  selectCertificateFileDialog: async (type: 'pfx' | 'pem'): Promise<{ canceled: boolean; filePaths: string[] }> => {
+    console.log('[PRELOAD] selectCertificateFileDialog called', type);
+    try {
+      const filters = type === 'pfx'
+        ? [{ name: 'PKCS#12 Certificates', extensions: ['pfx', 'p12'] }, { name: 'All Files', extensions: ['*'] }]
+        : [{ name: 'PEM Certificates', extensions: ['pem', 'crt', 'key'] }, { name: 'All Files', extensions: ['*'] }];
+      const result = await ipcRenderer.invoke('select-certificate-file-dialog', filters);
+      console.log('[PRELOAD] selectCertificateFileDialog result:', result.canceled ? 'cancelled' : 'selected file');
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] selectCertificateFileDialog failed', error);
+      throw error;
+    }
+  },
+
   // ─── Send Request via execution engine ───────────────────────────────────
   // The execution engine handles variable substitution, dependency resolution,
   // header/auth construction, the actual HTTP call and history recording.
@@ -290,9 +317,51 @@ const api = {
       console.log('[PRELOAD] sendRequest completed', { status: result.response.status });
       return result;
     } catch (error) {
-      console.error('[PRELOAD] sendRequest failed', error);
+console.error('[PRELOAD] sendRequest failed', error);
       throw error;
     }
+  },
+
+  // ─── OAuth 2.0 Authorization Code Flow with PKCE ───────────────────────────────
+  storeOAuthState: async (state: { state: string; codeVerifier: string }): Promise<void> => {
+    await ipcRenderer.invoke('store-oauth-state', state);
+  },
+
+  exchangeOAuthCode: async (code: string, config: {
+    tokenUrl: string;
+    clientId: string;
+    clientSecret?: string;
+    redirectUri: string;
+    state?: string;
+  }): Promise<{ accessToken: string; refreshToken?: string; expiresIn?: number }> => {
+    // Retrieve codeVerifier from stored state if state is provided
+    let codeVerifier: string | undefined;
+    if (config.state) {
+      codeVerifier = await ipcRenderer.invoke('get-oauth-state', config.state);
+    }
+    return await ipcRenderer.invoke('exchange-oauth-code', { code, codeVerifier, ...config });
+  },
+
+  getOAuthToken: async (requestId: string): Promise<string | null> => {
+    return await ipcRenderer.invoke('get-oauth-token', requestId);
+  },
+
+  openExternal: async (url: string): Promise<void> => {
+    await ipcRenderer.invoke('open-external-url', url);
+  },
+
+  // ─── OAuth Token Management ───────────────────────────────────────────────────
+  saveOAuthToken: async (requestId: string, token: string, expiry?: number): Promise<void> => {
+    await ipcRenderer.invoke('save-oauth-token', { requestId, token, expiry });
+  },
+
+  clearOAuthToken: async (requestId: string): Promise<void> => {
+    await ipcRenderer.invoke('clear-oauth-token', requestId);
+  },
+
+  // ─── OAuth Callback Listener ───────────────────────────────────────────────────
+  onOAuthCallback: (callback: (data: { code: string; state: string; error?: string }) => void) => {
+    ipcRenderer.on('oauth-callback', (_event, data) => callback(data));
   },
 
   // ─── Run Load Test via IPC ───────────────────────────────────────────────
@@ -324,7 +393,7 @@ const api = {
   // Subscribe to live stats updates during load test
   onLoadTestStatsUpdate: (callback: (data: { runId: string; stats: any }) => void) => {
     ipcRenderer.on('load-test-stats-update', (_event, data) => callback(data));
-  },
+  }
 };
 
 contextBridge.exposeInMainWorld('api', api);

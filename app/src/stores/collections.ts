@@ -85,6 +85,20 @@ export const useCollectionsStore = defineStore('collections', {
       this.saveCollections();
     },
 
+    duplicateCollection(id: string) {
+      const collection = this.collections.find(c => c.id === id);
+      if (collection) {
+        const duplicated: Collection = {
+          id: this.generateId('coll'),
+          name: `${collection.name} (copy)`,
+          items: JSON.parse(JSON.stringify(collection.items)),
+          variables: JSON.parse(JSON.stringify(collection.variables))
+        };
+        this.collections.push(duplicated);
+        this.saveCollections();
+      }
+    },
+
     addFolder(targetId: string, targetType: 'collection' | 'folder' = 'collection') {
       const folder: Folder = {
         id: this.generateId('fol'),
@@ -131,6 +145,90 @@ export const useCollectionsStore = defineStore('collections', {
         url: '',
         headers: [],
         body: { type: 'none', content: '' }
+      };
+
+      if (targetType === 'collection') {
+        const collection = this.collections.find(c => c.id === targetId);
+        if (collection) {
+          collection.items.push(request);
+        }
+      } else if (targetType === 'folder') {
+        const addToItems = (items: any[]): boolean => {
+          for (const item of items) {
+            if (item.id === targetId) {
+              item.items.push(request);
+              return true;
+            }
+            if ('items' in item && item.items) {
+              if (addToItems(item.items)) {
+                return true;
+              }
+            }
+          }
+          return false;
+        };
+
+        for (const collection of this.collections) {
+          if (addToItems(collection.items)) {
+            break;
+          }
+        }
+      }
+
+      this.saveCollections();
+    },
+
+    addHttpRequest(targetId: string, targetType: 'collection' | 'folder' = 'collection') {
+      const request: Request = {
+        id: this.generateId('req'),
+        name: 'New HTTP Request',
+        method: 'GET',
+        url: '',
+        headers: [{ key: 'Content-Type', value: 'application/json', enabled: true }],
+        body: { type: 'none', content: '' }
+      };
+
+      if (targetType === 'collection') {
+        const collection = this.collections.find(c => c.id === targetId);
+        if (collection) {
+          collection.items.push(request);
+        }
+      } else if (targetType === 'folder') {
+        const addToItems = (items: any[]): boolean => {
+          for (const item of items) {
+            if (item.id === targetId) {
+              item.items.push(request);
+              return true;
+            }
+            if ('items' in item && item.items) {
+              if (addToItems(item.items)) {
+                return true;
+              }
+            }
+          }
+          return false;
+        };
+
+        for (const collection of this.collections) {
+          if (addToItems(collection.items)) {
+            break;
+          }
+        }
+      }
+
+      this.saveCollections();
+    },
+
+    addGraphqlRequest(targetId: string, targetType: 'collection' | 'folder' = 'collection') {
+      const request: Request = {
+        id: this.generateId('req'),
+        name: 'New GraphQL Request',
+        method: 'POST',
+        url: '',
+        headers: [
+          { key: 'Content-Type', value: 'application/json', enabled: true }
+        ],
+        body: { type: 'graphql', content: '{ "query": "", "variables": {} }' }
       };
 
       if (targetType === 'collection') {

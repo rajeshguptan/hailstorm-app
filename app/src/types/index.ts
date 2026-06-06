@@ -31,11 +31,51 @@ export interface Environment {
 }
 
 export interface Auth {
-  type: 'noauth' | 'bearer' | 'basic' | 'digest' | 'oauth1' | 'oauth2' | 'apikey';
+  type: 'noauth' | 'bearer' | 'basic' | 'digest' | 'oauth1' | 'oauth2' | 'apikey' | 'ntlm' | 'clientcertificate' | 'inherit';
   bearerToken?: string;
   username?: string;
   password?: string;
   apikey?: { key: string; value: string; in: 'header' | 'query' };
+  ntlm?: {
+    domain?: string;
+    username?: string;
+    password?: string;
+    workstation?: string;
+  };
+  clientCertificate?: {
+    type: 'pkcs12' | 'pem';
+    filePath?: string;
+    passphrase?: string;
+    certPath?: string;
+    keyPath?: string;
+  };
+  oauth2?: {
+    grantType: 'authorization_code' | 'client_credentials' | 'resource_owner_password' | 'refresh_token';
+    authorizationUrl?: string;
+    tokenUrl?: string;
+    clientId?: string;
+    clientSecret?: string;
+    scope?: string;
+    username?: string;
+    password?: string;
+    refreshToken?: string;
+    accessToken?: string;
+  };
+}
+
+export interface NtlmCredentials {
+  username: string;
+  password: string;
+  domain?: string;
+  workstation?: string;
+}
+
+export interface CertificateInfo {
+  type: 'pkcs12' | 'pem';
+  filePath?: string;
+  passphrase?: string;
+  certPath?: string;
+  keyPath?: string;
 }
 
 export interface Request {
@@ -44,14 +84,14 @@ export interface Request {
   method: string;
   url: string;
   headers: Variable[];
-  body: { type: string; content: string };
+  body: { type: 'none' | 'form-data' | 'x-www-form-urlencoded' | 'raw' | 'binary' | 'graphql'; content: string };
   auth?: Auth;
   preRequestScript?: string;
   testScript?: string;
   flavors?: Request[];
   variables?: RequestVariable[];
   response?: Response;
-  dependsOn?: string; // ID of another request in the same collection
+  dependsOn?: string;
 }
 
 export interface Folder {
@@ -278,7 +318,6 @@ export interface SubSetting {
   id: string;
   name: string;
   icon: string;
-  // Additional properties for different setting types can be added here
 }
 
 export type SidebarView = 'collections' | 'environments' | 'history' | 'secrets' | 'stats' | 'utilities' | 'settings' | 'runner';

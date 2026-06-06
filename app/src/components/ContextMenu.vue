@@ -1,8 +1,10 @@
 <template>
   <div v-if="uiStore.contextMenu.show" class="context-menu fixed bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border border-zinc-300 dark:border-zinc-600 rounded p-1" :style="{ left: uiStore.contextMenu.x + 'px', top: uiStore.contextMenu.y + 'px', zIndex: 1000 }">
     <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('rename')">Rename</div>
+    <div v-if="uiStore.contextMenu.type === 'collection'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('duplicate')">Duplicate</div>
     <div v-if="uiStore.contextMenu.type === 'request'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('rename')">Rename</div>
-    <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-request')">Add Request</div>
+    <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-http-request')">Add HTTP Request</div>
+    <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-graphql-request')">Add GraphQL Request</div>
     <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-folder')">Add Folder</div>
 
     <div v-if="uiStore.contextMenu.type === 'flavor'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('run')">Run</div>
@@ -46,11 +48,23 @@ function handleAction(action: string) {
         uiStore.showRenameModal = true;
       }
       break;
-    case 'add-request':
+    case 'duplicate':
       if (type === 'collection') {
-        collectionsStore.addRequest(id, 'collection');
+        collectionsStore.duplicateCollection(id);
+      }
+      break;
+    case 'add-http-request':
+      if (type === 'collection') {
+        collectionsStore.addHttpRequest(id, 'collection');
       } else if (type === 'folder') {
-        collectionsStore.addRequest(id, 'folder');
+        collectionsStore.addHttpRequest(id, 'folder');
+      }
+      break;
+    case 'add-graphql-request':
+      if (type === 'collection') {
+        collectionsStore.addGraphqlRequest(id, 'collection');
+      } else if (type === 'folder') {
+        collectionsStore.addGraphqlRequest(id, 'folder');
       }
       break;
     case 'add-folder':

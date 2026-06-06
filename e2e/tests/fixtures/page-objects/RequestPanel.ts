@@ -11,6 +11,8 @@ export class RequestPanel {
     auth: Locator;
     headers: Locator;
     body: Locator;
+    variables: Locator;
+    scripts: Locator;
   };
   readonly responsePanel: Locator;
 
@@ -60,7 +62,7 @@ export class RequestPanel {
     }
   }
 
-  async setAuth(type: 'noauth' | 'basic' | 'bearer' | 'apikey', config: any = {}): Promise<void> {
+  async setAuth(type: 'noauth' | 'basic' | 'bearer' | 'apikey' | 'ntlm' | 'clientcert' | 'oauth2' | 'inherit', config: any = {}): Promise<void> {
     await this.tabs.auth.click();
     const authSelect = this.page.locator('.request-panel select').nth(2); // Third select in the request panel
     await authSelect.selectOption(type);
@@ -74,6 +76,24 @@ export class RequestPanel {
       await this.page.locator('.request-panel input[placeholder="Key"]').first().fill(config.key);
       await this.page.locator('.request-panel input[placeholder="Value"]').first().fill(config.value);
       await this.page.locator('.request-panel select').nth(3).selectOption(config.in || 'header');
+    } else if (type === 'ntlm') {
+      if (config.domain) {
+        await this.page.locator('.request-panel input[placeholder="Domain"]').fill(config.domain);
+      }
+      await this.page.locator('.request-panel input[placeholder="Username"]').fill(config.username);
+      await this.page.locator('.request-panel input[placeholder="Password"]').fill(config.password);
+    } else if (type === 'clientcert') {
+      // Client cert selection would require file dialog interaction
+      // For now, just select the cert format
+      const certFormatSelect = this.page.locator('.request-panel select').nth(3);
+      await certFormatSelect.selectOption(config.format || 'pfx');
+    } else if (type === 'oauth2') {
+      await this.page.locator('.request-panel input[placeholder="https://oauth.example.com/token"]').fill(config.tokenUrl);
+      await this.page.locator('.request-panel input[placeholder="Client ID"]').fill(config.clientId);
+      await this.page.locator('.request-panel input[placeholder="Client Secret"]').fill(config.clientSecret);
+      if (config.scope) {
+        await this.page.locator('.request-panel input[placeholder="read write"]').fill(config.scope);
+      }
     }
   }
 

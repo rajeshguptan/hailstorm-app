@@ -7,13 +7,13 @@
         <span class="ellipsis-menu text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300" @click.stop="showCollectionMenu(collection.id, $event)" :style="{ visibility: isCollectionHovered(collection.id) ? 'visible' : 'hidden' }">•••</span>
       </div>
       
-      <div v-if="expandedCollections.includes(collection.id)" class="collection-children ml-3 pl-2 border-l border-zinc-300 dark:border-zinc-600">
-        <div v-if="collection.items.length === 0" class="text-center text-zinc-400 dark:text-zinc-500 py-2 text-sm">
-          Drop requests here
-        </div>
-<TreeNode
-          v-for="item in collection.items"
-          :key="item.id"
+<div v-if="expandedCollections.includes(collection.id)" class="collection-children ml-3 pl-2 border-l border-zinc-300 dark:border-zinc-600">
+         <div v-if="collection.items.length === 0" class="text-center text-zinc-400 dark:text-zinc-500 py-2 text-sm">
+           Drop requests here
+         </div>
+         <TreeNode
+           v-for="item in sortedCollectionItems(collection.items)"
+           :key="item.id"
           :item="item"
           :level="0"
           :expanded-folders="expandedFolders"
@@ -150,6 +150,16 @@ function onDrop(event: DragEvent, targetContainerId: string, targetContainerType
   } catch (error) {
     console.error('Error handling drop:', error);
   }
+}
+
+function sortedCollectionItems(items: (Request | Folder)[]) {
+  return [...items].sort((a, b) => {
+    const aIsFolder = 'items' in a && Array.isArray(a.items);
+    const bIsFolder = 'items' in b && Array.isArray(b.items);
+    if (aIsFolder && !bIsFolder) return -1;
+    if (!aIsFolder && bIsFolder) return 1;
+    return 0;
+  });
 }
 </script>
 

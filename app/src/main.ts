@@ -1,13 +1,52 @@
-import { app, BrowserWindow, ipcMain, screen, dialog, nativeImage } from 'electron';
+import { app, BrowserWindow, ipcMain, screen, dialog, nativeImage, shell } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import { initializeExecutionEngine } from './core/executionEngine';
 import { existsSync } from 'node:fs';
 
+
+// These are injected by Electron Forge Vite plugin
+declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
+declare const MAIN_WINDOW_VITE_NAME: string;
+
 // Side-effect import to ensure runnerEngine is bundled by Vite
 import './core/runnerEngine';
 
 console.log('[MAIN] Application starting...');
+
+// OAuth callback handling
+const oauthCallbackListeners = new Map<string, (url: string) => void>();
+
+function setupOAuthCallback() {
+  // Set up custom protocol for OAuth callback
+  if (process.defaultApp && process.argv[1].indexOf('--') === -1) {
+    // Development mode - set up protocol handler
+    app.setAsDefaultProtocolClient('hailstorm');
+  } else {
+    app.setAsDefaultProtocolClient('hailstorm');
+  }
+
+  app.on('open-url', (event, url) => {
+    event.preventDefault();
+    console.log('[MAIN] OAuth callback received:', url);
+    handleOAuthCallback(url);
+  });
+}
+
+function handleOAuthCallback(url: string) {
+  const parsedUrl = new URL(url);
+  const code = parsedUrl.searchParams.get('code');
+  const state = parsedUrl.searchParams.get('state');
+  const error = parsedUrl.searchParams.get('error');
+
+  if (code && state) {
+    // Send to renderer via IPC
+    const allWindows = BrowserWindow.getAllWindows();
+    if (allWindows.length > 0) {
+      allWindows[0].webContents.send('oauth-callback', { code, state, error });
+    }
+  }
+}
 
 if (started) {
   console.log('[MAIN] Squirrel startup detected, quitting...');
@@ -17,27 +56,32 @@ if (started) {
 // Initialize core execution engine
 initializeExecutionEngine();
 
-// Set dock icon on macOS
-if (process.platform === 'darwin') {
-  const iconPath = path.join(app.getAppPath(), 'build/icon.png');
-  if (existsSync(iconPath)) {
-    try {
-      const image = nativeImage.createFromPath(iconPath);
-      if (!image.isEmpty()) {
-        app.dock?.setIcon(image);
-        console.log('[MAIN] Dock icon set');
-      }
-    } catch (e) {
-      console.log('[MAIN] Could not load dock icon:', e);
-    }
-  }
-}
-
 function createWindow() {
   console.log('[MAIN] Creating main window...');
+  console.log('[MAIN] App path:', app.getAppPath());
+  console.log('[MAIN] Current dir:', process.cwd());
+  
+  // Set dock icon on macOS (must happen in ready event, after app.isPackaged is available)
+  if (process.platform === 'darwin') {
+  const iconPath = path.join(app.getAppPath(), 'build/hailstorm.png');
+    if (existsSync(iconPath)) {
+      try {
+        const image = nativeImage.createFromPath(iconPath);
+        if (!image.isEmpty()) {
+          app.dock?.setIcon(image);
+          console.log('[MAIN] Dock icon set');
+        } else {
+          console.log('[MAIN] Dock icon image is empty');
+        }
+      } catch (e) {
+        console.log('[MAIN] Could not load dock icon:', e);
+      }
+    }
+  }
+  
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width, height } = primaryDisplay.workAreaSize;
-  const iconPath = path.resolve(app.getAppPath(), 'build/icon.png');
+  const iconPath = path.resolve(app.getAppPath(), 'build/hailstorm.png');
   console.log('[MAIN] Icon path:', iconPath, 'exists:', existsSync(iconPath));
   const mainWindow = new BrowserWindow({
     width,
@@ -64,6 +108,9 @@ function createWindow() {
   mainWindow.webContents.openDevTools();
 }
 
+// Set up OAuth callback before app is ready
+setupOAuthCallback();
+
 app.on('ready', () => {
   createWindow();
 });
@@ -77,5 +124,18 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
+  }
+});
+
+// Handle second instance (when OAuth callback opens app)
+app.on('second-instance', (_event, argv) => {
+  const url = argv.find(arg => arg.startsWith('hailstorm://'));
+  if (url) {
+    handleOAuthCallback(url);
+  }
+  
+  const allWindows = BrowserWindow.getAllWindows();
+  if (allWindows.length > 0) {
+    allWindows[0].focus();
   }
 });

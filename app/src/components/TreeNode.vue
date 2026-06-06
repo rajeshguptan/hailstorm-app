@@ -25,8 +25,8 @@
       </span>
       <span v-else class="w-4 mr-1"></span>
       
-      <span v-if="isRequest" :class="getMethodClass(item.method)" class="method-badge mr-2 text-xs font-bold min-w-[60px]">
-        {{ item.method }}
+      <span v-if="isRequest" :class="getMethodClass(displayMethod)" class="method-badge mr-2 text-xs font-bold min-w-[60px]">
+        {{ displayMethod }}
       </span>
       
       <span class="item-name text-zinc-900 dark:text-white text-sm flex-1">
@@ -39,12 +39,12 @@
     </div>
     
     <div v-if="isFolder && isExpanded" class="folder-children ml-3 pl-2 border-l border-zinc-300 dark:border-zinc-600">
-      <div v-if="item.items.length === 0" class="text-center text-zinc-400 dark:text-zinc-500 py-2 text-sm">
-        Drop requests here
-      </div>
-      <TreeNode
-        v-for="child in item.items"
-        :key="child.id"
+<div v-if="item.items.length === 0" class="text-center text-zinc-400 dark:text-zinc-500 py-2 text-sm">
+         Drop requests here
+       </div>
+       <TreeNode
+         v-for="child in sortedItems(item.items)"
+         :key="child.id"
         :item="child"
         :level="level + 1"
         :expanded-folders="expandedFolders"
@@ -85,12 +85,15 @@ const emit = defineEmits<{
 }>();
 
 const uiStore = useUIStore();
-// Folder: has items but no variables array (distinguishes from Collection which has variables)
 const isFolder = 'items' in props.item && Array.isArray(props.item.items) && !('variables' in props.item);
 const isRequest = 'method' in props.item;
 const isExpanded = computed(() => props.expandedFolders.includes(props.item.id));
 const isSelected = computed(() => props.item.id === props.selectedRequestId);
 const isHovered = computed(() => uiStore.hoveredTreeItemId === props.item.id);
+const displayMethod = computed(() => {
+  if (isRequest && props.item.body?.type === 'graphql') return 'GQL';
+  return props.item.method;
+});
 
 function onMouseEnter() {
   uiStore.setHoveredTreeItem(props.item.id);
@@ -216,7 +219,18 @@ function getMethodClass(method: string): string {
   if (m === 'put') return 'method-put';
   if (m === 'delete') return 'method-delete';
   if (m === 'patch') return 'method-patch';
+  if (m === 'gql') return 'method-gql';
   return 'method-default';
+}
+
+function sortedItems(items: (Request | Folder)[]) {
+  return [...items].sort((a, b) => {
+    const aIsFolder = 'items' in a && Array.isArray(a.items);
+    const bIsFolder = 'items' in b && Array.isArray(b.items);
+    if (aIsFolder && !bIsFolder) return -1;
+    if (!aIsFolder && bIsFolder) return 1;
+    return 0;
+  });
 }
 </script>
 
@@ -238,6 +252,10 @@ function getMethodClass(method: string): string {
 }
 .method-default {
   @apply text-zinc-600 dark:text-zinc-400 font-bold;
+}
+
+.method-gql {
+  @apply text-pink-600 dark:text-pink-400 font-bold;
 }
 
 .tree-node.drag-over {

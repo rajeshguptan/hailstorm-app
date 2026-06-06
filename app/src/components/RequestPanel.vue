@@ -22,13 +22,13 @@
       </button>
     </div>
 
-    <!-- Second row: Method and URL -->
-    <div class="flex gap-2 mb-2">
-      <select v-model="method" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1" style="width: 100px;">
-        <option v-for="m in methods" :key="m" :value="m">{{ m }}</option>
-      </select>
-      <input v-model="url" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-3 py-1 flex-1" placeholder="Enter request URL" @keyup.enter="sendRequest" />
-    </div>
+<!-- Second row: Method and URL -->
+     <div class="flex gap-2 mb-2">
+       <select v-if="requestsStore.currentRequest.body?.type !== 'graphql'" v-model="method" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1" style="width: 100px;">
+         <option v-for="m in methods" :key="m" :value="m">{{ m }}</option>
+       </select>
+       <input v-model="url" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-3 py-1 flex-1" placeholder="Enter request URL" @keyup.enter="sendRequest" />
+     </div>
     
     <ul class="flex border-b border-zinc-200 dark:border-zinc-700" role="tablist">
       <li>
@@ -40,9 +40,9 @@
 
          <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': requestsStore.activeRequestTab === 'body' }" @click="requestsStore.activeRequestTab = 'body'">Body</button>
 
-          <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': requestsStore.activeRequestTab === 'variables' }" @click="requestsStore.activeRequestTab = 'variables'">Variables</button>
+           <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': requestsStore.activeRequestTab === 'variables' }" @click="requestsStore.activeRequestTab = 'variables'">Variables</button>
 
-          <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': requestsStore.activeRequestTab === 'scripts' }" @click="requestsStore.activeRequestTab = 'scripts'">Scripts</button>
+           <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': requestsStore.activeRequestTab === 'scripts' }" @click="requestsStore.activeRequestTab = 'scripts'">Scripts</button>
        </li>
     </ul>
     
@@ -64,12 +64,16 @@
       <div v-if="requestsStore.activeRequestTab === 'auth'" class="auth-editor">
         <div class="mb-4">
           <label class="block text-sm text-zinc-500 mb-2">Type</label>
-          <select v-model="requestsStore.currentRequest.auth.type" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
-            <option value="noauth">No Auth</option>
-            <option value="bearer">Bearer Token</option>
-            <option value="basic">Basic Auth</option>
-            <option value="apikey">API Key</option>
-          </select>
+<select v-model="requestsStore.currentRequest.auth.type" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
+             <option value="noauth">No Auth</option>
+             <option value="bearer">Bearer Token</option>
+             <option value="basic">Basic Auth</option>
+             <option value="ntlm">NTLM Auth</option>
+             <option value="clientcertificate">Client Certificate</option>
+             <option value="oauth2">OAuth 2.0</option>
+             <option value="apikey">API Key</option>
+             <option value="inherit">Inherit from Parent</option>
+           </select>
         </div>
 
         <div v-if="requestsStore.currentRequest.auth.type === 'bearer'" class="mb-4">
@@ -88,6 +92,61 @@
               <input v-model="requestsStore.currentRequest.auth.password" type="password" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full" placeholder="Password" />
             </div>
           </div>
+        </div>
+
+        <div v-if="requestsStore.currentRequest.auth.type === 'ntlm'" class="mb-4">
+          <div class="grid grid-cols-1 gap-2">
+            <div>
+              <label class="block text-sm text-zinc-500 mb-1">Domain (optional)</label>
+              <input v-model="requestsStore.currentRequest.auth.ntlm.domain" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full" placeholder="Domain" />
+            </div>
+            <div>
+              <label class="block text-sm text-zinc-500 mb-1">Username</label>
+              <input v-model="requestsStore.currentRequest.auth.ntlm.username" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full" placeholder="Username" />
+            </div>
+            <div>
+              <label class="block text-sm text-zinc-500 mb-1">Password</label>
+              <input v-model="requestsStore.currentRequest.auth.ntlm.password" type="password" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full" placeholder="Password" />
+            </div>
+          </div>
+        </div>
+
+        <div v-if="requestsStore.currentRequest.auth.type === 'clientcertificate'" class="mb-4">
+          <div class="mb-2">
+            <label class="block text-sm text-zinc-500 mb-1">Certificate Format</label>
+            <select v-model="clientCertFormat" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
+              <option value="pfx">PKCS#12 (.pfx/.p12)</option>
+              <option value="pem">PEM (cert + key)</option>
+            </select>
+          </div>
+          <div v-if="clientCertFormat === 'pfx'" class="mb-2">
+            <label class="block text-sm text-zinc-500 mb-1">PFX File Path</label>
+            <div class="flex gap-2">
+              <input v-model="requestsStore.currentRequest.auth.clientCertificate.filePath" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="/path/to/cert.pfx" />
+              <button class="px-2 py-1 border border-zinc-500 dark:border-zinc-600 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-sm" @click="selectPfxFile">Browse</button>
+            </div>
+            <label class="block text-sm text-zinc-500 mb-1 mt-2">Passphrase (optional)</label>
+            <input v-model="requestsStore.currentRequest.auth.clientCertificate.passphrase" type="password" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full" placeholder="PFX passphrase" />
+          </div>
+          <div v-if="clientCertFormat === 'pem'" class="mb-2">
+            <div class="mb-2">
+              <label class="block text-sm text-zinc-500 mb-1">Certificate File Path</label>
+              <div class="flex gap-2">
+                <input v-model="requestsStore.currentRequest.auth.clientCertificate.certPath" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="/path/to/cert.pem" />
+                <button class="px-2 py-1 border border-zinc-500 dark:border-zinc-600 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-sm" @click="selectPemCertFile">Browse</button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm text-zinc-500 mb-1">Private Key File Path</label>
+              <div class="flex gap-2">
+                <input v-model="requestsStore.currentRequest.auth.clientCertificate.keyPath" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="/path/to/key.pem" />
+                <button class="px-2 py-1 border border-zinc-500 dark:border-zinc-600 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-sm" @click="selectPemKeyFile">Browse</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-if="requestsStore.currentRequest.auth.type === 'oauth2'" class="mb-4">
+          <OAuthConfig :auth="requestsStore.currentRequest.auth" />
         </div>
 
         <div v-if="requestsStore.currentRequest.auth.type === 'apikey'" class="mb-4">
@@ -130,20 +189,32 @@
         </option>
       </datalist>
 
-      <div v-if="requestsStore.activeRequestTab === 'body'">
-        <div class="mb-2">
-          <select v-model="requestsStore.currentRequest.body.type" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
-            <option value="none">None</option>
-            <option value="form-data">Form Data</option>
-            <option value="x-www-form-urlencoded">URL Encoded</option>
-            <option value="raw">Raw</option>
-            <option value="binary">Binary</option>
-          </select>
-        </div>
-        <div v-if="requestsStore.currentRequest.body.type !== 'none'" class="mt-2">
-          <textarea v-model="requestsStore.currentRequest.body.content" class="form-textarea bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded w-full" rows="5" placeholder='{"key": "value"}'></textarea>
-        </div>
-      </div>
+<div v-if="requestsStore.activeRequestTab === 'body'">
+         <div class="mb-2">
+           <select v-model="requestsStore.currentRequest.body.type" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
+             <option value="none">None</option>
+             <option value="form-data">Form Data</option>
+             <option value="x-www-form-urlencoded">URL Encoded</option>
+             <option value="raw">Raw</option>
+             <option value="binary">Binary</option>
+             <option value="graphql">GraphQL</option>
+           </select>
+         </div>
+         <div v-if="requestsStore.currentRequest.body.type === 'graphql'" class="graphql-editor mt-2">
+           <div class="mb-2">
+             <label class="block text-sm text-zinc-500 mb-1">Query</label>
+             <textarea v-model="graphqlQuery" class="form-textarea bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded w-full font-mono" rows="5" placeholder='query { users { id name } }'></textarea>
+           </div>
+           <div class="mb-2">
+             <label class="block text-sm text-zinc-500 mb-1">Variables (JSON)</label>
+             <textarea v-model="graphqlVariables" class="form-textarea bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded w-full font-mono" rows="3" placeholder='{"id": 1}'></textarea>
+           </div>
+           <div v-if="graphqlError" class="text-red-500 text-sm mb-2">{{ graphqlError }}</div>
+         </div>
+         <div v-else-if="requestsStore.currentRequest.body.type !== 'none'" class="mt-2">
+           <textarea v-model="requestsStore.currentRequest.body.content" class="form-textarea bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded w-full" rows="5" placeholder='{"key": "value"}'></textarea>
+         </div>
+       </div>
 
       <div v-if="requestsStore.activeRequestTab === 'variables'" class="key-value-editor">
         <div class="flex gap-2 mb-2">
@@ -192,6 +263,7 @@ import { useCollectionsStore } from '../stores/collections';
 import { useHistoryStore } from '../stores/history';
 import { useSecretsStore } from '../stores/secrets';
 import { useAppStore } from '../stores';
+import OAuthConfig from './OAuthConfig.vue';
 import type { SendRequestContext } from '../types';
 
 const requestsStore = useRequestsStore();
@@ -203,6 +275,61 @@ const secretsStore = useSecretsStore();
 const appStore = useAppStore();
 const selectedDataset = ref<string>('');
 const showSaveMenu = ref<boolean>(false);
+const clientCertFormat = ref<string>('pfx');
+const graphqlQuery = ref<string>('');
+const graphqlVariables = ref<string>('{}');
+const graphqlError = ref<string>('');
+
+watch(() => requestsStore.currentRequest.body.type, (newType) => {
+  if (newType === 'graphql') {
+    try {
+      const currentBody = requestsStore.currentRequest.body.content;
+      if (currentBody) {
+        const parsed = JSON.parse(currentBody);
+        graphqlQuery.value = parsed.query || '';
+        graphqlVariables.value = JSON.stringify(parsed.variables || {}, null, 2);
+      }
+    } catch {
+      // Invalid JSON, keep current values
+    }
+  }
+});
+
+const graphqlBody = computed({
+  get: () => {
+    try {
+      const variables = JSON.parse(graphqlVariables.value);
+      return JSON.stringify({ query: graphqlQuery.value, variables }, null, 2);
+    } catch {
+      return requestsStore.currentRequest.body.content;
+    }
+  },
+  set: (val: string) => {
+    requestsStore.currentRequest.body.content = val;
+  }
+});
+
+watch(graphqlBody, (newVal) => {
+  requestsStore.currentRequest.body.content = newVal;
+});
+
+watch(() => requestsStore.currentRequest.auth.type, (newType) => {
+  if (newType === 'clientcertificate' && requestsStore.currentRequest.auth.clientCertificate) {
+    clientCertFormat.value = requestsStore.currentRequest.auth.clientCertificate.type || 'pfx';
+  }
+  if (newType === 'oauth2' && !requestsStore.currentRequest.auth.oauth2) {
+    requestsStore.currentRequest.auth.oauth2 = { grantType: 'client_credentials' };
+  }
+});
+
+watch(clientCertFormat, (newFormat) => {
+  if (requestsStore.currentRequest.auth.type === 'clientcertificate') {
+    if (!requestsStore.currentRequest.auth.clientCertificate) {
+      requestsStore.currentRequest.auth.clientCertificate = {};
+    }
+    requestsStore.currentRequest.auth.clientCertificate.type = newFormat as 'pkcs12' | 'pem';
+  }
+});
 
 function toggleSaveMenu() {
   showSaveMenu.value = !showSaveMenu.value;
@@ -212,7 +339,6 @@ async function copyToClipboard() {
   try {
     const markdown = generateMarkdown();
     await navigator.clipboard.writeText(markdown);
-    // Could add a toast notification here
     console.log('Copied to clipboard');
   } catch (err) {
     console.error('Failed to copy to clipboard:', err);
@@ -223,7 +349,6 @@ function generateMarkdown(): string {
   const req = requestsStore.currentRequest;
   let markdown = `# ${req.method} ${req.url}\n\n`;
 
-  // URL Parameters
   if (requestsStore.urlParams && requestsStore.urlParams.length > 0) {
     markdown += `## URL Parameters\n\n`;
     requestsStore.urlParams.forEach(param => {
@@ -234,7 +359,6 @@ function generateMarkdown(): string {
     markdown += `\n`;
   }
 
-  // Headers
   if (req.headers && req.headers.length > 0) {
     markdown += `## Headers\n\n`;
     req.headers.forEach(header => {
@@ -245,7 +369,6 @@ function generateMarkdown(): string {
     markdown += `\n`;
   }
 
-  // Body
   if (req.body && req.body.type !== 'none' && req.body.content) {
     markdown += `## Request Body\n\n`;
     if (req.body.type === 'json') {
@@ -255,14 +378,12 @@ function generateMarkdown(): string {
     }
   }
 
-  // Response
   if (responseStore.response) {
     const res = responseStore.response;
     markdown += `## Response\n\n`;
     markdown += `**Status**: ${res.status} ${res.statusText}\n`;
     markdown += `**Time**: ${res.time}ms\n\n`;
 
-    // Response Headers
     if (res.headers) {
       markdown += `### Response Headers\n\n`;
       Object.entries(res.headers).forEach(([key, value]) => {
@@ -271,7 +392,6 @@ function generateMarkdown(): string {
       markdown += `\n`;
     }
 
-    // Response Body
     if (res.data) {
       markdown += `### Response Body\n\n`;
       try {
@@ -353,7 +473,6 @@ const dependsOn = computed({
   set: (val) => { requestsStore.currentRequest.dependsOn = val || undefined; }
 });
 
-// Get all requests in the current collection (excluding the current request)
 const collectionRequests = computed(() => {
   const currentCollection = collectionsStore.selectedCollection;
   if (!currentCollection) return [];
@@ -362,11 +481,11 @@ const collectionRequests = computed(() => {
 
   function collectRequests(items: any[]) {
     for (const item of items) {
-      if (item.method && item.url) { // It's a request
-        if (item.id !== requestsStore.selectedRequestId) { // Exclude current request
+      if (item.method && item.url) {
+        if (item.id !== requestsStore.selectedRequestId) {
           allRequests.push(item);
         }
-      } else if (item.items) { // It's a folder
+      } else if (item.items) {
         collectRequests(item.items);
       }
     }
@@ -376,15 +495,13 @@ const collectionRequests = computed(() => {
   return allRequests;
 });
 
-// Check for circular dependencies
 function hasCircularDependency(startRequestId: string, targetRequestId: string, visited = new Set<string>()): boolean {
   if (visited.has(startRequestId)) {
-    return true; // Circular dependency detected
+    return true;
   }
 
   visited.add(startRequestId);
 
-  // Find the request
   const request = collectionRequests.value.find((req: any) => req.id === startRequestId) ||
                   (requestsStore.selectedRequestId === startRequestId ? requestsStore.currentRequest : null);
 
@@ -392,7 +509,6 @@ function hasCircularDependency(startRequestId: string, targetRequestId: string, 
     return false;
   }
 
-  // If this request depends on the target, it's a cycle
   if (request.dependsOn === targetRequestId) {
     return true;
   }
@@ -400,11 +516,8 @@ function hasCircularDependency(startRequestId: string, targetRequestId: string, 
   return hasCircularDependency(request.dependsOn, targetRequestId, visited);
 }
 
-// Computed property for valid dependency options (no circular dependencies)
 const validDependencyOptions = computed(() => {
   return collectionRequests.value.filter((req: any) => {
-    // Check if selecting this request would create a circular dependency
-    // We want to check if following dependencies from req.id leads back to current request
     const currentId = requestsStore.selectedRequestId || requestsStore.currentRequest.id;
     return !hasCircularDependency(req.id, currentId || '');
   });
@@ -439,9 +552,6 @@ const filteredVariables = computed(() => {
   return (requestsStore.currentRequest.variables || []).filter(v => v.dataset === selectedDataset.value);
 });
 
-// async sendRequest: delegate all execution logic to the execution engine.
-// The engine handles variable substitution, dependency resolution, auth/header
-// construction, the HTTP call, history recording and test-script evaluation.
 async function sendRequest() {
   console.log('[SEND] sendRequest called');
   responseStore.isLoading = true;
@@ -482,7 +592,6 @@ async function sendRequest() {
 
     const result = await window.api.sendRequest(context);
 
-    // ── Apply response ────────────────────────────────────────────────────
     responseStore.response = {
       status: result.response.status,
       statusText: result.response.statusText,
@@ -503,7 +612,6 @@ async function sendRequest() {
       requestsStore.saveRequest();
     }
 
-    // ── Apply dependency responses ────────────────────────────────────────
     for (const dep of result.executedDependencies) {
       const depItem = collectionsStore.findItemById(dep.id);
       if (depItem) {
@@ -522,12 +630,10 @@ async function sendRequest() {
       }
     }
 
-    // ── Apply history ─────────────────────────────────────────────────────
     for (const entry of result.historyEntries) {
       historyStore.addToHistory(entry);
     }
 
-    // ── Test results ──────────────────────────────────────────────────────
     responseStore.testResults = result.testResults;
     responseStore.activeResponseTab = 'body';
 
@@ -591,5 +697,38 @@ function onHeaderKeyChange(header: { key: string; value: string }) {
   if (matched && !header.value) {
     header.value = matched.value;
   }
+}
+
+function selectPfxFile() {
+  window.api.selectCertificateFileDialog('pfx').then(result => {
+    if (result && !result.canceled && result.filePaths && result.filePaths.length > 0) {
+      requestsStore.currentRequest.auth.clientCertificate = {
+        ...requestsStore.currentRequest.auth?.clientCertificate,
+        filePath: result.filePaths[0],
+      };
+    }
+  });
+}
+
+function selectPemCertFile() {
+  window.api.selectCertificateFileDialog('pem').then(result => {
+    if (result && !result.canceled && result.filePaths && result.filePaths.length > 0) {
+      requestsStore.currentRequest.auth.clientCertificate = {
+        ...requestsStore.currentRequest.auth?.clientCertificate,
+        certPath: result.filePaths[0],
+      };
+    }
+  });
+}
+
+function selectPemKeyFile() {
+  window.api.selectCertificateFileDialog('pem').then(result => {
+    if (result && !result.canceled && result.filePaths && result.filePaths.length > 0) {
+      requestsStore.currentRequest.auth.clientCertificate = {
+        ...requestsStore.currentRequest.auth?.clientCertificate,
+        keyPath: result.filePaths[0],
+      };
+    }
+  });
 }
 </script>

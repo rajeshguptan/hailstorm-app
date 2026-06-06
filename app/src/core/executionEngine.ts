@@ -854,6 +854,127 @@ export function initializeExecutionEngine() {
       throw error;
     }
   });
+
+  ipcMain.handle('show-open-dialog', async (_event, filters) => {
+    console.log('[EXECUTION_ENGINE] showOpenDialog requested');
+
+    try {
+      const result = await dialog.showOpenDialog({
+        title: 'Select File',
+        filters: filters || [
+          { name: 'All Files', extensions: ['*'] }
+        ],
+        properties: ['openFile']
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { canceled: true, filePaths: [] };
+      }
+
+      console.log('[EXECUTION_ENGINE] showOpenDialog completed, selected:', result.filePaths[0]);
+      return { canceled: false, filePaths: result.filePaths };
+    } catch (error: any) {
+      console.error('[EXECUTION_ENGINE] showOpenDialog error:', error.message);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('select-certificate-file-dialog', async (_event, filters) => {
+    console.log('[EXECUTION_ENGINE] selectCertificateFileDialog requested');
+
+    try {
+      const result = await dialog.showOpenDialog({
+        title: 'Select Certificate File',
+        filters: filters || [
+          { name: 'All Files', extensions: ['*'] }
+        ],
+        properties: ['openFile']
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { canceled: true, filePaths: [] };
+      }
+
+      console.log('[EXECUTION_ENGINE] selectCertificateFileDialog completed, selected:', result.filePaths[0]);
+      return { canceled: false, filePaths: result.filePaths };
+    } catch (error: any) {
+      console.error('[EXECUTION_ENGINE] selectCertificateFileDialog error:', error.message);
+      throw error;
+    }
+  });
+
+  // ─── OAuth 2.0 PKCE State Management ───────────────────────────────────────────
+  const oauthStates = new Map<string, { codeVerifier: string; timestamp: number }>();
+
+  ipcMain.handle('store-oauth-state', async (_event, oauthState: { state: string; codeVerifier: string }) => {
+    console.log('[EXECUTION_ENGINE] Storing OAuth state', oauthState.state.substring(0, 8) + '...');
+    oauthStates.set(oauthState.state, {
+      codeVerifier: oauthState.codeVerifier,
+      timestamp: Date.now()
+    });
+    setTimeout(() => oauthStates.delete(oauthState.state), 10 * 60 * 1000);
+  });
+
+  ipcMain.handle('get-oauth-state', async (_event, state: string) => {
+    const oauthState = oauthStates.get(state);
+    return oauthState?.codeVerifier || null;
+  });
+
+  ipcMain.handle('exchange-oauth-code', async (_event, params: {
+    code: string;
+    tokenUrl: string;
+    clientId: string;
+    clientSecret?: string;
+    redirectUri: string;
+    codeVerifier?: string;
+  }) => {
+    console.log('[EXECUTION_ENGINE] Exchanging OAuth code for token');
+
+    const tokenParams = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code: params.code,
+      redirect_uri: params.redirectUri,
+      client_id: params.clientId,
+    });
+
+    if (params.clientSecret) {
+      tokenParams.set('client_secret', params.clientSecret);
+    }
+    if (params.codeVerifier) {
+      tokenParams.set('code_verifier', params.codeVerifier);
+    }
+
+    try {
+      const response = await fetch(params.tokenUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: tokenParams.toString()
+      });
+
+      if (!response.ok) {
+        throw new Error(`Token exchange failed: ${response.status}`);
+      }
+
+      const tokenData = await response.json();
+      console.log('[EXECUTION_ENGINE] OAuth token received');
+
+      return {
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token,
+        expiresIn: tokenData.expires_in
+      };
+    } catch (error: any) {
+      console.error('[EXECUTION_ENGINE] OAuth token exchange error:', error.message);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('open-external-url', async (_event, url: string) => {
+    const { shell } = require('electron');
+    await shell.openExternal(url);
+  });
 }
 
 // ─── Types for store data received via IPC ───────────────────────────────────
@@ -869,7 +990,34 @@ interface AuthData {
   bearerToken?: string;
   username?: string;
   password?: string;
+  domain?: string;
+  workstation?: string;
+  ntlm?: {
+    username?: string;
+    password?: string;
+    domain?: string;
+    workstation?: string;
+  };
   apikey?: { key: string; value: string; in: string };
+  clientCertificate?: {
+    type: 'pkcs12' | 'pem';
+    filePath?: string;
+    passphrase?: string;
+    certPath?: string;
+    keyPath?: string;
+  };
+  oauth2?: {
+    grantType: 'authorization_code' | 'client_credentials' | 'resource_owner_password' | 'refresh_token';
+    authorizationUrl?: string;
+    tokenUrl?: string;
+    clientId?: string;
+    clientSecret?: string;
+    scope?: string;
+    username?: string;
+    password?: string;
+    refreshToken?: string;
+    accessToken?: string;
+  };
 }
 
 interface RequestBodyData {
@@ -997,6 +1145,16 @@ function applyAuthAndHeaders(
     const u = substituteAll(auth.username, seVars, reqVars, secrets);
     const p = substituteAll(auth.password, seVars, reqVars, secrets);
     opts.headers['Authorization'] = `Basic ${Buffer.from(`${u}:${p}`).toString('base64')}`;
+  } else if (auth.type === 'ntlm' && auth.ntlm) {
+    const domain = substituteAll(auth.ntlm.domain || '', seVars, reqVars, secrets);
+    const username = substituteAll(auth.ntlm.username || '', seVars, reqVars, secrets);
+    const password = substituteAll(auth.ntlm.password || '', seVars, reqVars, secrets);
+    const credentials = domain ? `${domain}\\${username}` : username;
+    opts.headers['Authorization'] = `NTLM ${credentials}:${password}`;
+  } else if (auth.type === 'oauth2' && auth.oauth2) {
+    if (auth.oauth2.accessToken) {
+      opts.headers['Authorization'] = `Bearer ${auth.oauth2.accessToken}`;
+    }
   } else if (auth.type === 'apikey' && auth.apikey) {
     const k = substituteAll(auth.apikey.key, seVars, reqVars, secrets);
     const v = substituteAll(auth.apikey.value, seVars, reqVars, secrets);
@@ -1019,6 +1177,7 @@ function setContentType(
   if (bodyType === 'json') headers['Content-Type'] = 'application/json';
   else if (bodyType === 'x-www-form-urlencoded') headers['Content-Type'] = 'application/x-www-form-urlencoded';
   else if (bodyType === 'form-data') headers['Content-Type'] = 'multipart/form-data';
+  else if (bodyType === 'graphql') headers['Content-Type'] = 'application/json';
 }
 
 // Build a flat, indexable collection of (id → request) for dependency resolution
@@ -1064,6 +1223,7 @@ async function executeDepRequest(
   seVars: VariableData[],
   reqVars: RequestVariableData[],
   secrets: { name: string; value: string }[] | undefined,
+  parentAuth?: AuthData | undefined,
 ): Promise<ExecutedRequest> {
   let url = substituteAll(request.url, seVars, reqVars, secrets);
   let body = request.body && request.body.type !== 'none' && request.body.content
@@ -1072,9 +1232,10 @@ async function executeDepRequest(
 
   const headers: Record<string, string> = {};
 
-  // Auth
-  if (request.auth) {
-    applyAuthAndHeaders({ headers, url }, request.auth, seVars, reqVars, secrets);
+  // Auth - handle 'inherit' type
+  const effectiveAuth = request.auth?.type === 'inherit' ? parentAuth : request.auth;
+  if (effectiveAuth) {
+    applyAuthAndHeaders({ headers, url }, effectiveAuth, seVars, reqVars, secrets);
   }
 
   // Per-request headers
@@ -1149,18 +1310,20 @@ async function sendRequest(context: SendRequestContext, rps: number = 0, request
   const executedDeps: ExecutedRequest[] = [];
   const historyEntries: unknown[] = [];
 
-  async function resolveAndRunDep(depId: string): Promise<void> {
+  async function resolveAndRunDep(depId: string, parentAuth?: AuthData): Promise<void> {
     if (executedIds.has(depId)) return;
 
     const depRequest = requestMapper.get(depId);
     if (!depRequest) return;
 
     if (depRequest.dependsOn && depRequest.dependsOn !== depId) {
-      await resolveAndRunDep(depRequest.dependsOn);
+      await resolveAndRunDep(depRequest.dependsOn, depRequest.auth?.type === 'inherit' ? parentAuth : depRequest.auth);
     }
 
     const reqVars: RequestVariableData[] = [...(depRequest.variables || [])];
-    const result = await executeDepRequest(depRequest, seVars, reqVars, accessibleSecrets);
+    const result = await executeDepRequest(depRequest, seVars, reqVars, accessibleSecrets, 
+      depRequest.auth?.type === 'inherit' ? parentAuth : depRequest.auth
+    );
     executedIds.add(depId);
     executedDeps.push(result);
 
@@ -1184,8 +1347,13 @@ async function sendRequest(context: SendRequestContext, rps: number = 0, request
     });
   }
 
+  // Get parent auth from collection for inherit
+  const parentAuth = mainRequest.auth?.type === 'inherit' 
+    ? (collStore ? collStore.collections.find((c: any) => c.id === collStore.selectedCollectionId)?.auth as AuthData : undefined)
+    : undefined;
+
   if (mainRequest.dependsOn) {
-    await resolveAndRunDep(mainRequest.dependsOn);
+    await resolveAndRunDep(mainRequest.dependsOn, parentAuth);
   }
 
   // ── Execute main request ────────────────────────────────────────────────
@@ -1208,6 +1376,26 @@ async function sendRequest(context: SendRequestContext, rps: number = 0, request
     else if (a.type === 'basic') {
       if (a.username) a.username = substituteAll(a.username, seVars, [...(substRequest.variables || [])], accessibleSecrets);
       if (a.password) a.password = substituteAll(a.password, seVars, [...(substRequest.variables || [])], accessibleSecrets);
+    } else if (a.type === 'clientcertificate' && a.clientCertificate) {
+      if (a.clientCertificate.type === 'pkcs12' && a.clientCertificate.filePath) a.clientCertificate.filePath = substituteAll(a.clientCertificate.filePath, seVars, [...(substRequest.variables || [])], accessibleSecrets);
+      if (a.clientCertificate.passphrase) a.clientCertificate.passphrase = substituteAll(a.clientCertificate.passphrase, seVars, [...(substRequest.variables || [])], accessibleSecrets);
+      if (a.clientCertificate.type === 'pem') {
+        if (a.clientCertificate.certPath) a.clientCertificate.certPath = substituteAll(a.clientCertificate.certPath, seVars, [...(substRequest.variables || [])], accessibleSecrets);
+        if (a.clientCertificate.keyPath) a.clientCertificate.keyPath = substituteAll(a.clientCertificate.keyPath, seVars, [...(substRequest.variables || [])], accessibleSecrets);
+      }
+    } else if (a.type === 'ntlm' && a.ntlm) {
+      if (a.ntlm.domain) a.ntlm.domain = substituteAll(a.ntlm.domain, seVars, [...(substRequest.variables || [])], accessibleSecrets);
+      if (a.ntlm.username) a.ntlm.username = substituteAll(a.ntlm.username, seVars, [...(substRequest.variables || [])], accessibleSecrets);
+      if (a.ntlm.password) a.ntlm.password = substituteAll(a.ntlm.password, seVars, [...(substRequest.variables || [])], accessibleSecrets);
+    } else if (a.type === 'oauth2' && a.oauth2) {
+      if (a.oauth2.tokenUrl) a.oauth2.tokenUrl = substituteAll(a.oauth2.tokenUrl, seVars, [...(substRequest.variables || [])], accessibleSecrets);
+      if (a.oauth2.clientId) a.oauth2.clientId = substituteAll(a.oauth2.clientId, seVars, [...(substRequest.variables || [])], accessibleSecrets);
+      if (a.oauth2.clientSecret) a.oauth2.clientSecret = substituteAll(a.oauth2.clientSecret, seVars, [...(substRequest.variables || [])], accessibleSecrets);
+      if (a.oauth2.scope) a.oauth2.scope = substituteAll(a.oauth2.scope, seVars, [...(substRequest.variables || [])], accessibleSecrets);
+      if (a.oauth2.username) a.oauth2.username = substituteAll(a.oauth2.username, seVars, [...(substRequest.variables || [])], accessibleSecrets);
+      if (a.oauth2.password) a.oauth2.password = substituteAll(a.oauth2.password, seVars, [...(substRequest.variables || [])], accessibleSecrets);
+      if (a.oauth2.refreshToken) a.oauth2.refreshToken = substituteAll(a.oauth2.refreshToken, seVars, [...(substRequest.variables || [])], accessibleSecrets);
+      if (a.oauth2.accessToken) a.oauth2.accessToken = substituteAll(a.oauth2.accessToken, seVars, [...(substRequest.variables || [])], accessibleSecrets);
     } else if (a.type === 'apikey' && a.apikey) {
       a.apikey.key = substituteAll(a.apikey.key, seVars, [...(substRequest.variables || [])], accessibleSecrets);
       a.apikey.value = substituteAll(a.apikey.value, seVars, [...(substRequest.variables || [])], accessibleSecrets);
@@ -1219,8 +1407,21 @@ async function sendRequest(context: SendRequestContext, rps: number = 0, request
     substRequest.headers.forEach((h: any) => { if (h.value) h.value = substituteAll(h.value, seVars, [...(substRequest.variables || [])], accessibleSecrets); });
   }
 
+  // Resolve auth - check if inheriting from collection
+  const resolveAuth = (): AuthData | undefined => {
+    if (!mainRequest.auth || mainRequest.auth.type === 'inherit') {
+      // Inherit auth from collection
+      if (collStore) {
+        const collection = collStore.collections.find((c: any) => c.id === collStore.selectedCollectionId);
+        return collection?.auth as AuthData;
+      }
+      return undefined;
+    }
+    return mainRequest.auth;
+  };
+
   // Auth headers / query params on execution options
-  applyAuthAndHeaders({ headers, url }, mainRequest.auth, seVars, [...(mainRequest.variables || [])], accessibleSecrets);
+  applyAuthAndHeaders({ headers, url }, resolveAuth(), seVars, [...(mainRequest.variables || [])], accessibleSecrets);
 
   // Request-panel headers (enabled only)
   for (const h of reqStore.requestHeaders) {
@@ -1286,7 +1487,7 @@ setContentType(headers, mainRequest.body?.type || 'none', !!body);
 
 // Export sendRequest for use by runnerEngine and other modules
 export { sendRequest };
-async function makeHttpRequest(options: { method: string; url: string; headers: Record<string, string>; body?: string; rps?: number; requestId?: string }): Promise<{ status: number; statusText: string; headers: Record<string, string | string[]>; data: string; time: number; error?: string }> {
+async function makeHttpRequest(options: { method: string; url: string; headers: Record<string, string>; body?: string; rps?: number; requestId?: string; auth?: AuthData }): Promise<{ status: number; statusText: string; headers: Record<string, string | string[]>; data: string; time: number; error?: string }> {
   return new Promise(async (resolve) => {
     const startTime = Date.now();
 
@@ -1316,13 +1517,39 @@ async function makeHttpRequest(options: { method: string; url: string; headers: 
     const isHttps = parsedUrl.protocol === 'https:';
     const httpModule = isHttps ? https : http;
 
-    const requestOptions: http.RequestOptions = {
+    const requestOptions: http.RequestOptions & { pfx?: Buffer; passphrase?: string; key?: Buffer; cert?: Buffer } = {
       hostname: parsedUrl.hostname,
       port: parsedUrl.port || (isHttps ? 443 : 80),
       path: parsedUrl.pathname + parsedUrl.search,
       method: options.method,
       headers: options.headers,
     };
+
+    // Handle client certificate authentication
+    if (options.auth?.type === 'clientcertificate' && options.auth.clientCertificate) {
+      const certConfig = options.auth.clientCertificate;
+      try {
+        if (certConfig.type === 'pkcs12' && certConfig.filePath) {
+          requestOptions.pfx = fs.readFileSync(certConfig.filePath);
+          if (certConfig.passphrase) {
+            requestOptions.passphrase = certConfig.passphrase;
+          }
+          console.log('[EXECUTION_ENGINE] PKCS#12 client certificate configured');
+        } else if (certConfig.type === 'pem' && certConfig.certPath && certConfig.keyPath) {
+          requestOptions.cert = fs.readFileSync(certConfig.certPath);
+          requestOptions.key = fs.readFileSync(certConfig.keyPath);
+          console.log('[EXECUTION_ENGINE] PEM client certificate configured');
+        }
+      } catch (certError: any) {
+        console.error('[EXECUTION_ENGINE] Client certificate error:', certError.message);
+      }
+    }
+
+    // Handle NTLM authentication - requires separate challenge-response flow
+    if (options.auth?.type === 'ntlm' && options.auth.ntlm) {
+      await makeNtlmAuthenticatedRequest(requestOptions, httpModule, options, startTime, resolve);
+      return;
+    }
 
     const request = httpModule.request(requestOptions);
 
@@ -1496,3 +1723,87 @@ ipcMain.handle('run-load-test', async (_event, params: RunLoadTestParams) => {
   // Return both run and results so renderer can set currentRun
   return { run: newRun, results };
 });
+
+async function makeNtlmAuthenticatedRequest(
+  requestOptions: http.RequestOptions & { pfx?: Buffer; passphrase?: string; key?: Buffer; cert?: Buffer },
+  httpModule: typeof http | typeof https,
+  options: { method: string; url: string; headers: Record<string, string>; body?: string; auth?: AuthData },
+  startTime: number,
+  resolve: (result: { status: number; statusText: string; headers: Record<string, string | string[]>; data: string; time: number; error?: string }) => void
+): Promise<void> {
+  const ntlmConfig = options.auth!.ntlm!;
+  const domain = ntlmConfig.domain || '';
+  const username = ntlmConfig.username || '';
+  const password = ntlmConfig.password || '';
+  const workstation = ntlmConfig.workstation || '';
+
+  const negotiateMsg = createNtlmNegotiateMessage(domain, username, workstation);
+  (requestOptions.headers as Record<string, string>)['Authorization'] = `NTLM ${negotiateMsg}`;
+
+  const request = httpModule.request(requestOptions, async (response) => {
+    const statusCode = response.statusCode || 0;
+    const statusMessage = response.statusMessage || '';
+
+    const responseHeaders: Record<string, string | string[]> = {};
+    for (const [key, value] of Object.entries(response.headers)) {
+      if (value !== undefined) {
+        responseHeaders[key] = value;
+      }
+    }
+
+    let responseBody = '';
+    response.on('data', (chunk) => {
+      responseBody += chunk.toString();
+    });
+
+    response.on('end', async () => {
+      const wwwAuthenticate = responseHeaders['www-authenticate'];
+      
+      if (statusCode === 401 && wwwAuthenticate && typeof wwwAuthenticate === 'string' && wwwAuthenticate.includes('NTLM')) {
+        console.log('[EXECUTION_ENGINE] NTLM challenge received - full implementation requires ntlm-client package');
+        
+        resolve({
+          status: statusCode,
+          statusText: statusMessage,
+          headers: responseHeaders,
+          data: responseBody,
+          time: Date.now() - startTime,
+          error: 'NTLM challenge-response requires ntlm-client npm package for full authentication.',
+        });
+      } else {
+        resolve({
+          status: statusCode,
+          statusText: statusMessage,
+          headers: responseHeaders,
+          data: responseBody,
+          time: Date.now() - startTime,
+        });
+      }
+    });
+  });
+
+  request.on('error', (error) => {
+    resolve({
+      status: 0,
+      statusText: 'Error',
+      headers: {},
+      data: '',
+      error: error.message,
+      time: Date.now() - startTime,
+    });
+  });
+
+  if (options.body && ['POST', 'PUT', 'PATCH'].includes(options.method)) {
+    request.write(options.body);
+  }
+  request.end();
+}
+
+function createNtlmNegotiateMessage(domain: string, username: string, workstation: string): string {
+  const body = Buffer.alloc(40);
+  body.writeUInt8(1, 0);
+  body.write(domain || '', 12, 'utf8');
+  body.write(username || '', 20, 'utf8');
+  body.write(workstation || '', 28, 'utf8');
+  return body.toString('base64');
+}
