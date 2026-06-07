@@ -147,6 +147,7 @@ interface Request {
   headers: any[];
   body: { type: string; content: string };
   preRequestScript?: string;
+  postRequestScript?: string;
   testScript?: string;
   flavors?: Request[];
   dependsOn?: string;

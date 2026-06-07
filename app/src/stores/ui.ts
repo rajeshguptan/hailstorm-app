@@ -17,6 +17,8 @@ export const useUIStore = defineStore('ui', {
       id: ''
     },
 
+    copiedRequest: null as any,
+
     showEnvModal: false,
     editingEnv: {
       id: '',
@@ -66,6 +68,14 @@ export const useUIStore = defineStore('ui', {
     setRequestPanelHeight(height: number) {
       this.requestPanelHeight = Math.max(100, Math.min(800, height));
       localStorage.setItem('requestPanelHeight', this.requestPanelHeight.toString());
+    },
+
+    setCopiedRequest(request: any) {
+      this.copiedRequest = request;
+    },
+
+    clearCopiedRequest() {
+      this.copiedRequest = null;
     }
   }
 });

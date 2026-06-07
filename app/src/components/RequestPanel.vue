@@ -1,5 +1,5 @@
 <template>
-  <div class="request-panel bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white p-3 border-b border-zinc-200 dark:border-zinc-700">
+  <div class="request-panel bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white p-3 border-b border-zinc-200 dark:border-zinc-700 flex flex-col h-full">
     <!-- First row: Request name and action buttons -->
     <div class="flex gap-2 mb-2 items-center">
       <input v-model="name" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-3 py-1 flex-1" placeholder="Request Name" />
@@ -44,12 +44,12 @@
 
 <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': requestsStore.activeRequestTab === 'scripts' }" @click="requestsStore.activeRequestTab = 'scripts'">Scripts</button>
 
-            <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': requestsStore.activeRequestTab === 'description' }" @click="requestsStore.activeRequestTab = 'description'">Description</button>
+         <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': requestsStore.activeRequestTab === 'description' }" @click="requestsStore.activeRequestTab = 'description'">Description</button>
         </li>
-    </ul>
+     </ul>
     
-    <div class="tab-content p-2" style="max-height: 200px; overflow-y: auto;">
-      <div v-if="requestsStore.activeRequestTab === 'params'" class="key-value-editor">
+<div class="tab-content p-2 flex-1 overflow-y-auto">
+       <div v-if="requestsStore.activeRequestTab === 'params'" class="key-value-editor h-full">
         <div class="flex gap-2 mb-2">
           <span class="flex-1 text-sm text-zinc-500">Key</span>
           <span class="flex-1 text-sm text-zinc-500">Value</span>
@@ -63,7 +63,7 @@
         <button class="btn btn-sm border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 mt-2 hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="requestsStore.addParam()">+ Add Parameter</button>
       </div>
 
-      <div v-if="requestsStore.activeRequestTab === 'auth'" class="auth-editor">
+      <div v-if="requestsStore.activeRequestTab === 'auth'" class="auth-editor h-full">
         <div class="mb-4">
           <label class="block text-sm text-zinc-500 mb-2">Type</label>
 <select v-model="requestsStore.currentRequest.auth.type" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
@@ -172,7 +172,7 @@
         </div>
       </div>
 
-      <div v-if="requestsStore.activeRequestTab === 'headers'" class="key-value-editor">
+      <div v-if="requestsStore.activeRequestTab === 'headers'" class="key-value-editor h-full">
         <div class="flex gap-2 mb-2">
           <span class="flex-1 text-sm text-zinc-500">Key</span>
           <span class="flex-1 text-sm text-zinc-500">Value</span>
@@ -191,7 +191,7 @@
         </option>
       </datalist>
 
-<div v-if="requestsStore.activeRequestTab === 'body'">
+<div v-if="requestsStore.activeRequestTab === 'body'" class="h-full">
          <div class="mb-2">
            <select v-model="requestsStore.currentRequest.body.type" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
              <option value="none">None</option>
@@ -218,7 +218,7 @@
          </div>
        </div>
 
-      <div v-if="requestsStore.activeRequestTab === 'variables'" class="key-value-editor">
+      <div v-if="requestsStore.activeRequestTab === 'variables'" class="key-value-editor h-full">
         <div class="flex gap-2 mb-2">
           <span style="width: 30px;"></span>
           <span class="flex-1 text-sm text-zinc-500">Key</span>
@@ -242,18 +242,11 @@
         <button class="btn btn-sm border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 mt-2 hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="addVariable()">+ Add Variable</button>
       </div>
 
-<div v-if="requestsStore.activeRequestTab === 'scripts'" class="p-2">
-         <div class="mb-2">
-           <label class="block text-sm text-zinc-500 mb-1">Pre-request Script</label>
-           <textarea v-model="requestsStore.currentRequest.preRequestScript" class="form-textarea bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded font-mono w-full" rows="3" placeholder="// Runs before request is sent"></textarea>
+<div v-if="requestsStore.activeRequestTab === 'scripts'" class="p-2 h-full">
+           <ScriptTabs :model-value="requestsStore.currentRequest" />
          </div>
-         <div>
-           <label class="block text-sm text-zinc-500 mb-1">Test Script</label>
-           <textarea v-model="requestsStore.currentRequest.testScript" class="form-textarea bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded font-mono w-full" rows="3" placeholder="// Runs after response is received"></textarea>
-         </div>
-       </div>
 
-       <div v-if="requestsStore.activeRequestTab === 'description'" class="p-2">
+        <div v-if="requestsStore.activeRequestTab === 'description'" class="p-2 h-full">
          <MarkdownDescription v-model="requestsStore.currentRequest.description" />
        </div>
      </div>
@@ -271,6 +264,7 @@ import { useSecretsStore } from '../stores/secrets';
 import { useAppStore } from '../stores';
 import OAuthConfig from './OAuthConfig.vue';
 import MarkdownDescription from './MarkdownDescription.vue';
+import ScriptTabs from './ScriptTabs.vue';
 import type { SendRequestContext } from '../types';
 
 const requestsStore = useRequestsStore();

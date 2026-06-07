@@ -87,13 +87,14 @@ export interface Request {
    body: { type: 'none' | 'form-data' | 'x-www-form-urlencoded' | 'raw' | 'binary' | 'graphql'; content: string };
    auth?: Auth;
    preRequestScript?: string;
+   postRequestScript?: string;
    testScript?: string;
    flavors?: Request[];
    variables?: RequestVariable[];
    response?: Response;
    dependsOn?: string;
    description?: string;
- }
+  }
 
 export interface Folder {
   id: string;
@@ -102,16 +103,17 @@ export interface Folder {
 }
 
 export interface Collection {
-  id: string;
-  name: string;
-  items: (Request | Folder)[];
-  variables: Variable[];
-  description?: string;
-  workspaceLocation?: string;
-  preRequestScript?: string;
-  testScript?: string;
-  auth?: Auth;
-}
+   id: string;
+   name: string;
+   items: (Request | Folder)[];
+   variables: Variable[];
+   description?: string;
+   workspaceLocation?: string;
+   preRequestScript?: string;
+   postRequestScript?: string;
+   testScript?: string;
+   auth?: Auth;
+ }
 
 export interface HistoryItem {
   id: number;

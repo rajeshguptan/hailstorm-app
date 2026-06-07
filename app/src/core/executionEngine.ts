@@ -580,16 +580,17 @@ export function initializeExecutionEngine() {
       await fs.promises.mkdir(collectionDir, { recursive: true });
 
       // Save collection metadata
-      const collectionMeta = {
-        id: collection.id,
-        name: collection.name,
-        description: collection.description,
-        workspaceLocation: collection.workspaceLocation,
-        preRequestScript: collection.preRequestScript,
-        testScript: collection.testScript,
-        auth: collection.auth,
-        variables: collection.variables
-      };
+const collectionMeta = {
+         id: collection.id,
+         name: collection.name,
+         description: collection.description,
+         workspaceLocation: collection.workspaceLocation,
+         preRequestScript: collection.preRequestScript,
+         postRequestScript: collection.postRequestScript,
+         testScript: collection.testScript,
+         auth: collection.auth,
+         variables: collection.variables
+       };
 
       const metaPath = path.join(collectionDir, 'collection.json');
       await fs.promises.writeFile(metaPath, JSON.stringify(collectionMeta, null, 2), 'utf-8');
@@ -1042,6 +1043,7 @@ interface RequestSnapshot {
   body: RequestBodyData;
   auth?: AuthData;
   preRequestScript?: string;
+  postRequestScript?: string;
   testScript?: string;
   variables?: RequestVariableData[];
   dependsOn?: string; // dependency request id

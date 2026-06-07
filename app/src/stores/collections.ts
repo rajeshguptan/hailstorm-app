@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import type { Collection, Request, Folder } from '../types';
 import { useAppStore } from './index';
 import { useRequestsStore } from './requests';
+import { useUIStore } from './ui';
 
 export const useCollectionsStore = defineStore('collections', {
   state: () => ({
@@ -346,6 +347,91 @@ export const useCollectionsStore = defineStore('collections', {
           break;
         }
       }
+    },
+
+    duplicateRequest(id: string) {
+      const item = this.findItemById(id);
+      if (item) {
+        // Handle both {request: ...} wrapper and direct request objects
+        const requestItem = 'request' in item && item.request ? item.request : item;
+        if (requestItem && 'method' in requestItem) {
+          const duplicated = { ...JSON.parse(JSON.stringify(requestItem)), id: this.generateId('req'), name: `${requestItem.name} (copy)` };
+          const insertDuplicate = (items: any[]): boolean => {
+            for (let i = 0; i < items.length; i++) {
+              // Check both direct items and wrapped request items
+              const currentItem = items[i];
+              const checkItem = 'request' in currentItem && currentItem.request ? currentItem.request : currentItem;
+              if (currentItem.id === id || (checkItem && checkItem.id === id)) {
+                items.splice(i + 1, 0, duplicated);
+                return true;
+              }
+              if ('items' in currentItem && currentItem.items) {
+                if (insertDuplicate(currentItem.items)) {
+                  return true;
+                }
+              }
+            }
+            return false;
+          };
+          for (const collection of this.collections) {
+            if (insertDuplicate(collection.items)) {
+              break;
+            }
+          }
+          this.saveCollections();
+        }
+      }
+    },
+
+    copyRequest(id: string) {
+      const item = this.findItemById(id);
+      const uiStore = useUIStore();
+      if (item && 'method' in item) {
+        uiStore.setCopiedRequest(item);
+        navigator.clipboard.writeText(JSON.stringify(item, null, 2)).catch(err => {
+          console.error('Failed to copy request to clipboard:', err);
+        });
+      }
+    },
+
+    pasteRequest(targetId: string, targetType: 'collection' | 'folder') {
+      const uiStore = useUIStore();
+      if (!uiStore.copiedRequest) return;
+
+      const pasted = {
+        ...JSON.parse(JSON.stringify(uiStore.copiedRequest)),
+        id: this.generateId('req'),
+        name: `${uiStore.copiedRequest.name} (copy)`
+      };
+
+      if (targetType === 'collection') {
+        const collection = this.collections.find(c => c.id === targetId);
+        if (collection) {
+          collection.items.push(pasted);
+        }
+      } else {
+        const findAndInsert = (items: any[]): boolean => {
+          for (const item of items) {
+            if (item.id === targetId && 'items' in item) {
+              item.items.push(pasted);
+              return true;
+            }
+            if ('items' in item && item.items) {
+              if (findAndInsert(item.items)) {
+                return true;
+              }
+            }
+          }
+          return false;
+        };
+        for (const collection of this.collections) {
+          if (findAndInsert(collection.items)) {
+            break;
+          }
+        }
+      }
+      this.saveCollections();
+      uiStore.clearCopiedRequest();
     },
 
     selectCollection(id: string | null) {

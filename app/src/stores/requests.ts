@@ -5,17 +5,20 @@ import { useCollectionsStore } from './collections';
 import { useResponseStore } from './response';
 
 export const useRequestsStore = defineStore('requests', {
-  state: () => ({
-    currentRequest: {
-      id: '',
-      name: '',
-      method: 'GET',
-      url: '',
-      headers: [],
-      body: { type: 'none', content: '' },
-      auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' }, oauth2: { grantType: 'client_credentials' } },
-      variables: []
-    } as Request,
+state: () => ({
+     currentRequest: {
+       id: '',
+       name: '',
+       method: 'GET',
+       url: '',
+       headers: [],
+       body: { type: 'none', content: '' },
+       auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' }, oauth2: { grantType: 'client_credentials' } },
+       preRequestScript: '',
+       postRequestScript: '',
+       testScript: '',
+       variables: []
+     } as Request,
 
     urlParams: [] as Variable[],
     requestHeaders: [] as Variable[],
@@ -38,15 +41,18 @@ export const useRequestsStore = defineStore('requests', {
       return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     },
 
-    addNewTab() {
-      const request: Request = {
-        id: this.generateId('req'),
-        name: 'New Request',
-        method: 'GET',
-        url: '',
-        headers: [],
-        body: { type: 'none', content: '' }
-      };
+addNewTab() {
+       const request: Request = {
+         id: this.generateId('req'),
+         name: 'New Request',
+         method: 'GET',
+         url: '',
+         headers: [],
+         body: { type: 'none', content: '' },
+         preRequestScript: '',
+         postRequestScript: '',
+         testScript: ''
+       };
       const tab: Tab = { id: this.generateId('tab'), request };
       this.tabs.push(tab);
       this.activeTabId = tab.id;
@@ -83,19 +89,22 @@ export const useRequestsStore = defineStore('requests', {
       }
     },
 
-    resetCurrentRequest() {
-      this.currentRequest = {
-        id: '',
-        name: '',
-        method: 'GET',
-        url: '',
-        headers: [],
-        body: { type: 'none', content: '' },
-        auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' } }
-      };
-      this.urlParams = [];
-      this.requestHeaders = [];
-    },
+resetCurrentRequest() {
+       this.currentRequest = {
+         id: '',
+         name: '',
+         method: 'GET',
+         url: '',
+         headers: [],
+         body: { type: 'none', content: '' },
+         auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' } },
+         preRequestScript: '',
+         postRequestScript: '',
+         testScript: ''
+       };
+       this.urlParams = [];
+       this.requestHeaders = [];
+     },
 
     extractParams(url: string): Variable[] {
       try {
@@ -161,19 +170,20 @@ export const useRequestsStore = defineStore('requests', {
           this.switchTab(existingTab.id);
         } else {
           console.log('Creating new tab for request:', requestItem.name, 'URL:', requestItem.url);
-            const requestCopy = {
-              id: requestItem.id || this.generateId('req'),
-              name: requestItem.name || 'Untitled',
-              method: requestItem.method || 'GET',
-              url: requestItem.url || '',
-              headers: requestItem.headers || [],
-              body: requestItem.body || { type: 'none', content: '' },
-              preRequestScript: requestItem.preRequestScript || '',
-              testScript: requestItem.testScript || '',
-              flavors: requestItem.flavors || [],
-              variables: requestItem.variables || [],
-              dependsOn: requestItem.dependsOn || undefined
-            };
+const requestCopy = {
+               id: requestItem.id || this.generateId('req'),
+               name: requestItem.name || 'Untitled',
+               method: requestItem.method || 'GET',
+               url: requestItem.url || '',
+               headers: requestItem.headers || [],
+               body: requestItem.body || { type: 'none', content: '' },
+               preRequestScript: requestItem.preRequestScript || '',
+               postRequestScript: requestItem.postRequestScript || '',
+               testScript: requestItem.testScript || '',
+               flavors: requestItem.flavors || [],
+               variables: requestItem.variables || [],
+               dependsOn: requestItem.dependsOn || undefined
+             };
           const tab: Tab = { id: this.generateId('tab'), request: requestCopy };
           console.log('Tab created, request in tab:', tab.request.name, tab.request.url);
           this.tabs.push(tab);
@@ -248,20 +258,23 @@ export const useRequestsStore = defineStore('requests', {
     },
 
 selectRequest(id: string | null) {
-      console.log('[REQUESTS] selectRequest called with id:', id);
-      if (!id) {
-        console.log('[REQUESTS] No id provided, resetting currentRequest');
-        this.selectedRequestId = null;
-        this.currentRequest = {
-          id: '',
-          name: '',
-          method: 'GET',
-          url: '',
-          headers: [],
-          body: { type: 'none', content: '' },
-          auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' } },
-          variables: []
-        };
+       console.log('[REQUESTS] selectRequest called with id:', id);
+       if (!id) {
+         console.log('[REQUESTS] No id provided, resetting currentRequest');
+         this.selectedRequestId = null;
+         this.currentRequest = {
+           id: '',
+           name: '',
+           method: 'GET',
+           url: '',
+           headers: [],
+           body: { type: 'none', content: '' },
+           auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' } },
+           preRequestScript: '',
+           postRequestScript: '',
+           testScript: '',
+           variables: []
+         };
         this.requestHeaders = [];
         this.urlParams = [];
         const appStore = useAppStore();
@@ -282,21 +295,22 @@ selectRequest(id: string | null) {
           const request = 'request' in item ? item.request : item;
           console.log('[REQUESTS] Using request data:', request);
           console.log('[REQUESTS] Request URL:', request.url, 'Body:', request.body);
-          this.currentRequest = {
-            id: request.id || '',
-            name: item.name || request.name || '',
-            method: request.method || 'GET',
-            url: request.url || '',
-            headers: request.headers || [],
-            body: request.body || { type: 'none', content: '' },
-            auth: request.auth || { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' } },
-            preRequestScript: request.preRequestScript || '',
-            testScript: request.testScript || '',
-            flavors: request.flavors || [],
-            variables: request.variables || [],
-            dependsOn: request.dependsOn || undefined,
-            response: request.response
-          };
+this.currentRequest = {
+             id: request.id || '',
+             name: item.name || request.name || '',
+             method: request.method || 'GET',
+             url: request.url || '',
+             headers: request.headers || [],
+             body: request.body || { type: 'none', content: '' },
+             auth: request.auth || { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' } },
+             preRequestScript: request.preRequestScript || '',
+             postRequestScript: request.postRequestScript || '',
+             testScript: request.testScript || '',
+             flavors: request.flavors || [],
+             variables: request.variables || [],
+             dependsOn: request.dependsOn || undefined,
+             response: request.response
+           };
           console.log('[REQUESTS] Set currentRequest:', {
             id: this.currentRequest.id,
             name: this.currentRequest.name,
@@ -312,22 +326,25 @@ selectRequest(id: string | null) {
           // Convert headers to the expected format
           this.requestHeaders = request.headers ? request.headers.map(h => ({ ...h, enabled: h.enabled !== false })) : [];
           // Extract URL params
-          this.urlParams = this.extractParams(request.url || '');
-        } else {
-          // Reset to default request when no request is selected
-          this.currentRequest = {
-            id: '',
-            name: '',
-            method: 'GET',
-            url: '',
-            headers: [],
-            body: { type: 'none', content: '' },
-            auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' } },
-            variables: []
-          };
-          this.requestHeaders = [];
-          this.urlParams = [];
-        }
+this.urlParams = this.extractParams(request.url || '');
+} else {
+            // Reset to default request when no request is selected
+            this.currentRequest = {
+              id: '',
+              name: '',
+              method: 'GET',
+              url: '',
+              headers: [],
+              body: { type: 'none', content: '' },
+              auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' } },
+              preRequestScript: '',
+              postRequestScript: '',
+              testScript: '',
+              variables: []
+            };
+            this.requestHeaders = [];
+            this.urlParams = [];
+          }
 
         const appStore = useAppStore();
         appStore.saveToLocalStorage();

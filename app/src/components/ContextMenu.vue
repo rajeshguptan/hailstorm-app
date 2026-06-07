@@ -3,6 +3,11 @@
     <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('rename')">Rename</div>
     <div v-if="uiStore.contextMenu.type === 'collection'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('duplicate')">Duplicate</div>
     <div v-if="uiStore.contextMenu.type === 'request'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('rename')">Rename</div>
+    <div v-if="uiStore.contextMenu.type === 'request'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('duplicate')">Duplicate</div>
+    <div v-if="uiStore.contextMenu.type === 'request'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('copy')">Copy</div>
+
+    <div v-if="uiStore.copiedRequest && (uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder')" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('paste')">Paste</div>
+
     <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-http-request')">Add HTTP Request</div>
     <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-graphql-request')">Add GraphQL Request</div>
     <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-folder')">Add Folder</div>
@@ -51,6 +56,18 @@ function handleAction(action: string) {
     case 'duplicate':
       if (type === 'collection') {
         collectionsStore.duplicateCollection(id);
+      } else if (type === 'request') {
+        collectionsStore.duplicateRequest(id);
+      }
+      break;
+    case 'copy':
+      if (type === 'request') {
+        collectionsStore.copyRequest(id);
+      }
+      break;
+    case 'paste':
+      if (uiStore.copiedRequest && (type === 'collection' || type === 'folder')) {
+        collectionsStore.pasteRequest(id, type as 'collection' | 'folder');
       }
       break;
     case 'add-http-request':

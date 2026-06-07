@@ -126,24 +126,8 @@
         </div>
 
         <!-- Scripts Tab -->
-        <div v-if="activeTab === 'scripts'" class="p-4">
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Pre-request Script</label>
-            <textarea
-              v-model="editingCollection.preRequestScript"
-              class="w-full h-32 px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-mono text-sm resize-none"
-              placeholder="Enter pre-request script..."
-            ></textarea>
-          </div>
-
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Test Script</label>
-            <textarea
-              v-model="editingCollection.testScript"
-              class="w-full h-32 px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-mono text-sm resize-none"
-              placeholder="Enter test script..."
-            ></textarea>
-          </div>
+        <div v-if="activeTab === 'scripts'" class="p-4 h-full">
+          <ScriptTabs :model-value="editingCollection" />
         </div>
 
         <!-- Auth Tab -->
@@ -374,6 +358,7 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { useAppStore } from '../stores';
 import { useCollectionsStore } from '../stores/collections';
 import MarkdownDescription from './MarkdownDescription.vue';
+import ScriptTabs from './ScriptTabs.vue';
 import type { Collection, Variable, Auth } from '../types';
 
 const appStore = useAppStore();
@@ -393,16 +378,17 @@ const selectedCollection = computed(() => {
 });
 
 const editingCollection = ref<Collection>({
-  id: '',
-  name: '',
-  items: [],
-  variables: [],
-  description: '',
-  workspaceLocation: '',
-  preRequestScript: '',
-  testScript: '',
-  auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' } }
-});
+   id: '',
+   name: '',
+   items: [],
+   variables: [],
+   description: '',
+   workspaceLocation: '',
+   preRequestScript: '',
+   postRequestScript: '',
+   testScript: '',
+   auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' } }
+  });
 
 const initializeEditingCollection = () => {
   if (selectedCollection.value) {

@@ -239,36 +239,21 @@
                     <button @click="removeVariable(index)" class="px-2 py-1 bg-red-500 hover:bg-red-600 text-white rounded text-sm">Delete</button>
                   </td>
                 </tr>
-              </tbody>
-</table>
+</tbody>
+             </table>
            </div>
 
-           <!-- Description Tab -->
-           <div v-if="activeRequestTab === 'description'" class="p-3">
-             <MarkdownDescription v-model="editingRequest.description" />
-           </div>
-
-           <!-- Scripts Tab -->
-           <div v-if="activeRequestTab === 'scripts'" class="p-3">
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Pre-request Script</label>
-              <textarea
-                v-model="editingRequest.preRequestScript"
-                class="w-full h-24 px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-mono text-sm"
-                placeholder="Enter pre-request script..."
-              ></textarea>
+<!-- Description Tab -->
+            <div v-if="activeRequestTab === 'description'" class="p-3">
+              <MarkdownDescription v-model="editingRequest.description" />
             </div>
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Test Script</label>
-              <textarea
-                v-model="editingRequest.testScript"
-                class="w-full h-24 px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-mono text-sm"
-                placeholder="Enter test script..."
-              ></textarea>
+
+            <!-- Scripts Tab -->
+            <div v-if="activeRequestTab === 'scripts'" class="p-3 h-full">
+              <ScriptTabs :model-value="editingRequest" />
             </div>
           </div>
         </div>
-      </div>
 
       <div class="p-3 border-t border-zinc-200 dark:border-zinc-700 flex gap-2">
         <button @click="saveRequest" class="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded">Save</button>
@@ -287,6 +272,7 @@ import { useRequestsStore } from '../stores/requests';
 import { useResponseStore } from '../stores/response';
 import { useHistoryStore } from '../stores/history';
 import MarkdownDescription from './MarkdownDescription.vue';
+import ScriptTabs from './ScriptTabs.vue';
 
 const appStore = useAppStore();
 const requestsStore = useRequestsStore();
@@ -313,9 +299,12 @@ const editingRequest = ref<Request>({
    headers: [],
    body: { type: 'none', content: '' },
    auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' } },
+   preRequestScript: '',
+   postRequestScript: '',
+   testScript: '',
    variables: [],
    description: ''
- });
+  });
 
 const urlParams = ref<Variable[]>([]);
 const requestHeaders = ref<Variable[]>([]);
