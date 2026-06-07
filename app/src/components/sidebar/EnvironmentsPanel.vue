@@ -1,12 +1,5 @@
 <template>
   <div class="environments-panel items-start">
-    <div class="mb-3">
-      <label class="block text-sm text-zinc-600 dark:text-zinc-400 mb-1">Active Environment</label>
-      <select :value="activeEnvironmentId" @change="handleEnvironmentChange($event.target.value)" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
-        <option value="">No Environment</option>
-        <option v-for="env in environments" :key="env.id" :value="env.id">{{ env.name }}</option>
-      </select>
-    </div>
     <div class="flex gap-2 mb-2">
       <button class="btn btn-sm border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 flex-1 hover:bg-zinc-100 dark:hover:bg-zinc-800" @click="handleImport">Import</button>
       <button class="btn btn-sm bg-blue-500 text-white flex-1 hover:bg-blue-600" @click="environmentsStore.addEnvironment()">+ Environment</button>
@@ -101,12 +94,6 @@ async function handleImport() {
     importData(data);
   } catch (err) {
     console.error('Import error:', err);
-  }
-}
-
-function handleEnvironmentChange(envId: string) {
-  if (envId && environmentsStore.environments.find(e => e.id === envId)) {
-    environmentsStore.selectEnvironment(envId);
   }
 }
 
