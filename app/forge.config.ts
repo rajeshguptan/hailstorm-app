@@ -11,13 +11,23 @@ const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     icon: 'build/hailstorm.png',
+    // Build for both x64 and arm64 on all platforms
+    // Note: Cross-compilation requires appropriate toolchains
   },
   rebuildConfig: {},
   makers: [
-    new MakerSquirrel({}),
-    new MakerZIP({}, ['darwin']),
-    new MakerRpm({}),
+    // Windows x64 and arm64 - requires Windows build or cross-compilation
+    new MakerSquirrel({
+      name: 'hailstorm',
+      setupExe: 'Hailstorm-Setup.exe',
+    }),
+    // macOS x64 and arm64 (universal binary or separate builds)
+    new MakerZIP({
+      appleFairplay: false,
+    }),
+    // Linux x64
     new MakerDeb({}),
+    new MakerRpm({}),
   ],
   plugins: [
     new VitePlugin({

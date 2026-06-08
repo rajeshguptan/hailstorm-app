@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Changelog - Hailstorm</title>
+  <meta name="description" content="Hailstorm Changelog - Release notes and updates for the Hailstorm API testing platform.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <link href="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.js"></script>
+</head>
+<body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors">
+  <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
+    <div class="container mx-auto px-4">
+      <nav class="flex items-center justify-between h-16">
+        <a href="index.html" class="text-2xl font-bold text-gray-900 dark:text-white">Hailstorm</a>
+        <ul class="flex space-x-6">
+          <li><a href="index.html#features" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Features</a></li>
+          <li><a href="docs.html" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Docs</a></li>
+          <li><a href="changelog.html" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Changelog</a></li>
+          <li><a href="license.html" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">License</a></li>
+          <li><a href="terms.html" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Terms</a></li>
+          <li><a href="index.html#download" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Download</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container mx-auto px-4 py-16 max-w-4xl">
+      <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">Changelog</h1>
+      <p class="text-gray-500 dark:text-gray-400 mb-12">Release notes and version history for Hailstorm. All releases include security updates for applicable license holders.</p>
+
+      <div id="accordion-changelog" data-accordion="collapse">
+        <h2 id="accordion-heading-v1">
+          <button type="button" class="flex items-center justify-between w-full p-5 font-medium rtl:text-right text-gray-700 border border-b-0 border-gray-200 rounded-t-xl bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 gap-3 transition-colors" data-accordion-target="#accordion-body-v1" aria-expanded="true" aria-controls="accordion-body-v1">
+            <span class="text-lg">v1.0.0 (June 7, 2026)</span>
+            <svg data-accordion-icon class="w-3 h-3 rotate-180 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5 5 1 1 5"/>
+            </svg>
+          </button>
+        </h2>
+        <div id="accordion-body-v1" class="p-6 border border-b border-gray-200 dark:border-gray-700 dark:bg-gray-900">
+          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Initial Release</h3>
+          <p class="text-gray-500 dark:text-gray-400 mb-4">First stable release of Hailstorm with core API testing capabilities.</p>
+          <ul class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
+            <li>Multi-protocol support (REST/HTTP1.1, HTTP/2)</li>
+            <li>Authentication vault (OAuth2, Bearer Tokens, API Keys, AWS Signature)</li>
+            <li>Dynamic environments (Global, Environment, Local variables)</li>
+            <li>Pre-request scripting with JavaScript</li>
+            <li>Test assertions and validation</li>
+            <li>Collection runner with data-driven testing (CSV/JSON)</li>
+            <li>Built-in load testing engine</li>
+            <li>Real-time telemetry (latency p95/p99, throughput RPS, error rates)</li>
+            <li>Git-friendly collection format</li>
+            <li>Local-first storage (no cloud sync required)</li>
+            <li>Dark mode interface</li>
+            <li>Import from Postman and OpenAPI specifications</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="bg-gray-900 dark:bg-gray-950 py-12">
+    <div class="container mx-auto px-4">
+      <div class="flex flex-col md:flex-row justify-between items-center">
+        <p class="text-gray-400">&copy; 2026 Hailstorm. All rights reserved.</p>
+        <p class="text-gray-500 text-sm mt-2 md:mt-0">
+          <a href="license.html" class="hover:text-gray-300 transition-colors">License</a>
+          <span class="mx-2 text-gray-600">|</span>
+          <a href="terms.html" class="hover:text-gray-300 transition-colors">Terms</a>
+        </p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentation - Hailstorm</title>
+  <meta name="description" content="Hailstorm Documentation - Complete guide for the Hailstorm API testing platform.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <link href="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.js"></script>
+</head>
+<body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors">
+  <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
+    <div class="container mx-auto px-4">
+      <nav class="flex items-center justify-between h-16">
+        <a href="index.html" class="text-2xl font-bold text-gray-900 dark:text-white">Hailstorm</a>
+        <ul class="flex space-x-6">
+          <li><a href="index.html#features" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Features</a></li>
+          <li><a href="docs.html" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Docs</a></li>
+          <li><a href="changelog.html" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Changelog</a></li>
+          <li><a href="license.html" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">License</a></li>
+          <li><a href="terms.html" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Terms</a></li>
+          <li><a href="index.html#download" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Download</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container mx-auto px-4 py-16 max-w-4xl">
+      <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">Documentation</h1>
+      <p class="text-gray-500 dark:text-gray-400 mb-12 max-w-2xl">Get started with Hailstorm. Learn how to configure environments, write scripts, and run load tests.</p>
+
+      <div id="accordion-collapse" data-accordion="collapse">
+        <h2 id="accordion-heading-installation">
+          <button type="button" class="flex items-center justify-between w-full p-5 font-medium rtl:text-right text-gray-700 border border-b-0 border-gray-200 rounded-t-xl bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 gap-3 transition-colors" data-accordion-target="#accordion-body-installation" aria-expanded="true" aria-controls="accordion-body-installation">
+            <span class="text-lg">Getting Started - Installation</span>
+            <svg data-accordion-icon class="w-3 h-3 rotate-180 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5 5 1 1 5"/>
+            </svg>
+          </button>
+        </h2>
+        <div id="accordion-body-installation" class="p-6 border border-b border-gray-200 dark:border-gray-700 dark:bg-gray-900">
+          <ol class="list-decimal list-inside space-y-3 text-gray-600 dark:text-gray-300">
+            <li>Purchase and download Hailstorm from the official distribution page</li>
+            <li>Install the application for your platform (macOS, Windows, Linux)</li>
+            <li>Launch Hailstorm - no account or cloud sync required</li>
+          </ol>
+        </div>
+
+        <h2 id="accordion-heading-quickstart">
+          <button type="button" class="flex items-center justify-between w-full p-5 font-medium rtl:text-right text-gray-700 border border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 gap-3 transition-colors" data-accordion-target="#accordion-body-quickstart" aria-expanded="false" aria-controls="accordion-body-quickstart">
+            <span class="text-lg">Quick Start</span>
+            <svg data-accordion-icon class="w-3 h-3 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5 5 1 1 5"/>
+            </svg>
+          </button>
+        </h2>
+        <div id="accordion-body-quickstart" class="hidden p-6 border border-b border-gray-200 dark:border-gray-700 dark:bg-gray-900">
+          <ul class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
+            <li>Create a new collection or import existing Postman/OpenAPI collections</li>
+            <li>Add requests with URLs, headers, and body content</li>
+            <li>Set up environments with variables for dev, staging, and production</li>
+            <li>Run requests to test your APIs with full response inspection</li>
+          </ul>
+        </div>
+
+        <h2 id="accordion-heading-collections">
+          <button type="button" class="flex items-center justify-between w-full p-5 font-medium rtl:text-right text-gray-700 border border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 gap-3 transition-colors" data-accordion-target="#accordion-body-collections" aria-expanded="false" aria-controls="accordion-body-collections">
+            <span class="text-lg">Collections</span>
+            <svg data-accordion-icon class="w-3 h-3 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5 5 1 1 5"/>
+            </svg>
+          </button>
+        </h2>
+        <div id="accordion-body-collections" class="hidden p-6 border border-b border-gray-200 dark:border-gray-700 dark:bg-gray-900">
+          <p class="text-gray-600 dark:text-gray-300">Organize your API requests into collections. Each collection can contain individual requests, folders for organization, and environment variables. Collections are stored in a git-friendly JSON format for version control.</p>
+        </div>
+
+        <h2 id="accordion-heading-environments">
+          <button type="button" class="flex items-center justify-between w-full p-5 font-medium rtl:text-right text-gray-700 border border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 gap-3 transition-colors" data-accordion-target="#accordion-body-environments" aria-expanded="false" aria-controls="accordion-body-environments">
+            <span class="text-lg">Environments & Variables</span>
+            <svg data-accordion-icon class="w-3 h-3 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5 5 1 1 5"/>
+            </svg>
+          </button>
+        </h2>
+        <div id="accordion-body-environments" class="hidden p-6 border border-b border-gray-200 dark:border-gray-700 dark:bg-gray-900">
+          <ul class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
+            <li><strong>Global Variables:</strong> Available across all environments and collections</li>
+            <li><strong>Environment Variables:</strong> Specific to each environment (dev, staging, prod)</li>
+            <li><strong>Local Variables:</strong> Temporary values for a single request execution</li>
+          </ul>
+        </div>
+
+        <h2 id="accordion-heading-scripts">
+          <button type="button" class="flex items-center justify-between w-full p-5 font-medium rtl:text-right text-gray-700 border border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 gap-3 transition-colors" data-accordion-target="#accordion-body-scripts" aria-expanded="false" aria-controls="accordion-body-scripts">
+            <span class="text-lg">Pre-request Scripts</span>
+            <svg data-accordion-icon class="w-3 h-3 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5 5 1 1 5"/>
+            </svg>
+          </button>
+        </h2>
+        <div id="accordion-body-scripts" class="hidden p-6 border border-b border-gray-200 dark:border-gray-700 dark:bg-gray-900">
+          <p class="text-gray-600 dark:text-gray-300">JavaScript code that executes before each request. Use pre-request scripts to dynamically generate authentication tokens, set timestamps, compute HMAC signatures, or manipulate headers and URLs based on variables.</p>
+        </div>
+
+        <h2 id="accordion-heading-tests">
+          <button type="button" class="flex items-center justify-between w-full p-5 font-medium rtl:text-right text-gray-700 border border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 gap-3 transition-colors" data-accordion-target="#accordion-body-tests" aria-expanded="false" aria-controls="accordion-body-tests">
+            <span class="text-lg">Test Scripts & Assertions</span>
+            <svg data-accordion-icon class="w-3 h-3 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5 5 1 1 5"/>
+            </svg>
+          </button>
+        </h2>
+        <div id="accordion-body-tests" class="hidden p-6 border border-b border-gray-200 dark:border-gray-700 dark:bg-gray-900">
+          <p class="text-gray-600 dark:text-gray-300 mb-3">JavaScript assertions to validate API responses including:</p>
+          <ul class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
+            <li>Status code validation (200, 404, 500, etc.)</li>
+            <li>Response time and performance checks</li>
+            <li>JSON schema and structure validation</li>
+            <li>Custom assertion logic with full JavaScript context</li>
+          </ul>
+        </div>
+
+        <h2 id="accordion-heading-loadtesting">
+          <button type="button" class="flex items-center justify-between w-full p-5 font-medium rtl:text-right text-gray-700 border border-gray-200 rounded-b-xl bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 gap-3 transition-colors" data-accordion-target="#accordion-body-loadtesting" aria-expanded="false" aria-controls="accordion-body-loadtesting">
+            <span class="text-lg">Load Testing</span>
+            <svg data-accordion-icon class="w-3 h-3 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5 5 1 1 5"/>
+            </svg>
+          </button>
+        </h2>
+        <div id="accordion-body-loadtesting" class="hidden p-6 border border-t-0 border-gray-200 rounded-b-lg dark:border-gray-700 dark:bg-gray-900">
+          <p class="text-gray-600 dark:text-gray-300 mb-3">Built-in concurrent load testing engine with:</p>
+          <ul class="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
+            <li>Virtual Users (VUs): Configure concurrent request counts</li>
+            <li>Duration Control: Set test run time in seconds</li>
+            <li>Ramp-up: Gradually increase load over time</li>
+            <li>Real-time Telemetry: Monitor latency p95/p99, throughput (RPS), and error rates</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="bg-gray-900 dark:bg-gray-950 py-12">
+    <div class="container mx-auto px-4">
+      <div class="flex flex-col md:flex-row justify-between items-center">
+        <p class="text-gray-400">&copy; 2026 Hailstorm. All rights reserved.</p>
+        <p class="text-gray-500 text-sm mt-2 md:mt-0">
+          <a href="license.html" class="hover:text-gray-300 transition-colors">License</a>
+          <span class="mx-2 text-gray-600">|</span>
+          <a href="terms.html" class="hover:text-gray-300 transition-colors">Terms</a>
+        </p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hailstorm - API Testing Platform</title>
+  <meta name="description" content="Hailstorm is a high-performance API testing platform built for developers. Features include multi-protocol support, scripting, load testing, and local-first storage.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <link href="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.js"></script>
+</head>
+<body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors">
+  <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
+    <div class="container mx-auto px-4">
+      <nav class="flex items-center justify-between h-16">
+        <a href="index.html" class="text-2xl font-bold text-gray-900 dark:text-white">Hailstorm</a>
+        <div class="flex items-center space-x-4">
+          <ul class="flex space-x-6">
+            <li><a href="index.html#features" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors" data-key="nav.features">Features</a></li>
+            <li><a href="docs.html" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors" data-key="nav.docs">Docs</a></li>
+            <li><a href="changelog.html" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors" data-key="nav.changelog">Changelog</a></li>
+            <li><a href="license.html" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">License</a></li>
+            <li><a href="terms.html" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Terms</a></li>
+            <li><a href="index.html#download" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors" data-key="nav.download">Download</a></li>
+          </ul>
+          <select id="lang-select" onchange="changeLanguage(this.value)" class="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+            <option value="en">English</option>
+            <option value="es">Español</option>
+            <option value="fr">Français</option>
+            <option value="de">Deutsch</option>
+            <option value="ja">日本語</option>
+            <option value="zh">中文</option>
+            <option value="pt">Português</option>
+          </select>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="text-center py-24 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+      <div class="container mx-auto px-4">
+        <h1 class="text-5xl md:text-6xl font-extrabold text-gray-900 dark:text-white mb-4" data-key="hero.title">Hailstorm</h1>
+        <p class="text-2xl text-gray-600 dark:text-gray-400 mb-6" data-key="hero.subtitle">High-performance API testing platform built for developers</p>
+        <p class="text-lg text-gray-500 dark:text-gray-400 max-w-3xl mx-auto mb-10 leading-relaxed" data-key="hero.description">
+          A developer-centric API testing platform with local storage, git-friendly collections,
+          and concurrent testing capabilities. Think Postman with a focus on performance and privacy.
+        </p>
+        <a href="#download" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition-transform hover:-translate-y-0.5 inline-block shadow-lg hover:shadow-xl" data-key="cta.download">Download Now</a>
+      </div>
+    </section>
+
+    <section class="py-16 bg-white dark:bg-gray-900">
+      <div class="container mx-auto px-4">
+        <h2 class="text-3xl font-bold text-center text-gray-900 dark:text-white mb-12" data-key="video.title">Watch a 5-Minute Overview</h2>
+        <div class="max-w-4xl mx-auto">
+          <div class="relative rounded-xl overflow-hidden shadow-2xl" style="padding-bottom: 56.25%;">
+            <iframe
+              class="absolute top-0 left-0 w-full h-full"
+              src="https://www.youtube.com/embed/1QgswlbLWs0"
+              title="Hailstorm Overview"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen>
+            </iframe>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="py-24 bg-gray-50 dark:bg-gray-800">
+      <div class="container mx-auto px-4">
+        <h2 class="text-4xl font-bold text-center text-gray-900 dark:text-white mb-4" data-key="features.title">Features</h2>
+        <p class="text-center text-gray-500 dark:text-gray-400 mb-12 max-w-2xl mx-auto">Everything you need to test, validate, and optimize your APIs with confidence</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="feature-item bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-7 hover:shadow-xl transition-all hover:-translate-y-1">
+            <h3 class="text-xl font-semibold mb-3 text-gray-900 dark:text-white" data-key="features.items.0">Multi-Protocol Support</h3>
+            <p class="text-gray-600 dark:text-gray-400 leading-relaxed" data-key="features.descriptions.0">Full support for REST (HTTP/1.1, HTTP/2) with authentication vault for OAuth2, Bearer Tokens, API Keys, and AWS Signature.</p>
+          </div>
+          <div class="feature-item bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-7 hover:shadow-xl transition-all hover:-translate-y-1">
+            <h3 class="text-xl font-semibold mb-3 text-gray-900 dark:text-white" data-key="features.items.1">Dynamic Environments</h3>
+            <p class="text-gray-600 dark:text-gray-400 leading-relaxed" data-key="features.descriptions.1">Support for Global, Environment, and Local variables with seamless switching for flexible API testing across contexts.</p>
+          </div>
+          <div class="feature-item bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-7 hover:shadow-xl transition-all hover:-translate-y-1">
+            <h3 class="text-xl font-semibold mb-3 text-gray-900 dark:text-white" data-key="features.items.2">Scripting & Automation</h3>
+            <p class="text-gray-600 dark:text-gray-400 leading-relaxed" data-key="features.descriptions.2">Pre-request scripts, test assertions, and collection runner with data-driven testing (CSV/JSON input).</p>
+          </div>
+          <div class="feature-item bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-7 hover:shadow-xl transition-all hover:-translate-y-1">
+            <h3 class="text-xl font-semibold mb-3 text-gray-900 dark:text-white" data-key="features.items.3">Load Testing</h3>
+            <p class="text-gray-600 dark:text-gray-400 leading-relaxed" data-key="features.descriptions.3">Built-in engine to scale a single request into concurrent load tests using worker threads with real-time telemetry.</p>
+          </div>
+          <div class="feature-item bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-7 hover:shadow-xl transition-all hover:-translate-y-1">
+            <h3 class="text-xl font-semibold mb-3 text-gray-900 dark:text-white" data-key="features.items.4">Local-First Storage</h3>
+            <p class="text-gray-600 dark:text-gray-400 leading-relaxed" data-key="features.descriptions.4">Your data stays on your machine. No cloud sync, no account required - just pure API testing.</p>
+          </div>
+          <div class="feature-item bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-7 hover:shadow-xl transition-all hover:-translate-y-1">
+            <h3 class="text-xl font-semibold mb-3 text-gray-900 dark:text-white" data-key="features.items.5">Git-Friendly Format</h3>
+            <p class="text-gray-600 dark:text-gray-400 leading-relaxed" data-key="features.descriptions.5">Collections saved in a format that works seamlessly with version control for team collaboration.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="licenses" class="py-24 bg-white dark:bg-gray-900">
+      <div class="container mx-auto px-4">
+        <h2 class="text-4xl font-bold text-center text-gray-900 dark:text-white mb-4" data-key="licenses.title">Licenses</h2>
+        <p class="text-center text-gray-500 dark:text-gray-400 mb-12 max-w-2xl mx-auto">Choose the license that fits your needs. All licenses include security updates and are non-transferable.</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <div class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-8 text-center hover:shadow-xl transition-all hover:-translate-y-1 flex flex-col">
+            <h3 class="text-2xl font-bold mb-2 text-gray-900 dark:text-white" data-key="licenses.user.name">User License</h3>
+            <div class="text-5xl font-extrabold text-blue-600 mb-1" data-key="licenses.user.price">$9.99</div>
+            <div class="text-sm text-gray-500 dark:text-gray-400 mb-6" data-key="licenses.user.note">Introductory price (regular: $24.99)</div>
+            <ul class="text-left license-features flex-grow" data-keys="licenses.user.features">
+              <li class="py-2 border-b border-gray-100 dark:border-gray-800">Lifetime license</li>
+              <li class="py-2 border-b border-gray-100 dark:border-gray-800">All future updates included</li>
+              <li class="py-2 border-b border-gray-100 dark:border-gray-800">Security fixes included</li>
+              <li class="py-2">Non-transferable</li>
+            </ul>
+          </div>
+
+          <div class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-8 text-center hover:shadow-xl transition-all hover:-translate-y-1 flex flex-col">
+            <h3 class="text-2xl font-bold mb-2 text-gray-900 dark:text-white" data-key="licenses.patron.name">Patron License</h3>
+            <div class="text-5xl font-extrabold text-blue-600 mb-1" data-key="licenses.patron.price">$100</div>
+            <div class="text-sm text-gray-500 dark:text-gray-400 mb-6" data-key="licenses.patron.note">1 vote included</div>
+            <ul class="text-left license-features flex-grow" data-keys="licenses.patron.features">
+              <li class="py-2 border-b border-gray-100 dark:border-gray-800">Everything in User License</li>
+              <li class="py-2 border-b border-gray-100 dark:border-gray-800">Vote on new features (1 vote included)</li>
+              <li class="py-2 border-b border-gray-100 dark:border-gray-800">Shape the future of Hailstorm</li>
+              <li class="py-2 border-b border-gray-100 dark:border-gray-800">Support ongoing development</li>
+              <li class="py-2">Non-transferable</li>
+            </ul>
+          </div>
+
+          <div class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-8 text-center hover:shadow-xl transition-all hover:-translate-y-1 flex flex-col">
+            <h3 class="text-2xl font-bold mb-2 text-gray-900 dark:text-white" data-key="licenses.developer.name">Developer License</h3>
+            <div class="text-5xl font-extrabold text-blue-600 mb-1" data-key="licenses.developer.price">$1,000</div>
+            <div class="text-sm text-gray-500 dark:text-gray-400 mb-6" data-key="licenses.developer.note">Regular: $2,500</div>
+            <ul class="text-left license-features flex-grow" data-keys="licenses.developer.features">
+              <li class="py-2 border-b border-gray-100 dark:border-gray-800">Complete source code access</li>
+              <li class="py-2 border-b border-gray-100 dark:border-gray-800">Modify for your requirements</li>
+              <li class="py-2 border-b border-gray-100 dark:border-gray-800">Integrate into internal tools</li>
+              <li class="py-2 border-b border-gray-100 dark:border-gray-800">Internal use permitted</li>
+              <li class="py-2"><strong class="text-red-600 dark:text-red-400">No resale or redistribution</strong></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="download" class="py-24 text-center bg-gradient-to-b from-gray-50 to-white dark:from-gray-800 dark:to-gray-900">
+      <div class="container mx-auto px-4">
+        <h2 class="text-4xl font-bold text-gray-900 dark:text-white mb-4" data-key="download.title">Download</h2>
+        <p class="text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto" data-key="download.text">Download and try Hailstorm for a reasonable evaluation period. Distribution powered by Lemon Squeezy.</p>
+        <a href="https://hailstorm-api-client.lemonsqueezy.com/" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition-transform hover:-translate-y-0.5 inline-block shadow-lg hover:shadow-xl" data-key="download.button">Purchase & Download</a>
+        <p class="text-gray-400 dark:text-gray-500 mt-4 text-sm" data-key="download.note">After purchase, download links will be available for all platforms.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bg-gray-900 dark:bg-gray-950 py-12">
+    <div class="container mx-auto px-4">
+      <div class="flex flex-col md:flex-row justify-between items-center">
+        <div class="text-center md:text-left">
+          <p class="text-gray-400" data-key="footer">© 2026 Hailstorm. All rights reserved.</p>
+          <p class="text-gray-500 text-sm mt-2">
+            <a href="license.html" class="hover:text-gray-300 transition-colors">License</a>
+            <span class="mx-2 text-gray-600">|</span>
+            <a href="terms.html" class="hover:text-gray-300 transition-colors">Terms</a>
+          </p>
+        </div>
+        <div class="mt-4 md:mt-0">
+          <p class="text-gray-500 text-sm">Distributed by Lemon Squeezy. View our <a href="https://www.lemonsqueezy.com/terms" class="text-gray-400 hover:text-gray-300" target="_blank" rel="noopener">distribution terms</a>.</p>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/translations.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedLang = localStorage.getItem('preferred-lang') || detectLanguage();
+      document.getElementById('lang-select').value = savedLang;
+      changeLanguage(savedLang);
+    });
+  </script>
+</body>
+</html>
