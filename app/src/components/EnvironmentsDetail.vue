@@ -32,10 +32,11 @@
           <table v-else class="w-full border-collapse">
             <thead>
               <tr class="border-b border-zinc-200 dark:border-zinc-700">
-                <th class="text-left p-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">Enabled</th>
+                <th class="p-2 w-12 text-xs font-medium text-zinc-500 uppercase tracking-wider">Enabled</th>
                 <th class="text-left p-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">Key</th>
                 <th class="text-left p-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">Value</th>
-                <th class="text-left p-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">Actions</th>
+                <th class="text-left p-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">Collection</th>
+                <th class="p-2 w-12 text-xs font-medium text-zinc-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -62,7 +63,36 @@
                   >
                 </td>
                 <td class="p-2">
-                  <button @click="removeVariable(index)" class="px-2 py-1 bg-red-500 hover:bg-red-600 text-white rounded text-sm">Delete</button>
+                  <div class="relative">
+                    <input
+                      v-model="variable.collection"
+                      @input="filterCollections(index, $event)"
+                      @focus="showCollectionDropdown(index)"
+                      @blur="hideCollectionDropdown"
+                      placeholder="All collections"
+                      class="w-full px-2 py-1 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
+                    >
+                    <div
+                      v-if="activeCollectionDropdown === index"
+                      class="absolute z-10 mt-1 w-full bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded shadow-lg max-h-48 overflow-y-auto"
+                    >
+                      <div
+                        v-for="collectionName in filteredCollections(index)"
+                        :key="collectionName"
+                        @mousedown="selectCollection(index, collectionName)"
+                        class="px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 cursor-pointer"
+                      >
+                        {{ collectionName }}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td class="p-2">
+                  <button @click="removeVariable(index)" class="text-red-500 hover:text-red-700">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                  </button>
                 </td>
               </tr>
             </tbody>
@@ -77,8 +107,10 @@
 import { ref, computed, watch } from 'vue';
 import type { Environment, Variable } from '../types';
 import { useEnvironmentsStore } from '../stores/environments';
+import { useCollectionsStore } from '../stores/collections';
 
 const environmentsStore = useEnvironmentsStore();
+const collectionsStore = useCollectionsStore();
 
 const editingEnvironment = ref<Environment>({
   id: '',
@@ -88,6 +120,39 @@ const editingEnvironment = ref<Environment>({
 });
 
 const activeEnvironment = computed(() => environmentsStore.activeEnvironment);
+
+const allCollectionNames = computed(() => {
+  return collectionsStore.collections.map(c => c.name);
+});
+
+const activeCollectionDropdown = ref<number | null>(null);
+
+const filterCollections = (index: number, event: Event) => {
+  activeCollectionDropdown.value = index;
+};
+
+const showCollectionDropdown = (index: number) => {
+  activeCollectionDropdown.value = index;
+};
+
+const hideCollectionDropdown = () => {
+  setTimeout(() => {
+    activeCollectionDropdown.value = null;
+  }, 200);
+};
+
+const filteredCollections = (index: number) => {
+  const search = (editingEnvironment.value.variables[index]?.collection || '').toLowerCase();
+  if (!search) return allCollectionNames.value;
+  return allCollectionNames.value.filter(name => name.toLowerCase().includes(search));
+};
+
+const selectCollection = (index: number, name: string) => {
+  if (editingEnvironment.value.variables[index]) {
+    editingEnvironment.value.variables[index].collection = name;
+  }
+  activeCollectionDropdown.value = null;
+};
 
 watch(() => environmentsStore.activeEnvironmentId, (newId) => {
   console.log('[DEBUG] EnvironmentsDetail watch triggered, newId:', newId, 'environments length:', environmentsStore.environments.length);
@@ -114,7 +179,8 @@ function addVariable() {
   editingEnvironment.value.variables.push({
     key: '',
     value: '',
-    enabled: true
+    enabled: true,
+    collection: ''
   });
 }
 

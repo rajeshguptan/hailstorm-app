@@ -92,6 +92,7 @@ const isSelected = computed(() => props.item.id === props.selectedRequestId);
 const isHovered = computed(() => uiStore.hoveredTreeItemId === props.item.id);
 const displayMethod = computed(() => {
   if (isRequest && props.item.body?.type === 'graphql') return 'GQL';
+  if (isRequest && props.item.isWebSocket) return 'WS';
   return props.item.method;
 });
 
@@ -220,6 +221,7 @@ function getMethodClass(method: string): string {
   if (m === 'delete') return 'method-delete';
   if (m === 'patch') return 'method-patch';
   if (m === 'gql') return 'method-gql';
+  if (m === 'ws') return 'method-ws';
   return 'method-default';
 }
 
@@ -256,9 +258,13 @@ function sortedItems(items: (Request | Folder)[]) {
 
 .method-gql {
   @apply text-pink-600 dark:text-pink-400 font-bold;
-}
+ }
 
-.tree-node.drag-over {
+ .method-ws {
+   @apply text-blue-600 dark:text-blue-400 font-bold;
+ }
+
+ .tree-node.drag-over {
   background-color: rgba(59, 130, 246, 0.1) !important;
   border: 2px dashed #3b82f6 !important;
   border-radius: 4px;

@@ -41,6 +41,7 @@ export interface SendRequestResult {
   executedDependencies: { id: string; name: string; status: number; statusText: string; time: number; error?: string }[];
   historyEntries: unknown[];
   testResults: string;
+  scriptSource?: string;
 }
 
 export type RunLoadTestParams = {

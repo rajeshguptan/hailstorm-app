@@ -16,6 +16,7 @@ export const useAppStore = defineStore('app', {
   state: () => ({
     secrets: [] as Secret[],
     selectedSecretId: null as string | null,
+    collections: [] as any[],
   }),
 
   actions: {
@@ -24,76 +25,78 @@ export const useAppStore = defineStore('app', {
       return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     },
 
-    saveToLocalStorage() {
-      try {
-        const collectionsStore = useCollectionsStore();
-        const requestsStore = useRequestsStore();
-        const environmentsStore = useEnvironmentsStore();
-        const uiStore = useUIStore();
-        const responseStore = useResponseStore();
-        const historyStore = useHistoryStore();
-        const runnerStore = useRunnerStore();
-        const settingsStore = useSettingsStore();
-        const utilitiesStore = useUtilitiesStore();
+saveToLocalStorage() {
+       try {
+         const collectionsStore = useCollectionsStore();
+         const requestsStore = useRequestsStore();
+         const environmentsStore = useEnvironmentsStore();
+         const uiStore = useUIStore();
+         const responseStore = useResponseStore();
+         const historyStore = useHistoryStore();
+         const runnerStore = useRunnerStore();
+         const settingsStore = useSettingsStore();
+         const utilitiesStore = useUtilitiesStore();
 
-        const data = {
-          // Collections
-          collections: collectionsStore.collections,
-          selectedCollectionId: collectionsStore.selectedCollectionId,
+         const data = {
+           // Collections
+           collections: collectionsStore.collections,
+           selectedCollectionId: collectionsStore.selectedCollectionId,
 
-          // Requests
-          currentRequest: requestsStore.currentRequest,
-          urlParams: requestsStore.urlParams,
-          requestHeaders: requestsStore.requestHeaders,
-          activeRequestTab: requestsStore.activeRequestTab,
-          tabs: requestsStore.tabs,
-          activeTabId: requestsStore.activeTabId,
-          selectedRequestId: requestsStore.selectedRequestId,
+           // Requests
+           currentRequest: requestsStore.currentRequest,
+           urlParams: requestsStore.urlParams,
+           requestHeaders: requestsStore.requestHeaders,
+           activeRequestTab: requestsStore.activeRequestTab,
+           tabs: requestsStore.tabs,
+           activeTabId: requestsStore.activeTabId,
+           selectedRequestId: requestsStore.selectedRequestId,
 
-          // Environments
-          environments: environmentsStore.environments,
-          activeEnvironmentId: environmentsStore.activeEnvironmentId,
+           // Environments
+           environments: environmentsStore.environments,
+           activeEnvironmentId: environmentsStore.activeEnvironmentId,
 
-          // UI
-          activeSidebar: uiStore.activeSidebar,
-          sidebarTitle: uiStore.sidebarTitle,
-          showEnvModal: uiStore.showEnvModal,
-          editingEnv: uiStore.editingEnv,
-          showRenameModal: uiStore.showRenameModal,
-          renameTarget: uiStore.renameTarget,
+           // UI
+           activeSidebar: uiStore.activeSidebar,
+           sidebarTitle: uiStore.sidebarTitle,
+           showEnvModal: uiStore.showEnvModal,
+           editingEnv: uiStore.editingEnv,
+           showRenameModal: uiStore.showRenameModal,
+           renameTarget: uiStore.renameTarget,
 
-          // Response
-          response: responseStore.response,
-          activeResponseTab: responseStore.activeResponseTab,
-          testResults: responseStore.testResults,
-          testStats: responseStore.testStats,
+           // Response
+           response: responseStore.response,
+           activeResponseTab: responseStore.activeResponseTab,
+           testResults: responseStore.testResults,
+           scriptSource: responseStore.scriptSource,
+           testStats: responseStore.testStats,
 
-          // History
-          history: historyStore.history,
+           // History
+           history: historyStore.history,
 
-          // Runner
-          runConfigs: runnerStore.runConfigs,
-          selectedConfigId: runnerStore.selectedConfigId,
+           // Runner
+           runConfigs: runnerStore.runConfigs,
+           selectedConfigId: runnerStore.selectedConfigId,
 
-          // Settings
-          settingsCategories: settingsStore.settingsCategories,
-          selectedSettingId: settingsStore.selectedSettingId,
-          selectedSubSettingId: settingsStore.selectedSubSettingId,
+           // Settings
+           settingsCategories: settingsStore.settingsCategories,
+           selectedSettingId: settingsStore.selectedSettingId,
+           selectedSubSettingId: settingsStore.selectedSubSettingId,
 
-          // Utilities
-          utilities: utilitiesStore.utilities,
-          selectedUtilityId: utilitiesStore.selectedUtilityId,
+           // Utilities
+           utilities: utilitiesStore.utilities,
+           selectedUtilityId: utilitiesStore.selectedUtilityId,
 
-          // App-level
-          selectedSecretId: this.selectedSecretId,
-        };
+           // App-level
+           selectedSecretId: this.selectedSecretId,
+         };
 
-        const dataStr = JSON.stringify(data);
-        localStorage.setItem('hailstorm-data', dataStr);
-      } catch (err) {
-        console.error('Failed to save to localStorage:', err);
-      }
-    },
+         this.collections = collectionsStore.collections;
+         const dataStr = JSON.stringify(data);
+         localStorage.setItem('hailstorm-data', dataStr);
+       } catch (err) {
+         console.error('Failed to save to localStorage:', err);
+       }
+     },
 
     async loadFromLocalStorage() {
       const data = localStorage.getItem('hailstorm-data');
@@ -138,6 +141,7 @@ export const useAppStore = defineStore('app', {
           }
 
           collectionsStore.selectedCollectionId = parsed.selectedCollectionId || null;
+          this.collections = collectionsStore.collections;
 
           // Load other stores
           requestsStore.currentRequest = parsed.currentRequest || requestsStore.currentRequest;
@@ -158,10 +162,11 @@ export const useAppStore = defineStore('app', {
           uiStore.showRenameModal = parsed.showRenameModal || false;
           uiStore.renameTarget = parsed.renameTarget || uiStore.renameTarget;
 
-          responseStore.response = parsed.response || null;
-          responseStore.activeResponseTab = parsed.activeResponseTab || 'body';
-          responseStore.testResults = parsed.testResults || '';
-          responseStore.testStats = parsed.testStats || responseStore.testStats;
+responseStore.response = parsed.response || null;
+           responseStore.activeResponseTab = parsed.activeResponseTab || 'body';
+           responseStore.testResults = parsed.testResults || '';
+           responseStore.scriptSource = parsed.scriptSource || 'testScript';
+           responseStore.testStats = parsed.testStats || responseStore.testStats;
 
           historyStore.history = (parsed.history || []).map((item: any) => ({
             ...item,

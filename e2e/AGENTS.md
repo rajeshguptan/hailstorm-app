@@ -4,9 +4,15 @@
 This document provides guidance on using Kilo agents with the Hailstorm integration tests.
 
 ## Test Structure
-- `/integration-tests/tests/` - Test files using Playwright
-- `/integration-tests/playwright.config.ts` - Test configuration
-- `/integration-tests/package.json` - Test dependencies and scripts
+- `/e2e/tests/` - Test files using Playwright
+- `/e2e/playwright.config.ts` - Test configuration
+- `/e2e/package.json` - Test dependencies and scripts
+
+### Core Modules Tests
+- `/e2e/tests/core-modules/core-modules.spec.ts` - Tests for refactored execution engine modules
+  - `httpClient.ts` - HTTP/HTTPS request handling with rate limiting
+  - `authHandler.ts` - Authentication and variable substitution utilities
+  - `loadTestingService.ts` - Load test data persistence and metrics
 
 ## Available Agents
 
@@ -24,7 +30,7 @@ Best for: Finding where specific functionality is tested, understanding test org
 ```
 Task: Find all tests related to request execution
 Agent: explore
-Prompt: "Find all test files in integration-tests/tests related to making HTTP requests"
+Prompt: "Find all test files in e2e/tests related to making HTTP requests"
 ```
 
 ### Adding New Tests
@@ -44,7 +50,7 @@ Prompt: "Investigate and fix the flaky test in environments.spec.ts that fails i
 ## Project-Specific Guidelines
 
 ### Test Organization
-- Test files are in `integration-tests/tests/` directory
+- Test files are in `e2e/tests/` directory
 - Each major feature should have its own test file (e.g., electron.spec.ts, runner.spec.ts)
 - Use descriptive test names that clearly indicate what is being tested
 

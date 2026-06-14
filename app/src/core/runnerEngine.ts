@@ -1,23 +1,11 @@
 import type { SendRequestContext, SendRequestResult, RunConfig } from '../types';
-import { sendRequest } from './executionEngine';
+import { sendRequest } from './requestExecutor';
+import { flatRequests } from './httpExecutor';
 
 interface RunnerOptions {
   threadCount?: number;
   maxQueueSize?: number;
 }
-
-const flatRequests = (items: any[]): Map<string, any> => {
-  const map = new Map<string, any>();
-  for (const item of items) {
-    if (item && item.method && item.url) {
-      map.set(item.id, item);
-    }
-    if (item && item.items && Array.isArray(item.items)) {
-      flatRequests(item.items).forEach((v, k) => map.set(k, v));
-    }
-  }
-  return map;
-};
 
 /**
  * RunnerEngine - Deep module for request execution and load testing
@@ -126,12 +114,13 @@ async executeSingleRequest(
          urlParams: [],
          activeRequestTab: 'body',
        },
-       responseStore: {
-         response: null,
-         testResults: '',
-         activeResponseTab: 'body',
-         isLoading: false,
-       },
+responseStore: {
+          response: null,
+          testResults: '',
+          scriptSource: '',
+          activeResponseTab: 'body',
+          isLoading: false,
+        },
        historyStore: { history: [] },
        environmentsStore: {
          environments,
@@ -166,6 +155,3 @@ async executeSingleRequest(
     this.running = false;
   }
 }
-
-// Export for use in main process
-export { flatRequests };

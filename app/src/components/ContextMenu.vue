@@ -11,6 +11,7 @@
     <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-http-request')">Add HTTP Request</div>
     <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-graphql-request')">Add GraphQL Request</div>
     <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-folder')">Add Folder</div>
+     <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-websocket-request')">Add WebSocket Request</div>
 
     <div v-if="uiStore.contextMenu.type === 'flavor'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('run')">Run</div>
     <div v-if="uiStore.contextMenu.type === 'run-config'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('run')">Run</div>
@@ -84,13 +85,20 @@ function handleAction(action: string) {
         collectionsStore.addGraphqlRequest(id, 'folder');
       }
       break;
-    case 'add-folder':
-      if (type === 'collection') {
-        collectionsStore.addFolder(id, 'collection');
-      } else if (type === 'folder') {
-        collectionsStore.addFolder(id, 'folder');
-      }
-      break;
+case 'add-folder':
+       if (type === 'collection') {
+         collectionsStore.addFolder(id, 'collection');
+       } else if (type === 'folder') {
+         collectionsStore.addFolder(id, 'folder');
+       }
+       break;
+    case 'add-websocket-request':
+       if (type === 'collection') {
+         collectionsStore.addWebsocketRequest(id, 'collection');
+       } else if (type === 'folder') {
+         collectionsStore.addWebsocketRequest(id, 'folder');
+       }
+       break;
   }
 
   uiStore.hideContextMenu();

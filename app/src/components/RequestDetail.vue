@@ -13,7 +13,7 @@
         >
       </div>
 
-      <div class="p-3 flex-1 overflow-auto">
+      <div class="p-3 flex-1 overflow-hidden flex flex-col">
         <!-- Method and URL -->
         <div class="mb-4">
           <div class="flex gap-2 mb-2">
@@ -35,8 +35,8 @@
         </div>
 
         <!-- Request Tabs -->
-        <div class="mb-4">
-          <div class="flex border-b border-zinc-200 dark:border-zinc-700">
+        <div class="flex flex-col flex-1">
+          <div class="flex border-b border-zinc-200 dark:border-zinc-700 mb-4">
             <button
               v-for="tab in requestTabs"
               :key="tab.id"
@@ -48,7 +48,7 @@
           </div>
 
           <!-- Params Tab -->
-          <div v-if="activeRequestTab === 'params'" class="p-3">
+          <div v-if="activeRequestTab === 'params'" class="flex-1 overflow-auto p-3">
             <div class="flex justify-between items-center mb-2">
               <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Query Parameters</label>
               <button @click="addParam" class="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm">+ Add Param</button>
@@ -172,26 +172,29 @@
             </table>
           </div>
 
-          <!-- Body Tab -->
-          <div v-if="activeRequestTab === 'body'" class="p-3">
-            <div class="mb-2">
-              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Request Body</label>
-              <select v-model="editingRequest.body.type" class="px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white">
-                <option value="none">None</option>
-                <option value="form-data">Form Data</option>
-                <option value="x-www-form-urlencoded">URL Encoded</option>
-                <option value="raw">Raw</option>
-                <option value="binary">Binary</option>
-              </select>
-            </div>
-            <div v-if="editingRequest.body.type !== 'none'" class="mt-2">
-              <textarea
-                v-model="editingRequest.body.content"
-                class="w-full h-32 px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-mono text-sm"
-                placeholder="Enter request body..."
-              ></textarea>
-            </div>
-          </div>
+       <!-- Body Tab -->
+           <div v-if="activeRequestTab === 'body'" class="flex flex-col h-full">
+             <div class="mb-2 px-3">
+               <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Request Body</label>
+               <select v-model="editingRequest.body.type" class="px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white">
+                 <option v-if="!editingRequest.isWebSocket" value="none">None</option>
+                 <option v-if="!editingRequest.isWebSocket" value="json">JSON</option>
+                 <option v-if="!editingRequest.isWebSocket" value="form-data">Form Data</option>
+                 <option v-if="!editingRequest.isWebSocket" value="x-www-form-urlencoded">URL Encoded</option>
+                 <option v-if="!editingRequest.isWebSocket" value="raw">Raw</option>
+                 <option v-if="!editingRequest.isWebSocket" value="binary">Binary</option>
+                 <option v-if="editingRequest.isWebSocket" value="json">JSON</option>
+                 <option v-if="editingRequest.isWebSocket" value="xml">XML</option>
+                 <option v-if="editingRequest.isWebSocket" value="text">Text</option>
+               </select>
+             </div>
+             <textarea
+               v-if="editingRequest.body.type !== 'none'"
+               v-model="editingRequest.body.content"
+               class="flex-1 w-full h-full mx-3 mb-3 px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-mono text-sm resize-none"
+               placeholder="Enter request body..."
+             ></textarea>
+           </div>
 
           <!-- Variables Tab -->
           <div v-if="activeRequestTab === 'variables'" class="p-3">
@@ -222,7 +225,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(variable, index) in filteredVariables" :key="index" class="border-b border-zinc-100 dark:border-zinc-800">
+<tr v-for="(variable, index) in filteredVariables" :key="index" class="border-b border-zinc-100 dark:border-zinc-800">
                   <td class="p-2">
                     <input type="checkbox" v-model="variable.enabled" class="rounded border-zinc-300 dark:border-zinc-600">
                   </td>
@@ -239,21 +242,21 @@
                     <button @click="removeVariable(index)" class="px-2 py-1 bg-red-500 hover:bg-red-600 text-white rounded text-sm">Delete</button>
                   </td>
                 </tr>
-</tbody>
-             </table>
-           </div>
+              </tbody>
+            </table>
+          </div>
 
-<!-- Description Tab -->
-            <div v-if="activeRequestTab === 'description'" class="p-3">
-              <MarkdownDescription v-model="editingRequest.description" />
-            </div>
+          <!-- Description Tab -->
+          <div v-if="activeRequestTab === 'description'" class="p-3">
+            <MarkdownDescription v-model="editingRequest.description" />
+          </div>
 
-            <!-- Scripts Tab -->
-            <div v-if="activeRequestTab === 'scripts'" class="p-3 h-full">
-              <ScriptTabs :model-value="editingRequest" />
-            </div>
+          <!-- Scripts Tab -->
+          <div v-if="activeRequestTab === 'scripts'" class="flex flex-col h-full">
+            <ScriptTabs :model-value="editingRequest" />
           </div>
         </div>
+      </div>
 
       <div class="p-3 border-t border-zinc-200 dark:border-zinc-700 flex gap-2">
         <button @click="saveRequest" class="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded">Save</button>
@@ -500,6 +503,10 @@ async function sendRequest() {
     // Set Content-Type
     if (editingRequest.value.body.type === 'json' && options.body) {
       options.headers['Content-Type'] = 'application/json';
+    } else if (editingRequest.value.body.type === 'xml' && options.body) {
+      options.headers['Content-Type'] = 'application/xml';
+    } else if (editingRequest.value.body.type === 'text' && options.body) {
+      options.headers['Content-Type'] = 'text/plain';
     } else if (editingRequest.value.body.type === 'x-www-form-urlencoded' && options.body) {
       options.headers['Content-Type'] = 'application/x-www-form-urlencoded';
     } else if (editingRequest.value.body.type === 'form-data' && options.body) {

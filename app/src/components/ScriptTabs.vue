@@ -16,7 +16,7 @@
        <div v-if="activeSubTab === 'pre-request'" class="h-full">
          <textarea
            v-model="modelValue.preRequestScript"
-           class="w-full h-full min-h-[120px] px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-mono text-sm resize-none"
+           class="w-full h-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-mono text-sm resize-none"
            placeholder="// Runs before request is sent"
          ></textarea>
        </div>
@@ -24,7 +24,7 @@
        <div v-if="activeSubTab === 'post-request'" class="h-full">
          <textarea
            v-model="modelValue.postRequestScript"
-           class="w-full h-full min-h-[120px] px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-mono text-sm resize-none"
+           class="w-full h-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-mono text-sm resize-none"
            placeholder="// Runs after response is received"
          ></textarea>
        </div>
@@ -32,7 +32,7 @@
        <div v-if="activeSubTab === 'test'" class="h-full">
          <textarea
            v-model="modelValue.testScript"
-           class="w-full h-full min-h-[120px] px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-mono text-sm resize-none"
+           class="w-full h-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-mono text-sm resize-none"
            placeholder="// Test the response"
          ></textarea>
        </div>

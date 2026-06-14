@@ -19,7 +19,7 @@
         <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': store.activeResponseTab === 'headers' }" @click="store.activeResponseTab = 'headers'">Headers</button>
       </li>
       <li>
-        <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': store.activeResponseTab === 'tests' }" @click="store.activeResponseTab = 'tests'">Tests</button>
+        <button class="px-4 py-2 text-zinc-700 dark:text-white" :class="{ 'border-b-2 border-blue-500': store.activeResponseTab === 'tests' }" @click="store.activeResponseTab = 'tests'">Script output</button>
       </li>
     </ul>
     
@@ -31,8 +31,8 @@
         {{ responseHeaders }}
       </div>
 <div v-if="store.activeResponseTab === 'tests'">
-  <div v-if="store.testResults" class="whitespace-pre-wrap">{{ store.testResults }}</div>
-  <div v-else>No test results</div>
+  <div v-if="store.testResults" class="whitespace-pre-wrap"><span class="text-zinc-500">Source: {{ store.scriptSource }}</span><br><br>{{ store.testResults }}</div>
+  <div v-else>No script output</div>
 </div>
     </div>
   </div>

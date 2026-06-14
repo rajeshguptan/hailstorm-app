@@ -17,6 +17,7 @@ export interface Variable {
   key: string;
   value: string;
   enabled: boolean;
+  collection?: string;
 }
 
 export interface RequestVariable extends Variable {
@@ -84,7 +85,7 @@ export interface Request {
    method: string;
    url: string;
    headers: Variable[];
-   body: { type: 'none' | 'form-data' | 'x-www-form-urlencoded' | 'raw' | 'binary' | 'graphql'; content: string };
+   body: { type: 'none' | 'form-data' | 'x-www-form-urlencoded' | 'raw' | 'binary' | 'graphql' | 'json' | 'xml' | 'text'; content: string };
    auth?: Auth;
    preRequestScript?: string;
    postRequestScript?: string;
@@ -94,6 +95,7 @@ export interface Request {
    response?: Response;
    dependsOn?: string;
    description?: string;
+   isWebSocket?: boolean;
   }
 
 export interface Folder {

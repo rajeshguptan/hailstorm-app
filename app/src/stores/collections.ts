@@ -220,17 +220,18 @@ export const useCollectionsStore = defineStore('collections', {
       this.saveCollections();
     },
 
-    addGraphqlRequest(targetId: string, targetType: 'collection' | 'folder' = 'collection') {
-      const request: Request = {
-        id: this.generateId('req'),
-        name: 'New GraphQL Request',
-        method: 'POST',
-        url: '',
-        headers: [
-          { key: 'Content-Type', value: 'application/json', enabled: true }
-        ],
-        body: { type: 'graphql', content: '{ "query": "", "variables": {} }' }
-      };
+addGraphqlRequest(targetId: string, targetType: 'collection' | 'folder' = 'collection') {
+       const request: Request = {
+         id: this.generateId('req'),
+         name: 'New GraphQL Request',
+         method: 'POST',
+         url: '',
+         headers: [
+           { key: 'Content-Type', value: 'application/json', enabled: true }
+         ],
+         body: { type: 'graphql', content: '{ "query": "", "variables": {} }' },
+         isWebSocket: false
+       };
 
       if (targetType === 'collection') {
         const collection = this.collections.find(c => c.id === targetId);
@@ -260,10 +261,52 @@ export const useCollectionsStore = defineStore('collections', {
         }
       }
 
-      this.saveCollections();
-    },
+this.saveCollections();
+     },
 
-    renameItem(id: string, newName: string) {
+    addWebsocketRequest(targetId: string, targetType: 'collection' | 'folder' = 'collection') {
+       const request: Request = {
+         id: this.generateId('req'),
+         name: 'New WebSocket Request',
+         method: 'GET',
+         url: '',
+         headers: [],
+         body: { type: 'none', content: '' },
+         isWebSocket: true
+       };
+
+       if (targetType === 'collection') {
+         const collection = this.collections.find(c => c.id === targetId);
+         if (collection) {
+           collection.items.push(request);
+         }
+       } else if (targetType === 'folder') {
+         const addToItems = (items: any[]): boolean => {
+           for (const item of items) {
+             if (item.id === targetId) {
+               item.items.push(request);
+               return true;
+             }
+             if ('items' in item && item.items) {
+               if (addToItems(item.items)) {
+                 return true;
+               }
+             }
+           }
+           return false;
+         };
+
+         for (const collection of this.collections) {
+           if (addToItems(collection.items)) {
+             break;
+           }
+         }
+       }
+
+       this.saveCollections();
+     },
+
+     renameItem(id: string, newName: string) {
       console.log('[COLLECTIONS] renameItem called with id:', id, 'newName:', newName);
       // First check if it's a collection itself
       for (const collection of this.collections) {

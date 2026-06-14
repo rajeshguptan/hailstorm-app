@@ -66,7 +66,17 @@ Prompt: "Investigate and fix environment variable substitution not working in re
 - Lazy load views when appropriate
 
 ### Core Logic
-- Business logic is separated in `app/src/core/executionEngine.ts`
+- Business logic is modularized in `app/src/core/`:
+  - `executionEngine.ts` - Main entry point, re-exports from other modules
+  - `loadTestingService.ts` - Load test data persistence and metrics
+  - `requestExecutor.ts` - Core request execution with variable substitution
+  - `httpClient.ts` - HTTP/HTTPS request handling with rate limiting
+  - `authHandler.ts` - Authentication and variable substitution utilities
+  - `ipcHandlers.ts` - IPC handlers organized by functionality
+  - `httpExecutor.ts` - Token bucket rate limiting and utility functions
+  - `runnerEngine.ts` - Load test orchestration
+  - `runnerWorker.ts` - Worker thread for parallel execution
+  - `workerThreadPool.ts` - Thread pool management
 - IPC communication handled through preload script
 - Main process in `app/src/main.ts`
 - Keep UI logic separate from core execution logic
@@ -76,4 +86,3 @@ Prompt: "Investigate and fix environment variable substitution not working in re
 - Follow existing utility class patterns
 - Use dark mode variants appropriately
 - Maintain consistent spacing and typography
-

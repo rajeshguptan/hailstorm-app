@@ -556,18 +556,25 @@ const convertToPostmanFormat = (collection: any) => {
 
         // Convert body
         if (item.body && item.body.type !== 'none') {
-          postmanRequest.request.body = {
-            mode: item.body.type === 'json' ? 'raw' : item.body.type,
-            raw: item.body.content || ''
-          };
+          let bodyMode = item.body.type;
+          let options: any = undefined;
 
           if (item.body.type === 'json') {
-            postmanRequest.request.body.options = {
-              raw: {
-                language: 'json'
-              }
-            };
+            bodyMode = 'raw';
+            options = { raw: { language: 'json' } };
+          } else if (item.body.type === 'xml') {
+            bodyMode = 'raw';
+            options = { raw: { language: 'xml' } };
+          } else if (item.body.type === 'text') {
+            bodyMode = 'raw';
+            options = { raw: { language: 'text' } };
           }
+
+          postmanRequest.request.body = {
+            mode: bodyMode,
+            raw: item.body.content || '',
+            ...(options && { options })
+          };
         }
 
         // Convert auth
