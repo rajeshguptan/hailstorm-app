@@ -118,15 +118,16 @@ export interface Collection {
  }
 
 export interface HistoryItem {
-  id: number;
-  method: string;
-  url: string;
-  status: number;
-  time: number; // Response time in ms
-  timestamp: number; // Execution timestamp
-  request: Request;
-  response: Response;
-}
+   id: number;
+   method: string;
+   url: string;
+   status: number;
+   time: number; // Response time in ms
+   timestamp: number; // Execution timestamp
+   request: Request;
+   response: Response;
+   modified?: boolean; // True if parameters were modified before sending
+ }
 
 export interface Tab {
   id: string;
@@ -325,15 +326,7 @@ export interface SubSetting {
   icon: string;
 }
 
-export type SidebarView = 'collections' | 'environments' | 'history' | 'secrets' | 'stats' | 'utilities' | 'settings' | 'runner';
-
-export interface Utility {
-  id: string;
-  name: string;
-  icon: string;
-  command?: string;
-  postProcessScript?: string;
-}
+export type SidebarView = 'collections' | 'environments' | 'history' | 'secrets' | 'stats' | 'runner' | 'settings';
 
 export type RequestTab = 'params' | 'auth' | 'headers' | 'body' | 'variables' | 'scripts' | 'description';
 export type ResponseTab = 'body' | 'headers' | 'tests';

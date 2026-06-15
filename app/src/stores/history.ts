@@ -3,6 +3,7 @@ import type { HistoryItem } from '../types';
 import { useAppStore } from './';
 import { useRequestsStore } from './requests';
 import { useResponseStore } from './response';
+import { useUIStore } from './ui';
 
 export const useHistoryStore = defineStore('history', {
   state: () => ({
@@ -11,7 +12,9 @@ export const useHistoryStore = defineStore('history', {
 
   actions: {
     addToHistory(item: HistoryItem) {
-      this.history.unshift(item);
+      const uiStore = useUIStore();
+      const historyItem = { ...item, modified: uiStore.requestModified || false };
+      this.history.unshift(historyItem);
       if (this.history.length > 100) {
         this.history = this.history.slice(0, 100);
       }

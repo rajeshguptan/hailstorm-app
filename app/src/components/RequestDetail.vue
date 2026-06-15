@@ -188,12 +188,12 @@
                  <option v-if="editingRequest.isWebSocket" value="text">Text</option>
                </select>
              </div>
-             <textarea
-               v-if="editingRequest.body.type !== 'none'"
-               v-model="editingRequest.body.content"
-               class="flex-1 w-full h-full mx-3 mb-3 px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-mono text-sm resize-none"
-               placeholder="Enter request body..."
-             ></textarea>
+<textarea
+                v-if="editingRequest.body.type !== 'none'"
+                v-model="editingRequest.body.content"
+                class="flex-1 h-full w-full mx-3 mb-3 px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-mono text-sm resize-none"
+                placeholder="Enter request body..."
+              ></textarea>
            </div>
 
           <!-- Variables Tab -->
@@ -274,6 +274,7 @@ import { useAppStore } from '../stores';
 import { useRequestsStore } from '../stores/requests';
 import { useResponseStore } from '../stores/response';
 import { useHistoryStore } from '../stores/history';
+import { useUIStore } from '../stores/ui';
 import MarkdownDescription from './MarkdownDescription.vue';
 import ScriptTabs from './ScriptTabs.vue';
 
@@ -281,6 +282,7 @@ const appStore = useAppStore();
 const requestsStore = useRequestsStore();
 const responseStore = useResponseStore();
 const historyStore = useHistoryStore();
+const uiStore = useUIStore();
 
 const activeRequestTab = ref<'params' | 'auth' | 'headers' | 'body' | 'variables' | 'scripts' | 'description'>('params');
 
@@ -360,6 +362,32 @@ watch(() => requestsStore.selectedRequestId, (newId) => {
      }
 }, { immediate: true });
 
+// Track if request has been modified
+watch(() => requestsStore.selectedRequestId, () => {
+  if (uiStore.setRequestModified) {
+    uiStore.setRequestModified(false);
+  } else {
+    uiStore.requestModified = false;
+  }
+});
+
+watch(() => [
+  editingRequest.value.url,
+  editingRequest.value.method,
+  editingRequest.value.body?.content,
+  urlParams.value,
+  requestHeaders.value,
+  requestVariables.value
+], () => {
+  if (editingRequest.value.id) {
+    if (uiStore.setRequestModified) {
+      uiStore.setRequestModified(true);
+    } else {
+      uiStore.requestModified = true;
+    }
+  }
+}, { deep: true });
+
 function addParam() {
   urlParams.value.push({ key: '', value: '', enabled: true });
 }
@@ -389,64 +417,41 @@ function removeVariable(index: number) {
 }
 
 function saveRequest() {
-  if (!editingRequest.value.id) return;
+   if (!editingRequest.value.id) return;
 
-  // Update URL from params
-  const urlObj = new URL(editingRequest.value.url || 'http://example.com');
-  urlObj.search = '';
-  urlParams.value.filter(p => p.enabled).forEach(p => {
-    urlObj.searchParams.append(p.key, p.value);
-  });
-  editingRequest.value.url = urlObj.toString();
-  editingRequest.value.headers = [...requestHeaders.value];
-  editingRequest.value.variables = [...requestVariables.value];
+   // Update URL from params
+   const urlObj = new URL(editingRequest.value.url || 'http://example.com');
+   urlObj.search = '';
+   urlParams.value.filter(p => p.enabled).forEach(p => {
+     urlObj.searchParams.append(p.key, p.value);
+   });
+   editingRequest.value.url = urlObj.toString();
+   editingRequest.value.headers = [...requestHeaders.value];
+   editingRequest.value.variables = [...requestVariables.value];
 
-  // Find and update the request in the collections
-  for (const collection of appStore.collections) {
-    const updateRequest = (items: any[]): boolean => {
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].id === editingRequest.value.id && 'method' in items[i]) {
-          items[i] = { ...editingRequest.value };
-          return true;
-        }
-        if ('items' in items[i] && items[i].items) {
-          if (updateRequest(items[i].items)) {
-            return true;
-          }
-        }
-      }
-      return false;
-    };
-    if (updateRequest(collection.items)) {
-      break;
-    }
-  }
+   // Find and update the request in the collections
+   for (const collection of appStore.collections) {
+     const updateRequest = (items: any[]): boolean => {
+       for (let i = 0; i < items.length; i++) {
+         if (items[i].id === editingRequest.value.id && 'method' in items[i]) {
+           items[i] = { ...editingRequest.value };
+           return true;
+         }
+         if ('items' in items[i] && items[i].items) {
+           if (updateRequest(items[i].items)) {
+             return true;
+           }
+         }
+       }
+       return false;
+     };
+     if (updateRequest(collection.items)) {
+       break;
+     }
+   }
 
-  appStore.saveToLocalStorage();
-
-  // Find and update the request in the collections
-  for (const collection of appStore.collections) {
-    const updateRequest = (items: any[]): boolean => {
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].id === editingRequest.value.id && 'method' in items[i]) {
-          items[i] = { ...editingRequest.value };
-          return true;
-        }
-        if ('items' in items[i] && items[i].items) {
-          if (updateRequest(items[i].items)) {
-            return true;
-          }
-        }
-      }
-      return false;
-    };
-    if (updateRequest(collection.items)) {
-      break;
-    }
-  }
-
-  appStore.saveToLocalStorage();
-}
+   appStore.saveToLocalStorage();
+ }
 
 async function sendRequest() {
   console.log('Sending request:', editingRequest.value);
@@ -547,6 +552,8 @@ async function sendRequest() {
       request: JSON.parse(JSON.stringify(editingRequest.value)), // Deep copy of request
       response: responseStore.response!
     });
+
+    uiStore.clearRequestModified();
 
     responseStore.activeResponseTab = 'body';
   } catch (err: any) {

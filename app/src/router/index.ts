@@ -8,7 +8,6 @@ import HistoryView from '../views/HistoryView.vue';
 import SecretsView from '../views/SecretsView.vue';
 import StatsView from '../views/StatsView.vue';
 import SettingsView from '../views/SettingsView.vue';
-import UtilitiesView from '../views/UtilitiesView.vue';
 import RunnerView from '../views/RunnerView.vue';
 
 const routes: RouteRecordRaw[] = [
@@ -44,11 +43,6 @@ const routes: RouteRecordRaw[] = [
         path: 'stats',
         name: 'stats',
         component: StatsView
-      },
-      {
-        path: 'utilities',
-        name: 'utilities',
-        component: UtilitiesView
       },
       {
         path: 'runner',

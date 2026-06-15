@@ -2,6 +2,10 @@ import type { SendRequestContext, SendRequestResult, Auth } from '../types';
 import { substituteAll } from './authHandler';
 import { makeHttpRequest } from './httpClient';
 import { flatRequests } from './httpExecutor';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 interface VariableData {
   key: string;
@@ -58,48 +62,68 @@ interface SecretsStoreData {
 }
 
 async function executeDepRequest(
-  request: any,
-  seVars: VariableData[],
-  reqVars: VariableData[],
-  secrets: { name: string; value: string }[] | undefined,
-  parentAuth?: Auth | undefined,
+   request: any,
+   seVars: VariableData[],
+   reqVars: VariableData[],
+   secrets: { name: string; value: string }[] | undefined,
+   parentAuth?: Auth | undefined,
 ): Promise<ExecutedRequest> {
-  let url = substituteAll(request.url, seVars, reqVars, secrets);
-  let body = request.body && request.body.type !== 'none' && request.body.content
-    ? substituteAll(request.body.content, seVars, reqVars, secrets)
-    : undefined;
+   let url = substituteAll(request.url, seVars, reqVars, secrets);
+   let body = request.body && request.body.type !== 'none' && request.body.content
+     ? substituteAll(request.body.content, seVars, reqVars, secrets)
+     : undefined;
 
-  const headers: Record<string, string> = {};
+   const headers: Record<string, string> = {};
 
-  const effectiveAuth = request.auth?.type === 'inherit' ? parentAuth : request.auth;
-  if (effectiveAuth) {
-    applyAuthAndHeaders({ headers, url }, effectiveAuth, seVars, reqVars, secrets);
-  }
+   // Handle SHELL requests
+   if (request.method === 'SHELL') {
+     let shellResult: { output: string; error: string };
+     try {
+       const { stdout, stderr } = await execAsync(url, { timeout: 30000 });
+       shellResult = { output: stdout, error: stderr };
+     } catch (err: any) {
+       shellResult = { output: '', error: err.message };
+     }
+     
+     return {
+       id: request.id,
+       name: request.name,
+       status: shellResult.error ? 1 : 0,
+       statusText: shellResult.error ? shellResult.error : 'Success',
+       time: 0,
+       error: shellResult.error,
+     };
+   }
 
-  if (request.headers && Array.isArray(request.headers)) {
-    for (const h of request.headers) {
-      if (h.key && h.enabled) headers[h.key] = substituteAll(h.value, seVars, reqVars, secrets);
-    }
-  }
+   const effectiveAuth = request.auth?.type === 'inherit' ? parentAuth : request.auth;
+   if (effectiveAuth) {
+     applyAuthAndHeaders({ headers, url }, effectiveAuth, seVars, reqVars, secrets);
+   }
 
-  setContentType(headers, request.body?.type || 'none', !!body);
+   if (request.headers && Array.isArray(request.headers)) {
+     for (const h of request.headers) {
+       if (h.key && h.enabled) headers[h.key] = substituteAll(h.value, seVars, reqVars, secrets);
+     }
+   }
 
-  const result = await makeHttpRequest({
-    method: request.method,
-    url,
-    headers,
-    body,
-  });
+   setContentType(headers, request.body?.type || 'none', !!body);
 
-  return {
-    id: request.id,
-    name: request.name,
-    status: result.status,
-    statusText: result.statusText,
-    time: result.time,
-    error: result.error,
-  };
-}
+   const result = await makeHttpRequest({
+     method: request.method,
+     url,
+     headers,
+     body,
+   });
+
+   return {
+     id: request.id,
+     name: request.name,
+     status: result.status,
+     statusText: result.statusText,
+     time: result.time,
+     error: result.error,
+   };
+ }
 
 function applyAuthAndHeaders(
   opts: { headers: Record<string, string>; url: string },
@@ -284,6 +308,54 @@ export async function sendRequest(context: SendRequestContext, rps: number = 0, 
     }
     return mainRequest.auth;
   };
+
+  // Handle SHELL requests
+  if (mainRequest.method === 'SHELL') {
+    const command = substituteAll(mainRequest.url, seVars, [...(mainRequest.variables || [])], accessibleSecrets);
+    
+    let shellResult: { output: string; error: string };
+    try {
+      const { stdout, stderr } = await execAsync(command, { timeout: 30000 });
+      shellResult = { output: stdout, error: stderr };
+    } catch (err: any) {
+      shellResult = { output: '', error: err.message };
+    }
+    
+    const now = Date.now();
+    historyEntries.push({
+      id: now,
+      method: 'SHELL',
+      url: command,
+      status: shellResult.error ? 1 : 0,
+      time: 0,
+      timestamp: now,
+      request: { ...mainRequest, url: command },
+      response: {
+        status: shellResult.error ? 1 : 0,
+        statusText: shellResult.error ? shellResult.error : 'Success',
+        data: shellResult.output,
+        time: 0,
+        headers: {},
+        error: shellResult.error,
+      },
+    });
+
+    return {
+      response: {
+        status: shellResult.error ? 1 : 0,
+        statusText: shellResult.error ? shellResult.error : 'Success',
+        data: shellResult.output,
+        time: 0,
+        headers: {},
+        error: shellResult.error,
+      },
+      substitutedRequest: { ...mainRequest, url: command },
+      executedDependencies: executedDeps,
+      historyEntries,
+      testResults: '',
+      scriptSource: '',
+    };
+  }
 
   applyAuthAndHeaders({ headers, url }, resolveAuth(), seVars, [...(mainRequest.variables || [])], accessibleSecrets);
 

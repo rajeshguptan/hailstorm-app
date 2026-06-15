@@ -45,23 +45,24 @@
   
 <!-- Main content area -->
    <div class="main-content flex-1 flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
-     <!-- Request interface for collections and history -->
-     <div v-if="showRequestDetail" class="flex flex-col flex-1 min-h-0">
-       <div :style="{ height: uiStore.requestPanelHeight + 'px', flexShrink: 0 }">
-         <RequestPanel />
-       </div>
-       <div class="panel-resize-handle w-full h-[0.1rem] bg-zinc-300 hover:bg-zinc-500 dark:bg-zinc-600 dark:hover:bg-zinc-400 cursor-row-resize" @mousedown="startPanelResize"></div>
-       <ResponsePanel class="flex-1 min-h-0" />
-     </div>
+<!-- Request interface for collections and history -->
+      <div v-if="showRequestDetail" class="flex flex-col flex-1 min-h-0">
+        <div v-if="requestsStore.currentRequest?.method === 'SHELL'" class="flex-1 min-h-0">
+          <ShellScriptDetail />
+        </div>
+        <div v-else :style="{ height: uiStore.requestPanelHeight + 'px', flexShrink: 0 }">
+          <RequestPanel />
+        </div>
+        <div v-if="requestsStore.currentRequest?.method !== 'SHELL'" class="panel-resize-handle w-full h-[0.1rem] bg-zinc-300 hover:bg-zinc-500 dark:bg-zinc-600 dark:hover:bg-zinc-400 cursor-row-resize" @mousedown="startPanelResize"></div>
+        <ResponsePanel v-if="requestsStore.currentRequest?.method !== 'SHELL'" class="flex-1 min-h-0" />
+      </div>
      <!-- Secrets detail when selected -->
     <SecretsDetail v-if="uiStore.activeSidebar === 'secrets' && appStore.selectedSecretId !== null" />
 
     <EnvironmentsDetail v-if="uiStore.activeSidebar === 'environments' && environmentsStore.activeEnvironmentId !== null" />
 
-    <CollectionPanel v-if="uiStore.activeSidebar === 'collections' && collectionsStore.selectedCollectionId !== null && requestsStore.selectedRequestId === null" />
-
-       <UtilityContent v-if="uiStore.activeSidebar === 'utilities' && utilitiesStore.selectedUtilityId !== null" />
-    <!-- Runner panel -->
+<CollectionPanel v-if="uiStore.activeSidebar === 'collections' && collectionsStore.selectedCollectionId !== null && requestsStore.selectedRequestId === null" />
+     <!-- Runner panel -->
     <RunnerPanel
       v-if="uiStore.activeSidebar === 'runner'"
       :collections="collectionsStore.collections"
@@ -71,24 +72,25 @@
       :selectedConfigId="runnerStore.selectedConfigId"
       @update-run-config="runnerStore.updateRunConfig"
     />
-    <!-- Recent Requests Tabs at Bottom (only visible in Collections) -->
-    <div v-if="uiStore.activeSidebar === 'collections'" class="border-t border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 flex-shrink-0">
-      <div class="px-3 py-1.5 overflow-x-auto whitespace-nowrap scrollbar-thin">
-        <div class="flex gap-1">
-          <button
-            v-for="request in recentRequests"
-            :key="request.historyId"
-            @click="loadRecentRequest(request)"
-            class="px-2 py-1 text-xs bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded hover:bg-zinc-100 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-300 truncate"
-            :title="request.name"
-          >
-            <span class="font-mono text-blue-600 dark:text-blue-400">{{ request.method }}</span>
-            <span class="ml-1">{{ request.name }}</span>
-          </button>
-          <span v-if="recentRequests.length === 0" class="text-xs text-zinc-400 dark:text-zinc-500 whitespace-nowrap">No recent requests</span>
-        </div>
-      </div>
-    </div>
+<!-- Recent Requests Tabs at Bottom (only visible in Collections) -->
+     <div v-if="uiStore.activeSidebar === 'collections'" class="border-t border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 flex-shrink-0">
+       <div class="px-3 py-1.5 overflow-x-auto whitespace-nowrap scrollbar-thin">
+         <div class="flex gap-1">
+           <button
+             v-for="request in recentRequests"
+             :key="request.historyId"
+             @click="loadRecentRequest(request)"
+             class="px-2 py-1 text-xs border rounded truncate transition-colors relative"
+             :style="request.backgroundColorStyle"
+             :title="request.name"
+           >
+             <span class="font-mono">{{ request.method }}</span>
+             <span class="ml-1">{{ request.name }}</span>
+           </button>
+           <span v-if="recentRequests.length === 0" class="text-xs text-zinc-400 dark:text-zinc-500 whitespace-nowrap">No recent requests</span>
+         </div>
+       </div>
+     </div>
   </div>
 </div>
 
@@ -124,7 +126,6 @@ import { useAppStore } from '../stores';
 import { useUIStore } from '../stores/ui';
 import { useRequestsStore } from '../stores/requests';
 import { useEnvironmentsStore } from '../stores/environments';
-import { useUtilitiesStore } from '../stores/utilities';
 import { useCollectionsStore } from '../stores/collections';
 import { useRunnerStore } from '../stores/runner';
 import { useSecretsStore } from '../stores/secrets';
@@ -140,7 +141,7 @@ import SettingsContent from '../components/SettingsContent.vue';
 import SecretsDetail from '../components/SecretsDetail.vue';
 import EnvironmentsDetail from '../components/EnvironmentsDetail.vue';
 import CollectionPanel from '../components/CollectionPanel.vue';
-import UtilityContent from '../components/UtilityContent.vue';
+import ShellScriptDetail from '../components/ShellScriptDetail.vue';
 import RunnerPanel from '../components/RunnerPanel.vue';
 import StatsPanel from '../components/StatsPanel.vue';
 
@@ -150,7 +151,6 @@ const appStore = useAppStore();
 const uiStore = useUIStore();
 const requestsStore = useRequestsStore();
 const environmentsStore = useEnvironmentsStore();
-const utilitiesStore = useUtilitiesStore();
 const collectionsStore = useCollectionsStore();
 const runnerStore = useRunnerStore();
 const secretsStore = useSecretsStore();
@@ -158,24 +158,53 @@ const historyStore = useHistoryStore();
 
 // Get the N most recent requests from history
 const recentRequests = computed(() => {
-  return historyStore.history.slice(0, uiStore.recentRequestCount).map(item => ({
-    historyId: item.id,
-    id: item.request.id,
-    name: item.request.name || item.request.url,
-    method: item.request.method,
-    url: item.request.url,
-    headers: item.request.headers,
-    body: item.request.body,
-    auth: item.request.auth,
-    variables: item.request.variables,
-    preRequestScript: item.request.preRequestScript,
-    testScript: item.request.testScript
-  }));
+  return historyStore.history.slice(0, uiStore.recentRequestCount).map((item, index) => {
+    const total = Math.max(1, Math.min(uiStore.recentRequestCount, historyStore.history.length));
+    const position = index + 1;
+    // MRU (most recent, first in list, index=0) = darkest (alpha 0.5)
+    // LRU (least recent, last in list) = lightest (alpha 0.15)
+    const ratio = (total - position) / Math.max(1, total - 1);
+    const alpha = 0.15 + ratio * 0.35;
+    const borderColorAlpha = 0.25 + ratio * 0.6;
+    
+    const isModified = item.modified === true;
+    // Modified requests get reddish shade with same alpha
+    const bgColor = isModified ? `rgba(239, 68, 68, ${alpha})` : `rgba(34, 197, 94, ${alpha})`;
+    const borderColor = isModified ? `rgba(239, 68, 68, ${borderColorAlpha})` : `rgba(34, 197, 94, ${borderColorAlpha})`;
+    
+    return {
+      historyId: item.id,
+      id: item.request.id,
+      name: item.request.name || item.request.url,
+      method: item.request.method,
+      url: item.request.url,
+      headers: item.request.headers,
+      body: item.request.body,
+      auth: item.request.auth,
+      variables: item.request.variables,
+      preRequestScript: item.request.preRequestScript,
+      postRequestScript: item.request.postRequestScript,
+      testScript: item.request.testScript,
+      timestamp: item.timestamp,
+      position,
+      total,
+      modified: isModified,
+      backgroundColorStyle: {
+        backgroundColor: bgColor,
+        borderColor: borderColor
+      }
+    };
+  });
 });
 
 // Load a recent request into the current request panel
 function loadRecentRequest(request: any) {
   if (!request) return;
+  if (uiStore && uiStore.clearRequestModified) {
+    uiStore.clearRequestModified();
+  } else {
+    uiStore.requestModified = false;
+  }
   const reqId = request.id || requestsStore.generateId('req');
   requestsStore.currentRequest = {
     ...request,
@@ -198,7 +227,6 @@ watch(
       '/history': 'history',
       '/secrets': 'secrets',
       '/stats': 'stats',
-      '/utilities': 'utilities',
       '/runner': 'runner',
       '/settings': 'settings'
     };
@@ -221,12 +249,11 @@ const ribbonItems = computed(() => [
   { id: 'history' as SidebarView, icon: '🕒', label: 'History', route: '/history' },
   { id: 'secrets' as SidebarView, icon: secretsStore.isLocked ? '🔒' : '🔓', iconStyle: secretsStore.isLocked ? 'filter: sepia(1) hue-rotate(0deg) saturate(2) brightness(1.3)' : 'filter: sepia(1) hue-rotate(120deg) saturate(2) brightness(1.3)', label: 'Secrets', route: '/secrets' },
   { id: 'stats' as SidebarView, icon: '📊', label: 'Stats', route: '/stats' },
-  { id: 'utilities' as SidebarView, icon: '🔧', label: 'Utilities', route: '/utilities' },
   { id: 'runner' as SidebarView, icon: '🏃', label: 'Runner', route: '/runner' },
   { id: 'settings' as SidebarView, icon: '⚙️', label: 'Settings', route: '/settings' },
 ]);
 
-const sidebarPanels: SidebarView[] = ['collections', 'environments', 'history', 'secrets', 'utilities', 'runner'];
+const sidebarPanels: SidebarView[] = ['collections', 'environments', 'history', 'secrets', 'runner'];
 
 const showSidebarMain = computed(() => {
   return sidebarPanels.includes(uiStore.activeSidebar);
@@ -339,8 +366,6 @@ function navigate(id: SidebarView) {
     } else if (id === 'secrets') {
       console.log('[DEBUG] navigate to secrets, setting selectedSecretId to null');
       appStore.selectedSecretId = null;
-    } else if (id === 'utilities') {
-      utilitiesStore.selectedUtilityId = utilitiesStore.utilities.length > 0 ? utilitiesStore.utilities[0].id : null;
     } else if (id === 'runner') {
       // Sidebar title is set in watch(route)
     }
@@ -378,5 +403,16 @@ function navigate(id: SidebarView) {
 
 .ribbon-item {
   position: relative;
+}
+
+/* Recent request tabs gradient colors */
+.recent-tab-modified {
+  background-color: rgba(251, 146, 60, 0.3);
+  border-color: rgba(251, 146, 60, 0.5);
+}
+
+.dark .recent-tab-modified {
+  background-color: rgba(253, 186, 116, 0.3);
+  border-color: rgba(251, 146, 60, 0.5);
 }
 </style>

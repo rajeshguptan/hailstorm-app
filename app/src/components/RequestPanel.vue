@@ -23,12 +23,13 @@
     </div>
 
 <!-- Second row: Method and URL -->
-     <div class="flex gap-2 mb-2">
-       <select v-if="requestsStore.currentRequest.body?.type !== 'graphql'" v-model="method" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1" style="width: 100px;">
-         <option v-for="m in methods" :key="m" :value="m">{{ m }}</option>
-       </select>
-       <input v-model="url" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-3 py-1 flex-1" placeholder="Enter request URL" @keyup.enter="sendRequest" />
-     </div>
+<div class="flex gap-2 mb-2">
+        <select v-if="requestsStore.currentRequest.body?.type !== 'graphql'" v-model="method" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1" style="width: 100px;">
+          <option v-for="m in methods" :key="m" :value="m">{{ m }}</option>
+        </select>
+        <input v-if="method !== 'SHELL'" v-model="url" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-3 py-1 flex-1" placeholder="Enter request URL" @keyup.enter="sendRequest" />
+        <input v-else v-model="url" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-3 py-1 flex-1" placeholder="Enter shell command" @keyup.enter="sendRequest" />
+      </div>
     
     <ul class="flex border-b border-zinc-200 dark:border-zinc-700" role="tablist">
       <li>
@@ -268,6 +269,7 @@ import { useEnvironmentsStore } from '../stores/environments';
 import { useResponseStore } from '../stores/response';
 import { useCollectionsStore } from '../stores/collections';
 import { useHistoryStore } from '../stores/history';
+import { useUIStore } from '../stores/ui';
 import { useSecretsStore } from '../stores/secrets';
 import { useAppStore } from '../stores';
 import OAuthConfig from './OAuthConfig.vue';
@@ -279,6 +281,7 @@ const requestsStore = useRequestsStore();
 const environmentsStore = useEnvironmentsStore();
 const responseStore = useResponseStore();
 const historyStore = useHistoryStore();
+const uiStore = useUIStore();
 const collectionsStore = useCollectionsStore();
 const secretsStore = useSecretsStore();
 const appStore = useAppStore();
@@ -289,6 +292,32 @@ const graphqlQuery = ref<string>('');
 const graphqlVariables = ref<string>('{}');
 const graphqlOperationName = ref<string>('');
 const graphqlError = ref<string>('');
+
+// Track if request has been modified
+watch(() => requestsStore.selectedRequestId, (newId) => {
+  if (uiStore.setRequestModified) {
+    uiStore.setRequestModified(false);
+  } else {
+    uiStore.requestModified = false;
+  }
+});
+
+// Track modifications to request parameters
+watch(() => [
+  requestsStore.currentRequest.url,
+  requestsStore.currentRequest.method,
+  requestsStore.currentRequest.body?.content,
+  requestsStore.urlParams,
+  requestsStore.requestHeaders
+], () => {
+  if (requestsStore.selectedRequestId) {
+    if (uiStore.setRequestModified) {
+      uiStore.setRequestModified(true);
+    } else {
+      uiStore.requestModified = true;
+    }
+  }
+}, { deep: true });
 
   watch(() => requestsStore.currentRequest.body.type, (newType) => {
     if (newType === 'graphql') {
@@ -429,7 +458,7 @@ watch(
   { deep: true, immediate: true }
 );
 
-const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
+const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'SHELL'];
 
 const commonHeaders = [
   { key: 'Accept', value: 'application/json' },
@@ -645,10 +674,13 @@ async function sendRequest() {
       }
     }
 
-    for (const entry of result.historyEntries) {
+for (const entry of result.historyEntries) {
       historyStore.addToHistory(entry);
     }
-
+    
+    // Reset the modified flag after sending
+    uiStore.clearRequestModified();
+    
     responseStore.testResults = result.testResults;
     responseStore.activeResponseTab = 'body';
 

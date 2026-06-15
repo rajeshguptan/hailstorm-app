@@ -264,7 +264,7 @@ addGraphqlRequest(targetId: string, targetType: 'collection' | 'folder' = 'colle
 this.saveCollections();
      },
 
-    addWebsocketRequest(targetId: string, targetType: 'collection' | 'folder' = 'collection') {
+addWebsocketRequest(targetId: string, targetType: 'collection' | 'folder' = 'collection') {
        const request: Request = {
          id: this.generateId('req'),
          name: 'New WebSocket Request',
@@ -304,6 +304,55 @@ this.saveCollections();
        }
 
        this.saveCollections();
+     },
+
+     addShellCommand(targetId: string, targetType: 'collection' | 'folder' = 'collection') {
+       const request: Request = {
+         id: this.generateId('req'),
+         name: 'New Shell Command',
+         method: 'SHELL',
+         url: '',
+         headers: [],
+         body: { type: 'raw', content: '' },
+         isWebSocket: false,
+         preRequestScript: '',
+         postRequestScript: '',
+         testScript: ''
+       };
+
+       if (targetType === 'collection') {
+         const collection = this.collections.find(c => c.id === targetId);
+         if (collection) {
+           collection.items.push(request);
+         }
+       } else if (targetType === 'folder') {
+         const addToItems = (items: any[]): boolean => {
+           for (const item of items) {
+             if (item.id === targetId) {
+               item.items.push(request);
+               return true;
+             }
+             if ('items' in item && item.items) {
+               if (addToItems(item.items)) {
+                 return true;
+               }
+             }
+           }
+           return false;
+         };
+
+         for (const collection of this.collections) {
+           if (addToItems(collection.items)) {
+             break;
+           }
+         }
+       }
+
+       this.saveCollections();
+       
+       // Auto-select the newly created shell command
+       const requestsStore = useRequestsStore();
+       requestsStore.selectRequest(request.id);
      },
 
      renameItem(id: string, newName: string) {

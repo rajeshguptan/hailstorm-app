@@ -35,6 +35,8 @@ export const useUIStore = defineStore('ui', {
     hoveredTreeItemId: '' as string,
 
     recentRequestCount: parseInt(localStorage.getItem('recentRequestCount') || '6'),
+
+    requestModified: false as boolean,
   }),
 
   getters: {
@@ -76,6 +78,14 @@ export const useUIStore = defineStore('ui', {
 
     clearCopiedRequest() {
       this.copiedRequest = null;
+    },
+
+    setRequestModified(modified: boolean) {
+      this.requestModified = modified;
+    },
+
+    clearRequestModified() {
+      this.requestModified = false;
     }
   }
 });

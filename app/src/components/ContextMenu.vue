@@ -12,6 +12,7 @@
     <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-graphql-request')">Add GraphQL Request</div>
     <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-folder')">Add Folder</div>
      <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-websocket-request')">Add WebSocket Request</div>
+    <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-shell-command')">Add Shell Command</div>
 
     <div v-if="uiStore.contextMenu.type === 'flavor'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('run')">Run</div>
     <div v-if="uiStore.contextMenu.type === 'run-config'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('run')">Run</div>
@@ -23,12 +24,10 @@
 import { useUIStore } from '../stores/ui';
 import { useCollectionsStore } from '../stores/collections';
 import { useEnvironmentsStore } from '../stores/environments';
-import { useUtilitiesStore } from '../stores/utilities';
 
 const uiStore = useUIStore();
 const collectionsStore = useCollectionsStore();
 const environmentsStore = useEnvironmentsStore();
-const utilitiesStore = useUtilitiesStore();
 
 function handleAction(action: string) {
   const { type, id } = uiStore.contextMenu;
@@ -43,8 +42,6 @@ function handleAction(action: string) {
         collectionsStore.deleteRequest(id);
       } else if (type === 'folder') {
         collectionsStore.deleteFolder(id);
-      } else if (type === 'utility') {
-        utilitiesStore.deleteUtility(id);
       }
       break;
     case 'rename':
@@ -97,6 +94,13 @@ case 'add-folder':
          collectionsStore.addWebsocketRequest(id, 'collection');
        } else if (type === 'folder') {
          collectionsStore.addWebsocketRequest(id, 'folder');
+       }
+       break;
+    case 'add-shell-command':
+       if (type === 'collection') {
+         collectionsStore.addShellCommand(id, 'collection');
+       } else if (type === 'folder') {
+         collectionsStore.addShellCommand(id, 'folder');
        }
        break;
   }
