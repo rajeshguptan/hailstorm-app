@@ -179,9 +179,10 @@ openRequest(item: Request | Folder) {
                  postRequestScript: requestItem.postRequestScript || '',
                  testScript: requestItem.testScript || '',
                  flavors: requestItem.flavors || [],
-                 variables: requestItem.variables || [],
-                 dependsOn: requestItem.dependsOn || undefined
-               };
+                  variables: requestItem.variables || [],
+                  dependsOn: requestItem.dependsOn || undefined,
+                  isJsonRpc: requestItem.isJsonRpc
+                };
             const tab: Tab = { id: this.generateId('tab'), request: requestCopy };
             this.tabs.push(tab);
             this.activeTabId = tab.id;
@@ -289,6 +290,7 @@ updateCurrentRequest() {
           flavors: request.flavors || [],
           variables: request.variables || [],
           dependsOn: request.dependsOn || undefined,
+          isJsonRpc: request.isJsonRpc,
           response: request.response
         };
         const responseStore = useResponseStore();

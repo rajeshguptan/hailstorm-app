@@ -58,6 +58,17 @@ if (started) {
 // Initialize core execution engine
 initializeExecutionEngine();
 
+let devToolsEnabled = false;
+
+function setDevToolsEnabled(enabled: boolean) {
+  const mainWindow = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+  if (!mainWindow) return;
+
+  if (enabled) {
+    mainWindow.webContents.openDevTools();
+  } else {
+    mainWindow.webContents.closeDevTools();
+  }
 function createWindow() {
   console.log('[MAIN] Creating main window...');
   console.log('[MAIN] App path:', app.getAppPath());
@@ -93,7 +104,7 @@ function createWindow() {
     icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      devTools: true,
+      devTools: false,
     },
   });
   
@@ -107,8 +118,15 @@ function createWindow() {
     );
   }
 
-  mainWindow.webContents.openDevTools();
 }
+
+ipcMain.handle('get-dev-tools-enabled', () => devToolsEnabled);
+
+ipcMain.handle('set-dev-tools-enabled', (_event, enabled: boolean) => {
+  devToolsEnabled = Boolean(enabled);
+  setDevToolsEnabled(devToolsEnabled);
+  return devToolsEnabled;
+});
 
 // Set up OAuth callback before app is ready
 setupOAuthCallback();

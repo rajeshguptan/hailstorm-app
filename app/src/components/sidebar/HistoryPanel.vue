@@ -1,5 +1,5 @@
 <template>
-  <div class="history-panel items-start p-2">
+  <div class="history-panel items-start p-2" @click="menuOpen = false">
     <!-- Search/Filter Section -->
     <div class="mb-3">
       <div class="relative mb-2">

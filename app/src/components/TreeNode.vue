@@ -90,6 +90,7 @@ const isExpanded = computed(() => props.expandedFolders.includes(props.item.id))
 const isSelected = computed(() => props.item.id === props.selectedRequestId);
 const isHovered = computed(() => uiStore.hoveredTreeItemId === props.item.id);
 const displayMethod = computed(() => {
+  if (isRequest && props.item.isJsonRpc) return 'RPC';
   if (isRequest && props.item.body?.type === 'graphql') return 'GQL';
   if (isRequest && props.item.isWebSocket) return 'WS';
   return props.item.method;
@@ -220,6 +221,7 @@ function getMethodClass(method: string): string {
   if (m === 'delete') return 'method-delete';
   if (m === 'patch') return 'method-patch';
   if (m === 'gql') return 'method-gql';
+  if (m === 'rpc') return 'method-json-rpc';
   if (m === 'ws') return 'method-ws';
   return 'method-default';
 }
@@ -261,6 +263,10 @@ function sortedItems(items: (Request | Folder)[]) {
 
  .method-ws {
    @apply text-blue-600 dark:text-blue-400 font-bold;
+ }
+
+ .method-json-rpc {
+   @apply text-indigo-600 dark:text-indigo-400 font-bold;
  }
 
  .tree-node.drag-over {

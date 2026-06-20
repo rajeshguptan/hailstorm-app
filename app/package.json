@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "start": "electron-forge start",
+    "mock-server": "node scripts/mock-server.js",
     "package": "electron-forge package",
     "make": "electron-forge make",
     "make:all": "electron-forge make --arch=x64 && electron-forge make --arch=arm64",
@@ -39,10 +40,13 @@
     "electron": "41.0.2",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.32.0",
+    "express": "^4.22.2",
+    "multer": "^2.2.0",
     "postcss": "^8.5.8",
     "tailwindcss": "^3.4.19",
     "typescript": "~4.5.4",
-    "vite": "^5.4.21"
+    "vite": "^5.4.21",
+    "ws": "^8.21.0"
   },
   "dependencies": {
     "chart.js": "^4.5.1",

@@ -97,6 +97,7 @@ export interface Request {
    dependsOn?: string;
    description?: string;
    isWebSocket?: boolean;
+   isJsonRpc?: boolean;
   }
 
 export interface Folder {
@@ -329,7 +330,7 @@ export interface SubSetting {
   icon: string;
 }
 
-export type SidebarView = 'collections' | 'history' | 'secrets' | 'stats' | 'runner' | 'console' | 'settings';
+export type SidebarView = 'collections' | 'history' | 'secrets' | 'stats' | 'runner' | 'console' | 'docs' | 'settings';
 
 
 export type RequestTab = 'params' | 'auth' | 'headers' | 'body' | 'variables' | 'scripts' | 'description';

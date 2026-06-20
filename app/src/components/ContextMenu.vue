@@ -9,6 +9,7 @@
     <div v-if="uiStore.copiedRequest && (uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder')" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('paste')">Paste</div>
 
     <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-http-request')">Add HTTP Request</div>
+    <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-json-rpc-request')">New JSON-RPC Request</div>
     <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-graphql-request')">Add GraphQL Request</div>
     <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-folder')">Add Folder</div>
      <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-websocket-request')">Add WebSocket Request</div>
@@ -76,6 +77,13 @@ function handleAction(action: string) {
         collectionsStore.addGraphqlRequest(id, 'collection');
       } else if (type === 'folder') {
         collectionsStore.addGraphqlRequest(id, 'folder');
+      }
+      break;
+    case 'add-json-rpc-request':
+      if (type === 'collection') {
+        collectionsStore.addJsonRpcRequest(id, 'collection');
+      } else if (type === 'folder') {
+        collectionsStore.addJsonRpcRequest(id, 'folder');
       }
       break;
 case 'add-folder':

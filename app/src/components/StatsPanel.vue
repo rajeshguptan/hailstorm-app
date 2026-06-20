@@ -4,7 +4,7 @@
       <div class="flex items-center justify-between gap-3">
         <select
           v-model="selectedRunId"
-          class="form-select bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 min-w-[220px]"
+          class="form-select bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 min-w-[220px] flex-1"
         >
           <option value="">Current Run (Live)</option>
           <option v-for="run in completedRuns" :key="run.id" :value="run.id">
@@ -91,7 +91,6 @@
                 v-if="requestsChartData"
                 :data="requestsChartData"
                 :options="requestsChartOptions"
-                :key="'requests-' + timeSeriesData.length + '-' + timeSeriesByRequestData.length"
               />
               <div v-else class="h-full flex items-center justify-center text-zinc-500">
                 <div class="text-center">
@@ -110,7 +109,6 @@
                 v-if="errorsChartData"
                 :data="errorsChartData"
                 :options="errorsChartOptions"
-                :key="'errors-' + timeSeriesData.length + '-' + timeSeriesByRequestData.length"
               />
               <div v-else class="h-full flex items-center justify-center text-zinc-500">
                 <div class="text-center">
@@ -144,7 +142,6 @@
                 v-if="responseTimeChartData"
                 :data="responseTimeChartData"
                 :options="responseTimeChartOptions"
-                :key="'response-time-' + timeSeriesData.length + '-' + timeSeriesByRequestData.length"
               />
               <div v-else class="h-full flex items-center justify-center text-zinc-500">
                 <div class="text-center">
@@ -373,7 +370,21 @@ const chartDataByRequest = computed(() => {
   };
 });
 
-// Chart options
+const progressiveLineAnimation = {
+  x: {
+    type: 'number' as const,
+    easing: 'linear' as const,
+    duration: (ctx: any) => Math.max(0, (ctx.chart.animatedData?.length || 0) * 50),
+    from: NaN
+  },
+  y: {
+    type: 'number' as const,
+    easing: 'linear' as const,
+    duration: (ctx: any) => Math.max(0, (ctx.chart.animatedData?.length || 0) * 50),
+    from: 0
+  }
+};
+
 const requestsChartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
@@ -509,9 +520,7 @@ const responseTimeChartOptions = computed(() => ({
       }
     }
   },
-  animation: {
-    duration: 500
-  },
+  animation: progressiveLineAnimation,
   elements: {
     point: {
       radius: 3,

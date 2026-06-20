@@ -1,8 +1,5 @@
 <template>
   <div class="run-configs-panel items-start">
-    <div class="flex gap-2 mb-2">
-      <button class="btn btn-sm bg-blue-500 text-white w-full hover:bg-blue-600" @click="$emit('add-run-config')">+ New Config</button>
-    </div>
     <div v-if="runConfigs.length === 0" class="text-center text-zinc-400 dark:text-zinc-500 py-4">
       No run configurations yet
     </div>
@@ -32,14 +29,14 @@ interface RunConfig {
   iterations: number;
 }
 
-defineProps<{
-  runConfigs: RunConfig[];
-  selectedConfigId: string | null;
-}>();
-
-defineEmits<{
+const emit = defineEmits<{
   (e: 'add-run-config'): void;
   (e: 'select-config', id: string): void;
   (e: 'context-menu', event: MouseEvent, type: string, id: string): void;
+}>();
+
+defineProps<{
+  runConfigs: RunConfig[];
+  selectedConfigId: string | null;
 }>();
 </script>

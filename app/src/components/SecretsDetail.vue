@@ -26,7 +26,7 @@
           <label class="block text-xs text-zinc-500 mb-1">Environment</label>
           <select v-model="editingSecret.env" class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white">
             <option value="">All Environments</option>
-            <option v-for="env in store.environments" :key="env.id" :value="env.id">{{ env.name }}</option>
+            <option v-for="env in environments" :key="env.id" :value="env.id">{{ env.name }}</option>
           </select>
         </div>
 
@@ -59,13 +59,16 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useAppStore } from '../stores';
+import { useEnvironmentsStore } from '../stores/environments';
 import { useSecretsStore } from '../stores/secrets';
 
 const store = useAppStore();
+const environmentsStore = useEnvironmentsStore();
 const secretsStore = useSecretsStore();
 
 const showSecretValue = ref(false);
 const editingSecret = ref<{ id: string; name: string; env: string; value: string }>({ id: '', name: '', env: '', value: '' });
+const environments = computed(() => environmentsStore.environments);
 
 const selectedSecret = computed(() => {
   if (!store.selectedSecretId) return null;

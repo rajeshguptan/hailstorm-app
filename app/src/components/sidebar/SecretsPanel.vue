@@ -14,7 +14,7 @@
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Search secrets (name, environment)..."
+              placeholder="Search secrets..."
               class="w-full px-3 py-2 pl-8 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
             >
             <svg class="absolute left-2 top-2.5 h-4 w-4 text-zinc-400 dark:text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -37,7 +37,6 @@
           <div class="flex items-center">
             <span class="text-sm text-zinc-900 dark:text-white">{{ secret.name || 'Unnamed' }}</span>
           </div>
-          <div class="text-xs text-zinc-500">{{ getEnvName(secret.env) }}</div>
         </div>
       </div>
     </div>
@@ -47,12 +46,10 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useAppStore } from '../../stores';
-import { useEnvironmentsStore } from '../../stores/environments';
 import { useSecretsStore } from '../../stores/secrets';
 import { logger } from '../../utils/logger';
 
 const appStore = useAppStore();
-const environmentsStore = useEnvironmentsStore();
 const secretsStore = useSecretsStore();
 
 const searchQuery = ref('');
@@ -68,18 +65,9 @@ const filteredSecrets = computed(() => {
 
   const query = searchQuery.value.toLowerCase().trim();
   return secrets.value.filter((secret) => {
-    return (
-      secret.name.toLowerCase().includes(query) ||
-      getEnvName(secret.env).toLowerCase().includes(query)
-    );
+    return secret.name.toLowerCase().includes(query);
   });
 });
-
-function getEnvName(envId: string): string {
-  if (!envId) return 'All';
-  const env = environmentsStore.environments.find(e => e.id === envId);
-  return env?.name || 'Unknown';
-}
 
 function saveSecrets() {
   if (!secretsStore.isUnlocked) return;

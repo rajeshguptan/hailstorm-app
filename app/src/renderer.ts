@@ -16,26 +16,64 @@ app.use(pinia);
 
 // Set up console capture right after pinia is active
 const store = useAppStore();
-
-console.log = (...args: any[]) => {
-  store.addConsoleLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'log');
+const originalConsole = {
+  log: console.log.bind(console),
+  info: console.info.bind(console),
+  warn: console.warn.bind(console),
+  error: console.error.bind(console),
+  debug: console.debug.bind(console),
+  table: console.table ? console.table.bind(console) : undefined
 };
 
-console.info = (...args: any[]) => {
-  store.addConsoleLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'info');
-};
+function formatConsoleValue(value: any): string {
+  if (value instanceof Error) {
+    return `${value.name}: ${value.message}${value.stack ? `\n${value.stack}` : ''}`;
+  }
 
-console.warn = (...args: any[]) => {
-  store.addConsoleLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'warn');
-};
+  if (typeof value === 'string') {
+    return value;
+  }
 
-console.error = (...args: any[]) => {
-  store.addConsoleLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'error');
-};
+  try {
+    return JSON.stringify(value);
+  } catch (error) {
+    return String(value);
+  }
+}
 
-console.debug = (...args: any[]) => {
-  store.addConsoleLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'debug');
-};
+function formatConsoleArgs(args: any[]): string {
+  return args.map(formatConsoleValue).join(' ');
+}
+
+function captureConsole(type: 'log' | 'info' | 'warn' | 'error' | 'debug', args: any[]) {
+  originalConsole[type](...args);
+  store.addConsoleLog(formatConsoleArgs(args), type);
+}
+
+console.log = (...args: any[]) => captureConsole('log', args);
+console.info = (...args: any[]) => captureConsole('info', args);
+console.warn = (...args: any[]) => captureConsole('warn', args);
+console.error = (...args: any[]) => captureConsole('error', args);
+console.debug = (...args: any[]) => captureConsole('debug', args);
+
+if (originalConsole.table) {
+  console.table = (...args: any[]) => {
+    originalConsole.table!(...args);
+    store.addConsoleLog(`table ${formatConsoleArgs(args)}`, 'log');
+  };
+}
+
+window.addEventListener('error', (event) => {
+  const message = event.error ? formatConsoleValue(event.error) : event.message;
+  originalConsole.error(message);
+  store.addConsoleLog(message, 'error');
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  const message = event.reason instanceof Error ? formatConsoleValue(event.reason) : formatConsoleValue(event.reason);
+  originalConsole.error(message);
+  store.addConsoleLog(message, 'error');
+});
 
 app.use(router);
 

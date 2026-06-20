@@ -327,6 +327,14 @@ const api = {
     await ipcRenderer.invoke('open-external-url', url);
   },
 
+  getDevToolsEnabled: async (): Promise<boolean> => {
+    return await ipcRenderer.invoke('get-dev-tools-enabled');
+  },
+
+  setDevToolsEnabled: async (enabled: boolean): Promise<boolean> => {
+    return await ipcRenderer.invoke('set-dev-tools-enabled', enabled);
+  },
+
   // ─── OAuth Token Management ───────────────────────────────────────────────────
   saveOAuthToken: async (requestId: string, token: string, expiry?: number): Promise<void> => {
     await ipcRenderer.invoke('save-oauth-token', { requestId, token, expiry });

@@ -25,6 +25,9 @@
  <div v-else-if="uiStore.activeSidebar === 'console'" class="main-content flex-1 flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
    <ConsolePanel />
  </div>
+ <div v-else-if="uiStore.activeSidebar === 'docs'" class="main-content flex-1 flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
+   <DocsPanel />
+ </div>
 
 <!-- Sidebar + main content layout -->
 <div v-else-if="showSidebarMain" class="flex-1 flex">
@@ -63,7 +66,7 @@
       </div>
       <div v-else class="relative ml-auto">
         <button
-          class="opacity-0 focus:opacity-100 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white text-lg leading-none px-2 py-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-800"
+          class="opacity-0 group-hover:opacity-100 focus:opacity-100 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white text-lg leading-none px-2 py-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-800"
           :class="{ 'opacity-100 bg-zinc-200 dark:bg-zinc-800': sideListMenuOpen }"
           title="Side list options"
           aria-label="Side list options"
@@ -209,6 +212,7 @@ import CollectionPanel from '../components/CollectionPanel.vue';
 import ShellScriptDetail from '../components/ShellScriptDetail.vue';
 import StatsPanel from '../components/StatsPanel.vue';
 import ConsolePanel from '../components/ConsolePanel.vue';
+import DocsPanel from '../components/DocsPanel.vue';
 import RunConfigsPanel from '../components/RunConfigsPanel.vue';
 import RunnerDetails from '../components/RunnerDetails.vue';
 
@@ -294,7 +298,8 @@ watch(
       '/secrets': 'secrets',
       '/stats': 'stats',
       '/runner': 'runner',
-      '/settings': 'settings'
+      '/settings': 'settings',
+      '/docs': 'docs'
     };
 
     const sidebarId = routeToSidebar[to];
@@ -317,6 +322,7 @@ const ribbonItems = computed(() => [
   { id: 'stats' as SidebarView, icon: '📊', label: 'Stats', route: '/stats' },
   { id: 'runner' as SidebarView, icon: '🏃', label: 'Runner', route: '/runner' },
   { id: 'console' as SidebarView, icon: '🖥️', label: 'Console', route: '/console' },
+  { id: 'docs' as SidebarView, icon: '📚', label: 'Docs', route: '/docs' },
   { id: 'settings' as SidebarView, icon: '⚙️', label: 'Settings', route: '/settings' },
 ]);
 

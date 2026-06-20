@@ -28,6 +28,14 @@ export default defineConfig({
       grepInvert: /load-testing|runner/,
     },
     {
+      name: 'docs-tests',
+      testMatch: '**/docs/**',
+    },
+    {
+      name: 'stats-tests',
+      testMatch: '**/stats/**',
+    },
+    {
       name: 'load-testing',
       testMatch: '**/load-testing.spec.ts',
       timeout: 120000, // Longer timeout for load tests

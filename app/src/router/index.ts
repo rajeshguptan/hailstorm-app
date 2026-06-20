@@ -9,6 +9,7 @@ import StatsView from '../views/StatsView.vue';
 import SettingsView from '../views/SettingsView.vue';
 import RunnerView from '../views/RunnerView.vue';
 import ConsoleView from '../views/ConsoleView.vue';
+import DocsView from '../views/DocsView.vue';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -53,6 +54,11 @@ const routes: RouteRecordRaw[] = [
         path: 'console',
         name: 'console',
         component: ConsoleView
+      },
+      {
+        path: 'docs',
+        name: 'docs',
+        component: DocsView
       }
     ]
   }

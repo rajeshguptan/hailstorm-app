@@ -8,8 +8,9 @@ export class AppLayout {
   readonly historyNav: Locator;
   readonly secretsNav: Locator;
   readonly statsNav: Locator;
-  readonly utilitiesNav: Locator;
   readonly runnerNav: Locator;
+  readonly consoleNav: Locator;
+  readonly docsNav: Locator;
   readonly settingsNav: Locator;
   readonly environmentSelect: Locator;
   readonly newEnvironmentNameInput: Locator;
@@ -22,8 +23,9 @@ export class AppLayout {
     this.historyNav = page.locator('button:has-text("History")');
     this.secretsNav = page.locator('button:has-text("Secrets")');
     this.statsNav = page.locator('button:has-text("Stats")');
-    this.utilitiesNav = page.locator('button:has-text("Utilities")');
     this.runnerNav = page.locator('button:has-text("Runner")');
+    this.consoleNav = page.locator('button:has-text("Console")');
+    this.docsNav = page.locator('button:has-text("Docs")');
     this.settingsNav = page.locator('button:has-text("Settings")');
     this.environmentSelect = page.locator('.sidebar-header select');
     this.newEnvironmentNameInput = page.locator('input[placeholder="Environment name"]');
@@ -75,14 +77,14 @@ export class AppLayout {
     await this.page.waitForURL('**/#/stats');
   }
 
-  async navigateToUtilities(): Promise<void> {
-    await this.utilitiesNav.click();
-    await this.page.waitForURL('**/#/utilities');
-  }
-
   async navigateToRunner(): Promise<void> {
     await this.runnerNav.click();
     await this.page.waitForURL('**/#/runner');
+  }
+
+  async navigateToDocs(): Promise<void> {
+    await this.docsNav.click();
+    await this.page.waitForURL('**/#/docs');
   }
 
   async navigateToSettings(): Promise<void> {

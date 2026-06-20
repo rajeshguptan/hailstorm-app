@@ -329,6 +329,28 @@
         </div>
       </div>
 
+      <div v-else-if="activeSection === 'developer-tools'" class="max-w-xl">
+        <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Developer Tools</h3>
+        <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">Enable Electron DevTools for debugging the renderer process.</p>
+
+        <div class="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
+          <div>
+            <div class="font-medium text-zinc-900 dark:text-white">Enable DevTools</div>
+            <div class="text-sm text-zinc-500 dark:text-zinc-400">Open the browser developer tools panel. Disabled by default.</div>
+          </div>
+          <button 
+            class="w-12 h-6 rounded-full transition-colors"
+            :class="devToolsEnabled ? 'bg-blue-500' : 'bg-zinc-300 dark:bg-zinc-600'"
+            @click="toggleDevTools"
+          >
+            <div 
+              class="w-5 h-5 bg-white rounded-full shadow transform transition-transform"
+              :class="devToolsEnabled ? 'translate-x-6' : 'translate-x-0.5'"
+            ></div>
+          </button>
+        </div>
+      </div>
+      
       <div v-else-if="activeSection === 'shortcuts'" class="max-w-xl">
         <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Keyboard Shortcuts</h3>
         <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">View and customize keyboard shortcuts</p>
@@ -447,7 +469,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useTheme } from '../composables/useTheme';
 import { useSecretsStore } from '../stores/secrets';
 import { useUIStore } from '../stores/ui';
@@ -472,6 +494,7 @@ const appItems = [
 
 const advancedItems = [
   { id: 'secrets', label: 'Secrets' },
+  { id: 'developer-tools', label: 'Developer Tools' },
   { id: 'shortcuts', label: 'Shortcuts' },
   { id: 'about', label: 'About' },
 ];
@@ -503,6 +526,34 @@ const shortcuts = [
   { action: 'Toggle Sidebar', keys: 'Ctrl + B' },
   { action: 'Search', keys: 'Ctrl + F' },
 ];
+
+const DEVTOOLS_STORAGE_KEY = 'hailstorm:devToolsEnabled';
+const devToolsEnabled = ref(false);
+
+async function loadDevToolsSetting() {
+  const stored = localStorage.getItem(DEVTOOLS_STORAGE_KEY);
+  if (stored !== null) {
+    devToolsEnabled.value = stored === 'true';
+    await window.api.setDevToolsEnabled(devToolsEnabled.value);
+    return;
+  }
+
+  devToolsEnabled.value = await window.api.getDevToolsEnabled();
+  localStorage.setItem(DEVTOOLS_STORAGE_KEY, String(devToolsEnabled.value));
+}
+
+watch(devToolsEnabled, async (enabled) => {
+  localStorage.setItem(DEVTOOLS_STORAGE_KEY, String(enabled));
+  await window.api.setDevToolsEnabled(enabled);
+});
+
+onMounted(() => {
+  loadDevToolsSetting();
+});
+
+function toggleDevTools() {
+  devToolsEnabled.value = !devToolsEnabled.value;
+}
 
 // Encryption key modal state
 const showSetKeyModal = ref(false);

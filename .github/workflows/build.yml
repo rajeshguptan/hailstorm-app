@@ -93,6 +93,34 @@ jobs:
           path: app/out/**/*.exe
           retention-days: 30
 
+  build-windows-arm64:
+    name: Build Windows arm64
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        working-directory: app
+        run: npm ci
+
+      - name: Build application
+        working-directory: app
+        run: npm run make -- --arch=arm64 --platform=win32
+
+      - name: Upload artifacts
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts
+          path: app/out/**/*.exe
+          retention-days: 30
+
   build-linux-x64:
     name: Build Linux
     runs-on: ubuntu-22.04
@@ -128,7 +156,7 @@ jobs:
 
   create-release:
     name: Create Release
-    needs: [build-macos-arm64, build-windows-x64, build-linux-x64]
+    needs: [build-macos-arm64, build-windows-x64, build-windows-arm64, build-linux-x64]
     runs-on: ubuntu-22.04
     if: ${{ github.event_name == 'release' }}
     steps:

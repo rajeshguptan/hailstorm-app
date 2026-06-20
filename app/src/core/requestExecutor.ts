@@ -36,6 +36,7 @@ interface RequestSnapshot {
   testScript?: string;
   variables?: VariableData[];
   dependsOn?: string;
+  isJsonRpc?: boolean;
 }
 
 interface RequestsStoreData {

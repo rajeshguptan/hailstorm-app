@@ -265,7 +265,57 @@ addGraphqlRequest(targetId: string, targetType: 'collection' | 'folder' = 'colle
 this.saveCollections();
      },
 
-addWebsocketRequest(targetId: string, targetType: 'collection' | 'folder' = 'collection') {
+addJsonRpcRequest(targetId: string, targetType: 'collection' | 'folder' = 'collection') {
+       const request: Request = {
+         id: this.generateId('req'),
+         name: 'New JSON-RPC Request',
+         method: 'POST',
+         url: '',
+         headers: [
+           { key: 'Content-Type', value: 'application/json', enabled: true }
+         ],
+         body: {
+           type: 'json',
+           content: '{\n  "jsonrpc": "2.0",\n  "method": "example_method",\n  "params": {},\n  "id": 1\n}'
+         },
+         isJsonRpc: true,
+         isWebSocket: false
+       };
+
+      if (targetType === 'collection') {
+        const collection = this.collections.find(c => c.id === targetId);
+        if (collection) {
+          collection.items.push(request);
+        }
+      } else if (targetType === 'folder') {
+        const addToItems = (items: any[]): boolean => {
+          for (const item of items) {
+            if (item.id === targetId) {
+              item.items.push(request);
+              return true;
+            }
+            if ('items' in item && item.items) {
+              if (addToItems(item.items)) {
+                return true;
+              }
+            }
+          }
+          return false;
+        };
+
+        for (const collection of this.collections) {
+          if (addToItems(collection.items)) {
+            break;
+          }
+        }
+      }
+
+this.saveCollections();
+const requestsStore = useRequestsStore();
+requestsStore.selectRequest(request.id);
+     },
+
+ addWebsocketRequest(targetId: string, targetType: 'collection' | 'folder' = 'collection') {
        const request: Request = {
          id: this.generateId('req'),
          name: 'New WebSocket Request',
