@@ -69,6 +69,8 @@ function setDevToolsEnabled(enabled: boolean) {
   } else {
     mainWindow.webContents.closeDevTools();
   }
+}
+
 function createWindow() {
   console.log('[MAIN] Creating main window...');
   console.log('[MAIN] App path:', app.getAppPath());
