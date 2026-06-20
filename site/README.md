@@ -1,25 +1,32 @@
 # Hailstorm Website
 
-This folder contains the static website for Hailstorm, ready for GitHub Pages hosting.
+This folder contains the static Hailstorm website used for GitHub Pages.
 
 ## Structure
 
-- `index.html` - Main landing page with YouTube video, features, licenses
-- `docs.html` - Documentation with Flowbite accordion
-- `changelog.html` - Changelog history
-- `license.html` - Business Source License details
-- `terms.html` - Terms and Conditions with liability disclaimer
-- `js/translations.js` - Multi-language support (EN, ES, FR, DE, JA, ZH, PT)
-- `CNAME` - Custom domain configuration (hailstorm.app)
-- `.nojekyll` - Bypass Jekyll processing
+| File | Purpose |
+| --- | --- |
+| `index.html` | Landing page with product overview, video, feature highlights, and licensing links |
+| `docs.html` | Product documentation |
+| `changelog.html` | Release history |
+| `license.html` | Business Source License details |
+| `terms.html` | Terms and conditions |
+| `js/translations.js` | Multi-language content support |
+| `CNAME` | Custom domain configuration for `hailstorm.app` |
+| `.nojekyll` | Disables Jekyll processing on GitHub Pages |
 
 ## Hosting on GitHub Pages
 
-1. Push this repository to GitHub
-2. Go to repository settings → Pages
-3. Set source to `main` branch, `/site` folder
-4. Configure custom domain via the CNAME file
+1. Push the repository to GitHub.
+2. Open repository **Settings > Pages**.
+3. Set the source to the `main` branch.
+4. Set the publishing folder to `/site`.
+5. Configure the custom domain using the `CNAME` file.
 
-## Testing Locally
+## Local testing
 
-In VS Code, install the "Live Server" extension and right-click `index.html` → "Open with Live Server".
+Use a local static server. For example, with VS Code Live Server:
+
+1. Install the Live Server extension.
+2. Right-click `index.html`.
+3. Select **Open with Live Server**.

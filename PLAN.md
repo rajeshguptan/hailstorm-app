@@ -1,86 +1,175 @@
-Phase 1: Project Scaffolding
+# Hailstorm Roadmap
 
-The goal here is to set up a modern development environment where Vue and Electron can communicate seamlessly.
+## Current state
 
-    Initialize the Project: Use a starter like electron-vite for a fast, pre-configured setup.
+Hailstorm is a local-first Electron + Vue 3 API client with support for HTTP, GraphQL, JSON-RPC, WebSocket, shell commands, environments, secrets, collection runners, and load-test reporting.
 
-        npm create electron-vite@latest (Select Vue).
+The current architecture is production-oriented:
 
-    Architecture Setup: * Main Process: Handles OS-level tasks, window management, and file system access.
+- Electron main process for privileged APIs and IPC.
+- Vue 3 renderer for the user interface.
+- Pinia stores for local-first state.
+- Secure preload bridge for renderer-to-main communication.
+- Vite and Electron Forge for development and packaging.
+- Playwright integration tests for UI flows.
 
-        Renderer Process: Your Vue.js application (the UI).
+## Completed foundation
 
-        Preload Script: The secure "bridge" that allows the UI to talk to the Main process via Inter-Process Communication (IPC).
+### Application shell
 
-Phase 2: Core UI Components (Vue.js)
+- Electron main process.
+- Vue 3 renderer.
+- Pinia stores.
+- Router and sidebar navigation.
+- Settings, docs, console, history, secrets, collections, request editor, runner, and stats views.
 
-Focus on a clean, functional layout. Tailwind CSS is highly recommended for building the complex, nested layouts required for an IDE-like experience.
+### Request execution
 
-    Sidebar: To manage "Collections" and "Request History."
+- HTTP requests.
+- GraphQL requests.
+- JSON-RPC requests.
+- WebSocket requests.
+- Shell command requests.
+- Variable substitution.
+- Basic, bearer, API key, NTLM-style, OAuth2, and inherited auth handling.
+- Request dependencies.
+- Request history.
 
-    Request Editor: * URL Bar + HTTP Method dropdown.
+### Collections and environments
 
-        Tabs for Headers, Body (JSON/Form-data), and Auth.
+- Collection and folder management.
+- Request creation from context menus.
+- Duplicate, copy, paste, rename, and delete actions.
+- Multiple environments.
+- Collection, environment, request, and secret variables.
+- File-based collection workflows.
 
-    Response Viewer:
+### Runner and load testing
 
-        Visualizer for JSON/HTML.
+- Run configurations.
+- Selected request execution.
+- Per-request RPS.
+- Repeated duration-based runs.
+- Stop active runs.
+- Live runner results.
+- Persistent completed load-test runs.
+- Stats panel with live and completed run views.
+- JSON and CSV export for completed runs.
 
-        Status code, execution time, and response size indicators.
+### Testing
 
-    Monaco Editor Integration: Use monaco-editor (the engine behind VS Code) for the JSON body input and response view to get syntax highlighting and linting.
+- Playwright integration suite.
+- Page object models.
+- Mocked preload API for deterministic UI tests.
+- Local mock server for HTTP, GraphQL, JSON-RPC, WebSocket, auth, and shell endpoints.
 
-Phase 3: The Request Engine
+## Near-term roadmap
 
-While you could use fetch in the renderer, using Axios in the Electron Main process provides more control over low-level network settings (like SSL certificates and proxying).
+### 1. Stabilize and expand tests
 
-    IPC Bridge: Create an IPC channel called send-request.
+Priority: high
 
-    Request Execution: When the user clicks "Send," the renderer sends the request object (URL, method, headers, body) to the Main process.
+- Add stable selectors and page object coverage for Runner and Stats.
+- Add tests for request execution edge cases.
+- Add tests for environment variable substitution.
+- Add tests for secrets behavior.
+- Add tests for load-test persistence and export.
+- Fix flaky tests that depend on external services.
 
-    Handling Results: The Main process executes the request, catches any errors, and sends the response back to the UI.
+### 2. Add CI command-line runner
 
-Phase 4: Local Storage Strategy
+Priority: high
 
-Since the requirement is to keep everything local, you have three primary options:
-Option	Best For	Implementation
-SQLite	High performance & relational data	Use better-sqlite3 in the Main process.
-Lowdb	Simple, human-readable JSON files	A small JSON-based database that lives in the user's "AppData" folder.
-File System (FS)	Maximum portability	Save collections as .json files directly to a user-selected folder.
+- Accept a RunConfig zip file containing collection, environment, and datafile configuration.
+- Execute the selected run configuration without opening the Electron UI.
+- Emit deterministic exit codes.
+- Write reports suitable for CI logs.
+- Preserve existing desktop runner behavior.
 
-Recommendation: Start with Lowdb or SQLite. These allow you to store history, environment variables, and collections without requiring a server.
-Phase 5: Key "Power User" Features
+### 3. Complete data-driven runner execution
 
-To make it a true Postman competitor, implement these core functionalities:
+Priority: high
 
-    Environment Variables: Create a system to store variables like {{base_url}} and swap them out dynamically during the request pre-processing stage.
+- Load CSV and JSON datafiles.
+- Map data rows to request variables.
+- Support row iteration in collection runs.
+- Record run metadata showing datafile usage.
 
-    Request History: Automatically save every successful request to your local DB with a timestamp.
+### 4. Finish test script execution
 
-    Collections: Allow users to group requests into folders.
+Priority: medium
 
-    Dark Mode: Since developers love dark themes, use Vue's reactivity to toggle CSS variables or Tailwind's dark class.
+- Execute pre-request and test scripts in a safer runtime.
+- Provide assertion results in the response panel.
+- Add script error reporting.
+- Avoid unsafe unrestricted script execution patterns.
 
-Phase 6: Deployment & Packaging
+### 5. Improve load-test reporting
 
-Once the app is functional, you need to turn it into a sharable executable.
+Priority: medium
 
-    Electron Builder: Use electron-builder to package the app for Windows, macOS, or Linux.
+- Calculate p50, p95, and p99 response times from persisted data.
+- Add richer JSON exports.
+- Add optional JUnit or Markdown export for CI.
+- Improve Stats chart labels and empty states.
 
-    App Icons: Generate .ico and .icns files for a professional look.
+## Medium-term roadmap
 
-    Auto-Updates: (Optional) Configure an update server or use GitHub Releases to push updates to your local installation.
+### 1. OpenAPI and documentation workflows
 
-Initial Technical Stack Checklist
+- Import OpenAPI/Swagger definitions.
+- Generate collections from API specs.
+- Generate Markdown documentation from collections.
+- Validate requests against schemas.
 
-    Framework: Vue 3 (Composition API)
+### 2. CI/CD integration
 
-    Desktop Wrapper: Electron
+- Command-line runner with report output.
+- Exit codes based on failures and assertions.
+- Configurable timeouts and retries.
+- JUnit, JSON, and Markdown reports.
 
-    State Management: Pinia (ideal for managing active requests and history)
+### 3. OAuth and advanced auth
 
-    Styling: Tailwind CSS
+- Complete user-facing OAuth2 flows.
+- Improve token refresh handling.
+- Add clearer auth error states.
 
-    HTTP Client: Axios
+### 4. Performance and reliability
 
-    Local DB: SQLite or Lowdb
+- Reduce large response memory usage.
+- Add streaming response handling where appropriate.
+- Improve load-test concurrency and rate limiting accuracy.
+- Add cancellation and cleanup safeguards.
+
+## Long-term roadmap
+
+### 1. Collaboration
+
+- Team workspaces.
+- Shared collections.
+- Permissions and roles.
+- Comments and review workflows.
+
+### 2. Monitoring
+
+- Scheduled API checks.
+- Uptime monitoring.
+- Alerting.
+- Performance trend dashboards.
+
+### 3. Enterprise readiness
+
+- SSO integration.
+- Audit logs.
+- Data residency options.
+- Security policy controls.
+- Compliance reporting.
+
+## Out-of-scope for current phase
+
+- gRPC support.
+- Native GitHub/Jira integrations.
+- AI-powered request generation.
+- Full team collaboration.
+- Enterprise governance and compliance.

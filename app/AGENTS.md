@@ -1,124 +1,90 @@
-# Kilo Agents for Hailstorm Frontend
+# Hailstorm Frontend Agent Guide
 
 ## Overview
-This document provides guidance on using Kilo agents with the Hailstorm app application.
 
-## Frontend Structure
-- `/app/src/components` - Vue components
-- `/app/src/views` - Page-level components
-- `/app/src/stores` - Pinia state management
-- `/app/src/router` - Router configuration
-- `/app/src/core` - Execution engine and IPC handlers
-- `/app/src/types` - TypeScript interfaces
-- `/app/src/preload.ts` - IPC bridge
-- `/app/src/main.ts` - Electron main process
-- `/app/scripts/mock-server.js` - Local mock server for request-type testing
+This guide is for agents working in the Hailstorm Electron + Vue 3 application. Keep changes local-first, type-safe, and aligned with the existing separation between renderer UI, Pinia stores, preload IPC, and Electron main-process execution.
 
-## Request Support
-- HTTP requests use method, URL, headers, body, auth, variables, and scripts.
-- GraphQL requests use POST, JSON body type `graphql`, query editor, variables, and operation name.
-- JSON-RPC requests use `isJsonRpc`, POST, `Content-Type: application/json`, and a JSON-RPC 2.0 body.
-- WebSocket requests use `isWebSocket` and the WebSocket execution path.
-- Shell requests use method `SHELL` and the command in the URL field.
+## Project structure
 
-## Collection and Context Menu Patterns
-- Collection and folder context menu actions are implemented in `components/ContextMenu.vue`.
-- New request creation actions live in `stores/collections.ts`.
-- Request tree badges are rendered by `components/TreeNode.vue`; add new badge logic there when adding request types.
+| Path | Purpose |
+| --- | --- |
+| `app/src/components` | Reusable Vue 3 components |
+| `app/src/views` | Page-level views |
+| `app/src/router` | Vue Router configuration |
+| `app/src/stores` | Pinia state modules |
+| `app/src/core` | Request execution, IPC handlers, runner, load-test persistence |
+| `app/src/types` | Shared TypeScript interfaces |
+| `app/src/preload.ts` | Secure `contextBridge` IPC API |
+| `app/src/main.ts` | Electron main process entry point |
+| `app/scripts/mock-server.js` | Local mock server for integration tests |
 
-## Mock Server
-Run the local mock server from `app/` with:
+## Request support
+
+- **HTTP**: method, URL, query params, headers, body, auth, variables, scripts, history, and response display.
+- **GraphQL**: stored as POST requests with `body.type === 'graphql'`, query editor, variables, and operation name support.
+- **JSON-RPC**: stored as POST requests with `isJsonRpc`, JSON body content, and an RPC badge in the collection tree.
+- **WebSocket**: requests use `isWebSocket` and route through the WebSocket execution path.
+- **Shell**: requests use method `SHELL`; the URL field stores the command.
+
+## Collection and context menu patterns
+
+- Context menus are implemented in `components/ContextMenu.vue`.
+- Request creation actions live in `stores/collections.ts`.
+- Collection tree rendering and badges live in `components/TreeNode.vue`.
+- When adding a new request type or badge, update both the collection action and the tree badge renderer.
+
+## Mock server
+
+Start the local mock server from `app/` with:
 
 ```bash
 npm run mock-server
 ```
 
-The server listens on `http://127.0.0.1:4010` by default and includes endpoints for HTTP methods/status/delay/auth/body types, GraphQL, JSON-RPC, WebSocket echo/chat, OAuth token, and shell command examples.
+The server listens on `http://127.0.0.1:4010` by default and includes endpoints for HTTP methods/status/delay/auth/body types, GraphQL, JSON-RPC, WebSocket echo/chat, OAuth token retrieval, and shell command examples.
 
 ## Settings and Electron
+
 - Developer Tools are disabled by default in `main.ts`.
 - The renderer setting is in `SettingsContent.vue` under Advanced > Developer Tools.
 - Use the preload API methods `getDevToolsEnabled()` and `setDevToolsEnabled(enabled)` to toggle DevTools through IPC.
 
 ## Secrets
-- The Secrets panel list should display only secret names.
+
+- The Secrets list should display only secret names.
 - The Secrets detail environment dropdown must use `environmentsStore.environments`.
-- Secret values remain encrypted in localStorage when saved.
+- Secret values remain encrypted in local storage when saved.
+- Do not log secret values or expose them through renderer APIs.
 
-## Stats
-- The Stats panel run selector should fill available header width with `flex-1`.
-- Response-time charts use progressive line animation via `progressiveLineAnimation` in `StatsPanel.vue`.
+## Runner and load testing
 
-## Available Agents
+- Run configurations are stored in `stores/runner.ts`.
+- Runner UI and request selection are implemented in `components/RunnerDetails.vue`.
+- Load-test orchestration lives in `core/runnerEngine.ts`.
+- Load-test persistence and metrics live in `core/loadTestingService.ts`.
+- The Stats panel renders live and completed run data in `components/StatsPanel.vue`.
 
-### General Agent
-Use for complex, multi-step tasks that require research and execution.
-Best for: Refactoring, feature implementation, bug fixes requiring multiple file changes.
+## Coding conventions
 
-### Explore Agent
-Use for quickly exploring the codebase to find specific patterns or understand architecture.
-Best for: Finding where specific functionality is implemented, understanding test organization.
-
-## Common Tasks for Frontend Development
-
-### Exploring the Codebase
-```
-Task: Find all Vue components related to request building
-Agent: explore
-Prompt: "Find all Vue components in app/src/components related to request building"
-```
-
-### Making Changes
-```
-Task: Add a new feature to the request panel
-Agent: general
-Prompt: "Add support for GraphQL queries in the RequestPanel component"
-```
-
-### Debugging
-```
-Task: Fix an issue with environment variable substitution
-Agent: general
-Prompt: "Investigate and fix environment variable substitution not working in request URLs"
-```
-
-## Project-Specific Guidelines
-
-### Component Development
-- Components are in `app/src/components`
-- Follow Vue 3 Composition API with `<script setup>`
-- Use Tailwind CSS for styling
-- Components should be reusable and focused
-
-### State Management
-- State management uses Pinia in `app/src/stores`
-- Follow the existing store patterns
-- Actions should be async when dealing with IPC
-- Getters for computed values
-
-### Core Logic
-- Business logic is modularized in `app/src/core/`:
-  - `executionEngine.ts` - Main entry point, re-exports from other modules
-  - `loadTestingService.ts` - Load test data persistence and metrics
-  - `requestExecutor.ts` - Core request execution with variable substitution
-  - `httpClient.ts` - HTTP/HTTPS request handling with rate limiting
-  - `authHandler.ts` - Authentication and variable substitution utilities
-  - `ipcHandlers.ts` - IPC handlers organized by functionality
-  - `httpExecutor.ts` - Token bucket rate limiting and utility functions
-  - `runnerEngine.ts` - Load test orchestration
-  - `runnerWorker.ts` - Worker thread for parallel execution
-  - `workerThreadPool.ts` - Thread pool management
-- IPC communication handled through preload script
-- Main process in `app/src/main.ts`
-- Keep UI logic separate from core execution logic
-
-### Styling
-- Styles use Tailwind CSS
-- Follow existing utility class patterns
-- Use dark mode variants appropriately
-- Maintain consistent spacing and typography
+- Use Vue 3 Composition API with `<script setup lang="ts">`.
+- Use Tailwind CSS for styling and follow existing utility-class patterns.
+- Use Pinia stores for shared state.
+- Keep IPC-facing actions async when they call `window.api`.
+- Keep privileged Node/Electron APIs in the main process.
+- Keep renderer UI logic in components/stores and business logic in `app/src/core`.
+- Prefer small, focused changes over broad rewrites.
 
 ## Validation
-- Use `npm run mock-server` in `app/` to start local test endpoints.
-- Use `npx vite build` in `app/` for renderer build validation.
-- `npm run lint` currently fails because `.eslintrc.js` is loaded as an ES module under the package `"type": "module"` configuration.
+
+Run commands from `app/` unless otherwise noted.
+
+```bash
+npm run mock-server
+npx vite build
+npm run make
+```
+
+Notes:
+
+- `npm run dev` starts the Vite dev server used by Playwright integration tests.
+- `npm run lint` is currently unreliable because `.eslintrc.js` is loaded as an ES module under the package `"type": "module"` setting.

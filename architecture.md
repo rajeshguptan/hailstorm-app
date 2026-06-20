@@ -1,68 +1,113 @@
 # Hailstorm Application Architecture
 
 ## Overview
-Hailstorm is an Electron-based desktop application for API testing and development. The application follows a modular architecture separating UI concerns from core execution logic.
 
-## High-Level Architecture
+Hailstorm is a local-first Electron desktop application for API development, testing, automation, and load testing. It uses Vue 3 for the renderer UI, Pinia for state, a secure preload bridge for IPC, and Node.js/Electron main-process modules for privileged execution.
 
-### 1. Main Process (Electron Main)
-- Responsible for application lifecycle management
-- Creates and manages BrowserWindow instances
-- Handles inter-process communication (IPC) for core functionality
-- Provides access to Node.js APIs and system resources
+## Process model
 
-### 2. Renderer Process (Electron Renderer)
-- Runs the Vue.js frontend application
-- Manages user interface and user interactions
-- Communicates with main process via IPC for privileged operations
+### Electron main process
 
-### 3. Core Execution Engine
-- Encapsulates all business logic for API testing functionality
-- Handles HTTP/HTTPS requests
-- Manages shell command execution
-- Provides file import/export capabilities
-- Exposed to renderer process via IPC bridge
+**Entry point:** `app/src/main.ts`
 
-### 4. Preload Script
-- Securely exposes necessary APIs to renderer process
-- Uses contextBridge for safe IPC exposure
-- Defines interfaces for core functionality
+Responsibilities:
 
-## Component Structure
+- Application lifecycle.
+- BrowserWindow creation.
+- IPC handler registration.
+- File dialogs and external URL handling.
+- OAuth callback handling.
+- Access to Node.js APIs such as filesystem, child processes, and network requests.
 
-### Main Process Components
-- `main.ts`: Application entry point, window management, IPC handler registration
-- `core/executionEngine.ts`: Core business logic for HTTP requests, shell commands, file operations
+### Renderer process
 
-### Renderer Process Components
-- `src/App.vue`: Root application component
-- `src/router/index.ts`: Vue Router configuration defining application routes
-- `src/layouts/AppLayout.vue`: Main application layout with sidebar and content areas
-- `src/views/`: Page-level components for different application sections
-- `src/components/`: Reusable UI components
-- `src/stores/`: Pinia state management modules
-- `src/types/`: TypeScript type definitions
-- `src/preload.ts`: IPC bridge exposing safe APIs to renderer
+**Root:** `app/src/App.vue`
 
-## Communication Flow
+Responsibilities:
 
-1. **UI Interaction**: User interacts with Vue components in renderer process
-2. **IPC Request**: Components use exposed `window.api` methods to send IPC requests
-3. **Main Process Handling**: IPC handlers in `main.ts` or `core/executionEngine.ts` process requests
-4. **Business Logic**: Core execution engine performs requested operations
-5. **Response**: Results sent back to renderer process via IPC
-6. **UI Update**: Components update state and re-render based on response data
+- Vue router and layout.
+- Collection, request, history, secrets, runner, stats, console, docs, and settings views.
+- User interactions and local UI state.
+- Calls into privileged functionality through the preload `window.api` surface.
 
-## Key Design Principles
+### Preload bridge
 
-1. **Separation of Concerns**: UI logic separated from business logic
-2. **Security**: Preload script limits exposed APIs to only what's necessary
-3. **Modularity**: Core functionality encapsulated in reusable modules
-4. **Electron Best Practices**: Proper use of main/renderer process separation
-5. **Type Safety**: Extensive use of TypeScript for compile-time safety
+**File:** `app/src/preload.ts`
 
-Refactor store into domain-specific modules
-Implement secure script execution with VM2
-Split large components and add error boundaries
-Complete Playwright tests and add Vitest unit tests
-Add input validation and improve performance for large responses
+Responsibilities:
+
+- Expose a typed, safe `window.api` object to the renderer.
+- Forward renderer requests to `ipcMain` handlers.
+- Keep Node/Electron APIs out of renderer code.
+
+## Core modules
+
+| Module | Purpose |
+| --- | --- |
+| `app/src/core/executionEngine.ts` | Re-exports execution entry points and initializes IPC handlers |
+| `app/src/core/ipcHandlers.ts` | Main-process IPC handlers for requests, files, secrets, OAuth, and load testing |
+| `app/src/core/requestExecutor.ts` | Request preparation, variable substitution, auth, dependency execution, shell execution, and response history |
+| `app/src/core/httpClient.ts` | HTTP/HTTPS request handling and rate limiting |
+| `app/src/core/httpExecutor.ts` | Token bucket rate limiting and request flattening utilities |
+| `app/src/core/authHandler.ts` | Variable substitution and auth helpers |
+| `app/src/core/runnerEngine.ts` | Runner and load-test orchestration |
+| `app/src/core/loadTestingService.ts` | Persistent load-test run storage, metrics, time series, and exports |
+| `app/src/core/runnerWorker.ts` | Lightweight worker-thread HTTP request helper |
+
+## Renderer structure
+
+| Area | Purpose |
+| --- | --- |
+| `app/src/views` | Page-level screens |
+| `app/src/components` | Reusable UI components |
+| `app/src/stores` | Pinia modules for collections, requests, environments, secrets, runner, load testing, UI, and app state |
+| `app/src/router` | Application routes |
+| `app/src/types` | Shared TypeScript interfaces |
+
+## Communication flow
+
+1. User interacts with a Vue component.
+2. The component updates a Pinia store or calls a preload API method.
+3. The preload bridge sends an IPC message to the main process.
+4. The main-process handler runs privileged logic.
+5. Results return through IPC.
+6. The renderer updates state and re-renders.
+
+## Data storage
+
+Hailstorm is local-first.
+
+- Collections, requests, environments, secrets, run configurations, and UI state are persisted from renderer stores.
+- Load-test runs are persisted by `loadTestingService` in the app data directory.
+- File-based collection storage is available through collection import/export and workspace file flows.
+
+## Security principles
+
+- Keep privileged APIs in the main process.
+- Expose only required methods through `contextBridge`.
+- Do not pass raw Node/Electron objects to the renderer.
+- Do not log secrets.
+- Keep secret values encrypted in local storage and only decrypt when the secrets vault is unlocked.
+- Validate file paths and dialog inputs in main-process handlers.
+
+## Development conventions
+
+- Use Vue 3 Composition API with `<script setup lang="ts">`.
+- Use Tailwind CSS for UI styling.
+- Keep UI logic in components and stores.
+- Keep execution logic in `app/src/core`.
+- Use async store actions when calling IPC.
+- Prefer small, focused changes that preserve the Electron/Vue boundary.
+
+## Validation
+
+Run from `app/`:
+
+```bash
+npm run dev       # Start Vite dev server for integration tests
+npm run mock-server
+npx vite build
+npm run make
+```
+
+`npm run lint` is currently unreliable because `.eslintrc.js` is loaded as an ES module under the package `"type": "module"` setting.

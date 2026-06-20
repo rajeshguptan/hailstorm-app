@@ -1,29 +1,37 @@
-## Theme Testing
+# Theme Testing
 
-### Overview
-This test suite covers the theme functionality implemented in Hailstorm, including:
-- Theme persistence across app restarts
-- Theme switching in settings panel
-- System theme detection and application
-- Visual consistency across UI elements
+## Overview
 
-### Test Structure
-- **Theme Persistence**: Tests that themes are saved and restored correctly
-- **Theme Switching**: Tests the settings panel theme selection functionality
-- **Settings Panel Navigation**: Tests UI elements and navigation
-- **Theme Visual Consistency**: Tests that themes are applied consistently
+The theme tests verify that Hailstorm applies and persists light, dark, and system theme settings consistently across the application.
 
-### Running Tests
-To run these tests, you need:
-1. Start the development server: `cd frontend && npm run dev`
-2. In another terminal, run tests: `cd integration-tests && npm test -- theme.spec.ts`
+## Coverage
 
-### Test Coverage
-✅ Theme loads and applies on app startup
-✅ Theme persists across page reloads/app restarts
-✅ Light, dark, and system themes work correctly
-✅ System theme follows OS preference
-✅ Settings panel shows current theme selection
-✅ Theme switching in settings is immediate and persistent
-✅ Theme classes are applied to main UI elements
-✅ Theme consistency across navigation
+- Theme is applied on app startup.
+- Theme preference persists across reloads and restarts.
+- Light, dark, and system theme modes are supported.
+- System theme changes are reflected in the app.
+- Settings panel displays the current theme selection.
+- Theme switching updates the UI immediately.
+- Theme classes are applied consistently to core layout elements.
+- Navigation between views preserves the selected theme.
+
+## Running tests
+
+Start the app dev server from `app/`:
+
+```bash
+cd ../app
+npm run dev
+```
+
+Run the theme spec from `e2e/`:
+
+```bash
+npx playwright test tests/theme.spec.ts
+```
+
+Run only the theme project if configured in your local Playwright config:
+
+```bash
+npx playwright test tests/theme.spec.ts --project=theme-tests
+```

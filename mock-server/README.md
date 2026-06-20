@@ -1,47 +1,68 @@
-# Mock API Server for Hailstorm
+# Hailstorm Mock API Server
 
-A simple mock API server that satisfies the test collection endpoints using an in-memory Map store.
+A standalone Express-based mock API server for testing API client behavior outside the Electron app. It provides deterministic HTTP endpoints, upload handling, health checks, and optional rate-limit metadata.
+
+This server is separate from `app/scripts/mock-server.js`, which is the local test server bundled with the Hailstorm app.
 
 ## Setup
 
-1. Install dependencies:
+Install dependencies:
+
 ```bash
-cd mock-server
 npm install
 ```
 
-2. Start the server:
+Start the server:
+
 ```bash
 npm start
 ```
 
-The server will run on `http://localhost:3001` by default.
+The server listens on `http://localhost:3001` by default.
+
+## Available scripts
+
+```bash
+npm start   # Start the mock server
+npm dev     # Start the mock server in development mode
+npm test    # Run endpoint smoke tests
+```
 
 ## Files
 
-- `server.js` - Main Express server implementation
-- `mock-collection.json` - Postman collection for testing the mock API
-- `openapi-spec.json` - OpenAPI 3.0 specification for the API
-- `test.js` - Test script to verify endpoints
-- `README.md` - This documentation
+| File | Purpose |
+| --- | --- |
+| `server.js` | Express server implementation |
+| `mock-collection.json` | Postman collection for exercising the mock API |
+| `openapi-spec.json` | OpenAPI 3.0 specification |
+| `test.js` | Smoke test script |
+| `README.md` | This documentation |
 
-## Rate Limiting
+## Rate limiting
 
-The server implements token bucket algorithm for rate limiting per request:
+The server includes token-bucket rate limiting metadata for request scenarios.
 
-- **Token Bucket**: Each request ID maintains its own token bucket
-- **Refill Rate**: Tokens are added at the configured RPS rate
-- **Burst Capacity**: Maximum tokens equals the RPS setting
-- **Headers**: Rate limit headers are included in responses
+- Each request identifier maintains its own bucket.
+- Tokens refill at the configured RPS rate.
+- Burst capacity equals the configured RPS.
+- Responses include rate-limit headers when applicable.
 
-### Usage with Hailstorm
+### Configure RPS
 
-1. Set RPS per request in the RunnerPanel (RPS column)
-2. The RPS setting will be automatically enforced by the mock server
+```bash
+curl -X POST http://localhost:3001/rps/my-request \
+  -H "Content-Type: application/json" \
+  -d '{"rps": 10}'
+```
 
-### Rate Limit Response
+### Inspect RPS settings
 
-When rate limited (HTTP 429):
+```bash
+curl http://localhost:3001/rps
+```
+
+### Rate-limit response shape
+
 ```json
 {
   "error": "Rate limit exceeded",
@@ -50,155 +71,30 @@ When rate limited (HTTP 429):
 }
 ```
 
-### Response Headers
+### Response headers
 
-Successful requests include:
-- `X-RateLimit-Limit`: Maximum RPS
-- `X-RateLimit-Remaining`: Remaining tokens
-- `X-RateLimit-Reset`: Reset timestamp
+Successful responses include:
 
-### Manual RPS Configuration
-
-You can also manually configure RPS limits:
-
-```bash
-# Set RPS for a specific request
-curl -X POST http://localhost:3001/rps/my-request \
-  -H "Content-Type: application/json" \
-  -d '{"rps": 10}'
-
-# Check current RPS settings
-curl http://localhost:3001/rps
-```
+- `X-RateLimit-Limit`
+- `X-RateLimit-Remaining`
+- `X-RateLimit-Reset`
 
 ## Testing
 
-Run the included test script to verify all endpoints work correctly:
+Run the included smoke tests:
 
 ```bash
 npm test
 ```
 
-## API Documentation
+## API documentation
 
-The API is fully documented in `openapi-spec.json` following the OpenAPI 3.0 specification. You can import this file into tools like Swagger UI, Postman, or any OpenAPI-compatible documentation viewer.
+The API is documented in `openapi-spec.json` using OpenAPI 3.0. Import this file into Swagger UI, Postman, Insomnia, or another OpenAPI-compatible tool.
 
-## Endpoints
+## Data storage
 
-### GET /users
-Returns a list of all users in the system.
+The server uses in-memory storage. Data is available only while the process is running and is reset on restart.
 
-**Response:**
-```json
-[
-  {
-    "id": 1,
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "createdAt": "2023-12-01T10:00:00.000Z"
-  }
-]
-```
+## Usage with Hailstorm
 
-### POST /users
-Creates a new user.
-
-**Request Body:**
-```json
-{
-  "name": "John Doe",
-  "email": "john@example.com"
-}
-```
-
-**Response:**
-```json
-{
-  "id": 2,
-  "name": "John Doe",
-  "email": "john@example.com",
-  "createdAt": "2023-12-01T10:30:00.000Z"
-}
-```
-
-### POST /upload
-Handles file uploads with optional description.
-
-**Form Data:**
-- `file`: The file to upload
-- `description`: Optional description text
-
-**Response:**
-```json
-{
-  "message": "File uploaded successfully",
-  "data": {
-    "success": true,
-    "filename": "example.txt",
-    "size": 1024,
-    "description": "Test file",
-    "uploadedAt": "2023-12-01T11:00:00.000Z"
-  }
-}
-```
-
-### GET /health
-Health check endpoint with rate limiting status.
-
-**Response:**
-```json
-{
-  "status": "OK",
-  "timestamp": "2023-12-01T12:00:00.000Z",
-  "usersCount": 2,
-  "rateLimiting": {
-    "user-creation": {
-      "rps": 5,
-      "tokens": 4.2,
-      "capacity": 5
-    }
-  }
-}
-```
-
-### POST /rps/{requestId}
-Set RPS (requests per second) limit for a specific request.
-
-**Request Body:**
-```json
-{
-  "rps": 10
-}
-```
-
-**Response:**
-```json
-{
-  "requestId": "user-creation",
-  "rps": 10,
-  "message": "RPS updated successfully"
-}
-```
-
-### GET /rps
-Get rate limiting status for all requests.
-
-**Response:**
-```json
-{
-  "user-creation": {
-    "rps": 10,
-    "tokens": 8.5,
-    "capacity": 10,
-    "lastRefill": "2023-12-01T12:00:00.000Z"
-  }
-}
-```
-
-## Data Storage
-
-The server uses an in-memory Map to store user data. Data persists only during the server runtime and is lost when the server restarts.
-
-## Testing with Hailstorm
-
-Update your test collection URLs from `https://api.example.com` to `http://localhost:3001` to test against this mock server.
+Use this server when you want to test Hailstorm against a stable local backend without relying on external services. Replace remote endpoint URLs with `http://localhost:3001` for local API client tests.

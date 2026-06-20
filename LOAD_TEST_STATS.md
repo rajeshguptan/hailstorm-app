@@ -1,49 +1,95 @@
 # Load Test Stats Storage
 
-Stats are handled through a **dual-layer approach**: in-memory rolling windows for live updates plus persistent file-based storage for data durability.
+Hailstorm stores load-test metrics in two layers:
 
-## 1. In-Memory (Live Updates)
+1. A renderer-side rolling window for live Stats updates.
+2. A main-process file store for completed runs and exportable results.
+
+## Renderer live metrics
 
 **Location:** `app/src/stores/loadTest.ts`
 
-The `liveStats` state object tracks real-time counters:
+The `loadTestStore` keeps live counters and chart data while a run is active.
 
-- `totalRequests`, `successfulRequests`, `failedRequests`
-- `avgResponseTime`, `requestsPerSecond`
-- `recentRequests` array (last 50 requests with details)
+### Live counters
 
-**Rolling Window:** A 5-minute sliding window keeps aggregated metrics per second:
+- `totalRequests`
+- `successfulRequests`
+- `failedRequests`
+- `avgResponseTime`
+- `requestsPerSecond`
+- `startTime`
+- `recentRequests`
 
-- Stored in `rollingWindowData` (array of `{timestamp, requests, errors, responseTimes[]}`)
-- Per-request-name breakdown in `rollingWindowByRequestData`
-- Auto-capped to prevent memory growth (300 buckets max, 100 response times per bucket)
+### Rolling chart window
 
-## 2. Persistent Storage (Survives App Restart)
+The store keeps a five-minute sliding window of one-second buckets:
 
-**Location:** `app/src/core/executionEngine.ts` → `LoadTestingService`
+- `rollingWindowData`: aggregated request, error, and response-time data.
+- `rollingWindowByRequestData`: the same data split by request name.
+- `maxRollingWindowSize`: 300 buckets.
+- Per-bucket response times are capped to avoid unbounded memory growth.
 
-Stats are written to disk every 100 requests:
+The Stats panel reads these values to render live request volume, error volume, and response-time charts.
 
-- **`runs.json`** — Run metadata and counters
-- **`request_index.json`** — Index of all requests (status, latency, timestamp)
-- **`run_metrics.json`** — Time-bucketed aggregated metrics
-- **`detail_chunks.json`** — References to compressed request/response details
-- **Individual gzipped files** — Full request/response for failed requests (status ≥ 500)
+## Main-process persistence
 
-## 3. Worker Thread Architecture
+**Location:** `app/src/core/loadTestingService.ts`
 
-**How it avoids blocking:**
+Completed load-test runs are persisted under the app data directory:
 
-- HTTP requests execute in Node.js worker threads (`runnerWorker.ts`)
-- Thread pool size = CPU cores (via `workerThreadPool.ts`)
-- Results stream back through IPC callbacks to update `liveStats`
+- Development: `<repo>/app/data/load-tests`
+- Packaged app: `~/.hailstorm/load-tests`
 
-## 4. Memory Management Strategy
+### Stored files
 
-| Component | Strategy |
-|-----------|----------|
-| `liveStats` | Simple counters, negligible memory |
-| `rollingWindowData` | Capped at 300 entries (5 min × 60 sec) |
-| `recentRequests` | Fixed 50-entry array |
-| `requestIndex` | Persisted to disk every 100 requests |
-| Request details | Only kept for errors; other data gzipped to files |
+| File | Purpose |
+| --- | --- |
+| `runs.json` | Run metadata, counters, start time, end time, and status |
+| `request_index.json` | Compact index of every recorded request |
+| `run_metrics.json` | Reserved for future time-bucketed metrics |
+| `detail_chunks.json` | References to compressed request/response detail files |
+| `<runId>/` directory | Gzipped detail files for requests that need full capture |
+
+### Request index fields
+
+Each request index entry includes:
+
+- `runId`
+- `requestId`
+- `requestName`
+- HTTP method
+- URL and URL hash
+- status code
+- latency
+- response size
+- error flag
+- timestamp
+- sequence number
+
+## Run lifecycle
+
+1. `startRun()` creates a running run record and writes it to `runs.json`.
+2. `recordRequest()` appends request index entries and updates counters.
+3. Every 100 recorded requests, data is flushed to disk.
+4. `endRun()` marks the run completed, sets `endTime`, and saves the final state.
+5. `getRunStats()` recalculates totals, error rate, averages, min/max latency, and throughput from the request index.
+6. `getTimeSeriesData()` and `getTimeSeriesDataByRequest()` return one-minute buckets for charts.
+7. `exportRunData()` exports JSON or CSV output for a completed run.
+
+## Stats calculations
+
+- Total requests: number of request index entries for the run.
+- Successful requests: entries where `error` is false.
+- Failed requests: entries where `error` is true.
+- Error rate: `(failedRequests / totalRequests) * 100`.
+- Average response time: mean request latency.
+- Min/max response time: minimum and maximum recorded latency.
+- Requests per second: `totalRequests / durationSeconds`.
+
+## Memory management
+
+- Live Stats data is capped by time and bucket count.
+- Full request/response details are stored only when capture is requested.
+- Captured detail files are compressed with gzip.
+- Completed run metadata and request indexes are stored on disk so Stats remains available after app restart.
