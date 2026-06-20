@@ -6,7 +6,6 @@
       class="flex items-center py-1 px-2 rounded cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 group relative"
       :class="isSelected ? 'bg-blue-100 dark:bg-blue-800' : ''"
       @click="handleItemClick"
-      @contextmenu.prevent.stop="showContextMenu($event)"
       role="button"
       tabindex="0"
       draggable="true"

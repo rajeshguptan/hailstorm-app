@@ -13,9 +13,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
         </svg>
       </div>
-      <button v-if="history.length > 0" class="w-full px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded text-sm font-medium cursor-pointer" @click="clearHistory">Clear History</button>
     </div>
-
     <div v-if="filteredHistory.length === 0" class="text-center text-zinc-400 dark:text-zinc-500 py-4">
       {{ searchQuery ? 'No matching requests found' : 'No requests yet' }}
     </div>
@@ -99,9 +97,5 @@ function formatTimestamp(timestamp: number): string {
 function handleHistoryClick(item: HistoryItem) {
   logger.debug('[HISTORY_PANEL] History item clicked:', item);
   historyStore.loadFromHistory(item);
-}
-
-function clearHistory() {
-  historyStore.clearHistory();
 }
 </script>

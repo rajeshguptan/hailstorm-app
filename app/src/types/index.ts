@@ -329,7 +329,8 @@ export interface SubSetting {
   icon: string;
 }
 
-export type SidebarView = 'collections' | 'history' | 'secrets' | 'stats' | 'runner' | 'settings';
+export type SidebarView = 'collections' | 'history' | 'secrets' | 'stats' | 'runner' | 'console' | 'settings';
+
 
 export type RequestTab = 'params' | 'auth' | 'headers' | 'body' | 'variables' | 'scripts' | 'description';
 export type ResponseTab = 'body' | 'headers' | 'tests';

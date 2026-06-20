@@ -11,6 +11,7 @@ const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     icon: 'build/hailstorm.png',
+    executableName: 'hailstorm',
     // Build for both x64 and arm64 on all platforms
     // Note: Cross-compilation requires appropriate toolchains
   },

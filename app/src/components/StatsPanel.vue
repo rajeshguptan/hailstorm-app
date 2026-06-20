@@ -1,55 +1,50 @@
 <template>
   <div class="stats-panel h-full flex flex-col bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300">
     <div class="stats-header px-4 py-2 bg-zinc-100 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700">
-      <div class="flex items-center justify-between">
-        <h3 class="font-semibold text-zinc-900 dark:text-white">Load Test Stats</h3>
+      <div class="flex items-center justify-between gap-3">
+        <select
+          v-model="selectedRunId"
+          class="form-select bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 min-w-[220px]"
+        >
+          <option value="">Current Run (Live)</option>
+          <option v-for="run in completedRuns" :key="run.id" :value="run.id">
+            {{ run.name }} ({{ new Date(run.startTime).toLocaleString() }})
+          </option>
+        </select>
         <div class="flex gap-2">
           <button
             @click="printStats"
             class="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-            :disabled="!currentRun"
+            :disabled="!currentRun && completedRuns.length === 0"
           >
             Print
           </button>
           <button
             @click="exportStats"
             class="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
-            :disabled="!currentRun"
+            :disabled="!selectedRunId && !currentRun"
           >
             Export JSON
           </button>
-          </div>
+          <button
+            @click="deleteRun(selectedRunId)"
+            :disabled="!selectedRunId"
+            class="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Delete
+          </button>
+          <button
+            @click="deleteAllRuns"
+            :disabled="completedRuns.length === 0"
+            class="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Delete all
+          </button>
         </div>
       </div>
+    </div>
 
     <div class="stats-content flex-1 overflow-auto">
-      <!-- Run Selector -->
-      <div class="px-6 py-4 border-b border-zinc-200 dark:border-zinc-700">
-        <div class="flex items-center gap-4">
-          <div class="flex items-center gap-2 flex-1">
-            <label class="text-sm text-zinc-600 dark:text-gray-400 whitespace-nowrap">Select Run</label>
-            <select
-              v-model="selectedRunId"
-              class="form-select bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1"
-            >
-              <option value="">Current Run (Live)</option>
-              <option v-for="run in completedRuns" :key="run.id" :value="run.id">
-                {{ run.name }} ({{ new Date(run.startTime).toLocaleString() }})
-              </option>
-            </select>
-          </div>
-           <div class="flex items-center gap-2">
-             <button
-               @click="deleteRun(selectedRunId)"
-               :disabled="!selectedRunId || completedRuns.length === 0"
-               class="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-             >
-               Delete Run
-             </button>
-           </div>
-        </div>
-      </div>
-
       <!-- Stats Overview -->
       <div v-if="currentStats" class="px-6 py-4">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -877,13 +872,35 @@ async function deleteRun(runId: string) {
     try {
       await loadTestStore.deleteRun(runId);
       selectedRunId.value = '';
-      // Refresh the completed runs list
-      completedRuns.value = await loadTestStore.getCompletedRuns();
+      await refreshCompletedRuns();
+      await updateCurrentStats();
+      await loadTimeSeriesData();
     } catch (error) {
       console.error('Failed to delete run:', error);
       alert('Failed to delete run');
     }
   }
+}
+
+async function deleteAllRuns() {
+  if (confirm('Are you sure you want to delete all completed runs and their data?')) {
+    try {
+      for (const run of [...completedRuns.value]) {
+        await loadTestStore.deleteRun(run.id);
+      }
+      selectedRunId.value = '';
+      await refreshCompletedRuns();
+      await updateCurrentStats();
+      await loadTimeSeriesData();
+    } catch (error) {
+      console.error('Failed to delete all runs:', error);
+      alert('Failed to delete all runs');
+    }
+  }
+}
+
+async function refreshCompletedRuns() {
+  completedRuns.value = await loadTestStore.getCompletedRuns();
 }
 
 

@@ -1,7 +1,7 @@
 <template>
   <div class="request-tree w-full">
     <div v-for="collection in collections" :key="collection.id" class="collection-node mb-2" :data-collection-id="collection.id" :data-testid="`collection-${collection.id}`">
-      <div class="collection-header flex items-center p-2 rounded bg-zinc-200 dark:bg-zinc-800 cursor-pointer hover:bg-zinc-300 dark:hover:bg-zinc-700" @click="toggleCollection(collection.id)" :data-collection-id="collection.id" @contextmenu.prevent="uiStore.showContextMenu($event, 'collection', collection.id)" @mouseenter="onCollectionMouseEnter(collection.id)" @mouseleave="onCollectionMouseLeave" @dragover.prevent @dragenter="onDragEnter" @dragleave="onDragLeave" @drop="onDrop($event, collection.id, 'collection')">
+      <div class="collection-header flex items-center p-2 rounded bg-zinc-200 dark:bg-zinc-800 cursor-pointer hover:bg-zinc-300 dark:hover:bg-zinc-700" @click="toggleCollection(collection.id)" :data-collection-id="collection.id" @mouseenter="onCollectionMouseEnter(collection.id)" @mouseleave="onCollectionMouseLeave" @dragover.prevent @dragenter="onDragEnter" @dragleave="onDragLeave" @drop="onDrop($event, collection.id, 'collection')">
         <span class="chevron mr-1 text-zinc-500">{{ expandedCollections.includes(collection.id) ? '▼' : '▶' }}</span>
         <span class="collection-name flex-1 text-zinc-900 dark:text-white font-medium">{{ collection.name }}</span>
         <span class="ellipsis-menu text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300" @click.stop="showCollectionMenu(collection.id, $event)" :style="{ visibility: isCollectionHovered(collection.id) ? 'visible' : 'hidden' }">•••</span>

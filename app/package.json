@@ -3,7 +3,8 @@
   "productName": "Hailstorm",
   "version": "1.0.0",
   "description": "API Client like Postman",
-  "main": ".vite/build/main.js",
+  "main": ".vite/build/main.cjs",
+  "type": "module",
   "private": true,
   "scripts": {
     "dev": "vite",

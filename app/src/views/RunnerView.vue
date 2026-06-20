@@ -13,7 +13,7 @@
 
     <!-- Config Details -->
     <div class="flex-1" v-if="runnerStore.selectedConfigId">
-      <RunnerPanel
+      <RunnerDetails
         :collections="collectionsStore.collections"
         :environments="environmentsStore.environments"
         :activeEnvironmentId="environmentsStore.activeEnvironmentId"
@@ -35,7 +35,7 @@
 
 <script setup lang="ts">
 import RunConfigsPanel from '../components/RunConfigsPanel.vue';
-import RunnerPanel from '../components/RunnerPanel.vue';
+import RunnerDetails from '../components/RunnerDetails.vue';
 import { useRunnerStore } from '../stores/runner';
 import { useUIStore } from '../stores/ui';
 import { useCollectionsStore } from '../stores/collections';
