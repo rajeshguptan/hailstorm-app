@@ -3,12 +3,12 @@ import type { RouteRecordRaw } from 'vue-router';
 
 import AppLayout from '../layouts/AppLayout.vue';
 import CollectionsView from '../views/CollectionsView.vue';
-import EnvironmentsView from '../views/EnvironmentsView.vue';
 import HistoryView from '../views/HistoryView.vue';
 import SecretsView from '../views/SecretsView.vue';
 import StatsView from '../views/StatsView.vue';
 import SettingsView from '../views/SettingsView.vue';
 import RunnerView from '../views/RunnerView.vue';
+import ConsoleView from '../views/ConsoleView.vue';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -23,11 +23,6 @@ const routes: RouteRecordRaw[] = [
         path: 'collections',
         name: 'collections',
         component: CollectionsView
-      },
-      {
-        path: 'environments',
-        name: 'environments',
-        component: EnvironmentsView
       },
       {
         path: 'history',
@@ -53,6 +48,11 @@ const routes: RouteRecordRaw[] = [
         path: 'settings',
         name: 'settings',
         component: SettingsView
+      },
+      {
+        path: 'console',
+        name: 'console',
+        component: ConsoleView
       }
     ]
   }

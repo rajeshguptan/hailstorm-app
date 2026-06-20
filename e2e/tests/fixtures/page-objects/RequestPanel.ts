@@ -142,6 +142,16 @@ export class RequestPanel {
     return headers;
   }
 
+  async setScripts(scriptType: 'pre-request' | 'post-request' | 'test', content: string): Promise<void> {
+    await this.tabs.scripts.click();
+    const scriptTab = this.page.locator(`.script-tabs button:has-text("${scriptType === 'pre-request' ? 'Pre-request Script' : scriptType === 'post-request' ? 'Post-request Script' : 'Test Script'}")`);
+    if (await scriptTab.isVisible()) {
+      await scriptTab.click();
+    }
+    const textarea = this.page.locator('.script-tabs textarea');
+    await textarea.fill(content);
+  }
+
   async waitForResponse(): Promise<void> {
     await this.responsePanel.waitFor({ state: 'visible' });
   }

@@ -199,19 +199,13 @@
           <!-- Variables Tab -->
           <div v-if="activeRequestTab === 'variables'" class="p-3">
             <div class="flex justify-between items-center mb-4">
-              <div class="flex items-center gap-4">
+              <div>
                 <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Variables</label>
-                <div class="flex items-center gap-2">
-                  <label class="text-sm text-zinc-600 dark:text-zinc-400">Dataset:</label>
-                  <select v-model="selectedDataset" class="px-2 py-1 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm">
-                    <option value="">All</option>
-                    <option v-for="dataset in uniqueDatasets" :key="dataset" :value="dataset">{{ dataset }}</option>
-                  </select>
-                </div>
+                <p class="text-xs text-zinc-500 mt-1">Set Env to apply a variable only when that environment is active.</p>
               </div>
               <button @click="addVariable" class="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm">+ Add Variable</button>
             </div>
-            <div v-if="filteredVariables.length === 0" class="text-center text-zinc-500 py-4 text-sm">
+            <div v-if="requestVariables.length === 0" class="text-center text-zinc-500 py-4 text-sm">
               No variables defined
             </div>
             <table v-else class="w-full border-collapse">
@@ -220,12 +214,12 @@
                   <th class="text-left p-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">Enabled</th>
                   <th class="text-left p-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">Key</th>
                   <th class="text-left p-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">Value</th>
-                  <th class="text-left p-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">Dataset</th>
+                  <th class="text-left p-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">Env</th>
                   <th class="text-left p-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody>
-<tr v-for="(variable, index) in filteredVariables" :key="index" class="border-b border-zinc-100 dark:border-zinc-800">
+<tr v-for="(variable, index) in requestVariables" :key="index" class="border-b border-zinc-100 dark:border-zinc-800">
                   <td class="p-2">
                     <input type="checkbox" v-model="variable.enabled" class="rounded border-zinc-300 dark:border-zinc-600">
                   </td>
@@ -236,7 +230,15 @@
                     <input v-model="variable.value" placeholder="Value" class="w-full px-2 py-1 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm">
                   </td>
                   <td class="p-2">
-                    <input v-model="variable.dataset" placeholder="Dataset" class="w-full px-2 py-1 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm">
+                    <select
+                      v-model="variable.env"
+                      class="w-full px-2 py-1 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
+                    >
+                      <option value="">All environments</option>
+                      <option v-for="environment in environments" :key="environment.id" :value="environment.id">
+                        {{ environment.name }}
+                      </option>
+                    </select>
                   </td>
                   <td class="p-2">
                     <button @click="removeVariable(index)" class="px-2 py-1 bg-red-500 hover:bg-red-600 text-white rounded text-sm">Delete</button>
@@ -275,11 +277,16 @@ import { useRequestsStore } from '../stores/requests';
 import { useResponseStore } from '../stores/response';
 import { useHistoryStore } from '../stores/history';
 import { useUIStore } from '../stores/ui';
+import { useCollectionsStore } from '../stores/collections';
+import { useEnvironmentsStore } from '../stores/environments';
+import { logger } from '../utils/logger';
 import MarkdownDescription from './MarkdownDescription.vue';
 import ScriptTabs from './ScriptTabs.vue';
 
 const appStore = useAppStore();
 const requestsStore = useRequestsStore();
+const collectionsStore = useCollectionsStore();
+const environmentsStore = useEnvironmentsStore();
 const responseStore = useResponseStore();
 const historyStore = useHistoryStore();
 const uiStore = useUIStore();
@@ -314,52 +321,39 @@ const editingRequest = ref<Request>({
 const urlParams = ref<Variable[]>([]);
 const requestHeaders = ref<Variable[]>([]);
 const requestVariables = ref<RequestVariable[]>([]);
-const selectedDataset = ref<string>('');
 
-const selectedRequest = computed(() => requestsStore.selectedRequest);
+const environments = computed(() => environmentsStore.environments);
 
-const uniqueDatasets = computed(() => {
-  const datasets = new Set<string>();
-  requestVariables.value.forEach(v => {
-    if (v.dataset) datasets.add(v.dataset);
-  });
-  return Array.from(datasets).sort();
-});
-
-const filteredVariables = computed(() => {
-  if (!selectedDataset.value) {
-    return requestVariables.value;
-  }
-  return requestVariables.value.filter(v => v.dataset === selectedDataset.value);
-});
+const selectedRequest = computed(() => editingRequest.value && editingRequest.value.id && requestsStore.selectedRequestId ? true : false);
 
 watch(() => requestsStore.selectedRequestId, (newId) => {
-  console.log('RequestDetail watcher triggered with newId:', newId);
+  logger.debug('RequestDetail watcher triggered with newId:', newId);
   if (newId) {
-    const request = requestsStore.selectedRequest;
-    console.log('requestsStore.selectedRequest:', request);
-    if (request) {
+    const item = collectionsStore.findItemById(newId);
+    logger.debug('RequestDetail findItemById result:', item);
+    if (item) {
+      const request = 'request' in item ? item.request : item;
       editingRequest.value = { ...request };
       urlParams.value = requestsStore.extractParams(request.url || '');
       requestHeaders.value = (request.headers && request.headers.length > 0) ? [...request.headers] : [];
       requestVariables.value = (request.variables && request.variables.length > 0) ? [...request.variables] : [];
     }
-} else {
-       editingRequest.value = {
-         id: '',
-         name: '',
-         method: 'GET',
-         url: '',
-         headers: [],
-         body: { type: 'none', content: '' },
-         auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' } },
-         variables: [],
-         description: ''
-       };
-       urlParams.value = [];
-       requestHeaders.value = [];
-       requestVariables.value = [];
-     }
+  } else {
+    editingRequest.value = {
+      id: '',
+      name: '',
+      method: 'GET',
+      url: '',
+      headers: [],
+      body: { type: 'none', content: '' },
+      auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' } },
+      variables: [],
+      description: ''
+    };
+    urlParams.value = [];
+    requestHeaders.value = [];
+    requestVariables.value = [];
+  }
 }, { immediate: true });
 
 // Track if request has been modified
@@ -405,15 +399,11 @@ function removeHeader(index: number) {
 }
 
 function addVariable() {
-  requestVariables.value.push({ key: '', value: '', enabled: true, dataset: '' });
+  requestVariables.value.push({ key: '', value: '', enabled: true, env: '' });
 }
 
 function removeVariable(index: number) {
-  const variable = filteredVariables.value[index];
-  const realIndex = requestVariables.value.indexOf(variable);
-  if (realIndex > -1) {
-    requestVariables.value.splice(realIndex, 1);
-  }
+  requestVariables.value.splice(index, 1);
 }
 
 function saveRequest() {
@@ -454,8 +444,7 @@ function saveRequest() {
  }
 
 async function sendRequest() {
-  console.log('Sending request:', editingRequest.value);
-
+  logger.debug('Sending request:', editingRequest.value);
   responseStore.isLoading = true;
   const startTime = Date.now();
 
@@ -571,8 +560,9 @@ async function sendRequest() {
 }
 
 function cancelChanges() {
-  const request = requestsStore.selectedRequest;
-  if (request) {
+  const item = collectionsStore.findItemById(requestsStore.selectedRequestId);
+  if (item) {
+    const request = 'request' in item ? item.request : item;
     editingRequest.value = { ...request };
     urlParams.value = requestsStore.extractParams(request.url || '');
     requestHeaders.value = (request.headers && request.headers.length > 0) ? [...request.headers] : [];
@@ -582,9 +572,8 @@ function cancelChanges() {
 
 function substituteRequestVariables(text: string): string {
   if (!text) return text;
-  const variables = selectedDataset.value
-    ? requestVariables.value.filter(v => v.enabled && v.dataset === selectedDataset.value)
-    : requestVariables.value.filter(v => v.enabled);
+  const activeEnvironmentId = environmentsStore.activeEnvironmentId;
+  const variables = requestVariables.value.filter(v => v.enabled && (!v.env || v.env === activeEnvironmentId));
   return text.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
     const variable = variables.find(v => v.key === varName);
     return variable ? variable.value : match;

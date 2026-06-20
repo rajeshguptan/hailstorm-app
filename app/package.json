@@ -45,6 +45,7 @@
   },
   "dependencies": {
     "chart.js": "^4.5.1",
+    "electron-log": "^5.4.4",
     "electron-squirrel-startup": "^1.0.1",
     "pinia": "^2.1.7",
     "vue": "^3.4.0",

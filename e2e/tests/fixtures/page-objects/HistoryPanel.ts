@@ -33,6 +33,7 @@ export class HistoryPanel {
 
   async getHistoryItem(index: number): Promise<{
     method: string;
+    name: string;
     url: string;
     status: number;
     time: number;
@@ -40,13 +41,15 @@ export class HistoryPanel {
   }> {
     const item = this.historyItems.nth(index);
     const method = await item.locator('.badge').textContent();
-    const url = await item.locator('.truncate').textContent();
+    const name = await item.locator('.history-item-name').textContent();
+    const url = await item.locator('.history-item-url').textContent();
     const statusText = await item.locator('.text-green-500, .text-red-500').textContent();
     const timeText = await item.locator('.text-zinc-400').textContent();
     const timestamp = await item.locator('.text-zinc-500').textContent();
 
     return {
       method: method || '',
+      name: name || '',
       url: url || '',
       status: parseInt(statusText || '0'),
       time: parseInt(timeText?.replace('ms', '') || '0'),

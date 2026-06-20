@@ -18,11 +18,12 @@ export interface Variable {
   value: string;
   enabled: boolean;
   collection?: string;
+  env?: string;
 }
 
-export interface RequestVariable extends Variable {
-  dataset?: string;
-}
+export type RequestVariable = Variable;
+
+export type VariableData = Variable;
 
 export interface Environment {
   id: string;
@@ -140,6 +141,8 @@ export interface Response {
   data: string;
   time: number;
   headers: Record<string, string | string[]>;
+  error?: string;
+  consoleOutput?: string;
 }
 
 export interface Secret {
@@ -326,7 +329,7 @@ export interface SubSetting {
   icon: string;
 }
 
-export type SidebarView = 'collections' | 'environments' | 'history' | 'secrets' | 'stats' | 'runner' | 'settings';
+export type SidebarView = 'collections' | 'history' | 'secrets' | 'stats' | 'runner' | 'settings';
 
 export type RequestTab = 'params' | 'auth' | 'headers' | 'body' | 'variables' | 'scripts' | 'description';
 export type ResponseTab = 'body' | 'headers' | 'tests';

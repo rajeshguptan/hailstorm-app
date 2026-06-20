@@ -4,6 +4,7 @@ import { useAppStore } from './';
 import { useRequestsStore } from './requests';
 import { useResponseStore } from './response';
 import { useUIStore } from './ui';
+import { logger } from '../utils/logger';
 
 export const useHistoryStore = defineStore('history', {
   state: () => ({
@@ -28,13 +29,13 @@ export const useHistoryStore = defineStore('history', {
       appStore.saveToLocalStorage();
     },
 
-    loadFromHistory(item: HistoryItem) {
-      console.log('[HISTORY] loadFromHistory called with item:', item);
+loadFromHistory(item: HistoryItem) {
+      logger.debug('[HISTORY] loadFromHistory called with item:', item);
       const requestsStore = useRequestsStore();
       const responseStore = useResponseStore();
 
-      console.log('[HISTORY] Current request before:', requestsStore.currentRequest);
-      console.log('[HISTORY] Current response before:', responseStore.response);
+      logger.debug('[HISTORY] Current request before:', requestsStore.currentRequest);
+      logger.debug('[HISTORY] Current response before:', responseStore.response);
 
       // Load the request into the current request state with defaults
       const newRequest = {
@@ -62,10 +63,10 @@ export const useHistoryStore = defineStore('history', {
       responseStore.response = item.response;
       responseStore.activeResponseTab = 'body';
 
-      console.log('[HISTORY] New request set:', requestsStore.currentRequest);
-      console.log('[HISTORY] New response set:', responseStore.response);
-      console.log('[HISTORY] selectedRequestId set to:', requestsStore.selectedRequestId);
-      console.log('[HISTORY] loadFromHistory completed');
+      logger.debug('[HISTORY] New request set:', requestsStore.currentRequest);
+      logger.debug('[HISTORY] New response set:', responseStore.response);
+      logger.debug('[HISTORY] selectedRequestId set to:', requestsStore.selectedRequestId);
+      logger.debug('[HISTORY] loadFromHistory completed');
     }
   }
 });

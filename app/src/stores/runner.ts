@@ -17,7 +17,8 @@ async startLoadTest(
       environments: any[],
       secrets: any[],
       isSecretsUnlocked: boolean,
-      runId: string
+      runId: string,
+      activeEnvironmentId?: string | null
     ): Promise<void> {
       this._activeRun = config;
 
@@ -30,6 +31,7 @@ async startLoadTest(
           secrets,
           isSecretsUnlocked,
           runId,
+          activeEnvironmentId,
         });
       } finally {
         this._activeRun = null;
@@ -110,10 +112,11 @@ export const useRunnerStore = defineStore('runner', {
       appStore.saveToLocalStorage();
     },
 
-async runLoadTest(
+ async runLoadTest(
        config: RunConfig,
        collections: any[],
-       environments: any[]
+       environments: any[],
+       activeEnvironmentId?: string | null
      ): Promise<void> {
         this.isRunning = true;
         try {
@@ -141,7 +144,7 @@ async runLoadTest(
           const isSecretsUnlocked = secretsStore.isUnlocked || false;
 
           // Run the load test with the existing runId and requestConfigs for RPS
-          await scheduler.startLoadTest(clonedConfig, clonedCollections, clonedEnvironments, secrets, isSecretsUnlocked, run.id);
+           await scheduler.startLoadTest(clonedConfig, clonedCollections, clonedEnvironments, secrets, isSecretsUnlocked, run.id, activeEnvironmentId);
           
           // End the run
           await loadTestStore.endRun(run.id);

@@ -31,14 +31,15 @@ export class RunnerEngine {
    * Execute a load test with the given configuration.
    * Integrates with loadTestStore for request recording.
    */
-async executeLoadTest(
+ async executeLoadTest(
      config: RunConfig,
      collections: any[],
      environments: any[],
      secrets: Array<{ id: string; name: string; env: string; value: string }> = [],
      isSecretsUnlocked: boolean = false,
      requestConfigs?: Record<string, { rps: number; datafile?: string }>,
-     onRequestComplete?: (result: any) => Promise<void> | void
+     onRequestComplete?: (result: any) => Promise<void> | void,
+     activeEnvironmentId?: string | null
    ): Promise<void> {
     this.running = true;
 
@@ -77,7 +78,7 @@ async executeLoadTest(
 
         try {
           const rpsConfig = requestConfigs?.[request.id]?.rps || 0;
-          const result = await this.executeSingleRequest(request, environments, collections, secrets, isSecretsUnlocked, rpsConfig);
+          const result = await this.executeSingleRequest(request, environments, collections, secrets, isSecretsUnlocked, rpsConfig, activeEnvironmentId);
           if (onRequestComplete) {
             await onRequestComplete(result);
           }
@@ -96,13 +97,14 @@ async executeLoadTest(
   /**
    * Execute a single request with full context including secrets.
    */
-async executeSingleRequest(
+ async executeSingleRequest(
      request: any,
      environments: any[],
      collections: any[],
      secrets: Array<{ id: string; name: string; env: string; value: string }>,
      isSecretsUnlocked: boolean,
-     rps: number = 0
+     rps: number = 0,
+     activeEnvironmentId?: string | null
    ): Promise<any> {
      const activeEnv = environments.find((e: any) => e.active);
      const requestMap = flatRequests(collections.flatMap((c: any) => c.items || []));
@@ -124,7 +126,7 @@ responseStore: {
        historyStore: { history: [] },
        environmentsStore: {
          environments,
-         activeEnvironmentId: activeEnv?.id || null,
+         activeEnvironmentId: activeEnvironmentId ?? activeEnv?.id ?? null,
        },
        appStore: {
          secrets,
@@ -132,7 +134,7 @@ responseStore: {
        },
        collectionsStore: {
          collections,
-         selectedCollectionId: null,
+         selectedCollectionId: config.collectionId,
        },
        secretsStore: {
          isUnlocked: isSecretsUnlocked,

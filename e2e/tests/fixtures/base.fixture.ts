@@ -66,15 +66,6 @@ export const test = base.extend({
             }));
           },
 
-          importEnvironment: () => {
-            console.log('[MOCK API] importEnvironment');
-            return Promise.resolve(JSON.stringify({
-              id: 'imported-env',
-              name: 'Imported Environment',
-              variables: [{ key: 'BASE_URL', value: 'https://api.example.com', enabled: true }]
-            }));
-          },
-
           // Load testing APIs
           initializeLoadTesting: () => {
             console.log('[MOCK API] initializeLoadTesting');

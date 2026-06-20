@@ -50,7 +50,8 @@ export type RunLoadTestParams = {
   environments: any[];
   secrets: any[];
   isSecretsUnlocked: boolean;
-  runId?: string; // Optional existing runId to continue recording to
+  activeEnvironmentId?: string | null;
+  runId?: string;
 };
 
 const api = {
@@ -65,6 +66,7 @@ const api = {
       throw error;
     }
   },
+
   runShell: async (command: string): Promise<{ output: string; error: string }> => {
     console.log('[PRELOAD] runShell called', { command });
     try {
@@ -76,6 +78,7 @@ const api = {
       throw error;
     }
   },
+
   importCollection: async (): Promise<string | null> => {
     console.log('[PRELOAD] importCollection called');
     try {
@@ -84,17 +87,6 @@ const api = {
       return result;
     } catch (error) {
       console.error('[PRELOAD] importCollection failed', error);
-      throw error;
-    }
-  },
-  importEnvironment: async (): Promise<string | null> => {
-    console.log('[PRELOAD] importEnvironment called');
-    try {
-      const result = await ipcRenderer.invoke('import-environment');
-      console.log('[PRELOAD] importEnvironment result', result ? 'received content' : 'canceled');
-      return result;
-    } catch (error) {
-      console.error('[PRELOAD] importEnvironment failed', error);
       throw error;
     }
   },
@@ -107,18 +99,6 @@ const api = {
       return result;
     } catch (error) {
       console.error('[PRELOAD] selectWorkspace failed', error);
-      throw error;
-    }
-  },
-
-  showOpenDialog: async (options: { filters?: { name: string; extensions: string[] }[] }): Promise<{ canceled: boolean; filePaths: string[] }> => {
-    console.log('[PRELOAD] showOpenDialog called');
-    try {
-      const result = await ipcRenderer.invoke('show-open-dialog', options.filters);
-      console.log('[PRELOAD] showOpenDialog result:', result.canceled ? 'cancelled' : 'selected file');
-      return result;
-    } catch (error) {
-      console.error('[PRELOAD] showOpenDialog failed', error);
       throw error;
     }
   },
@@ -280,10 +260,10 @@ const api = {
     }
   },
 
-  showOpenDialog: async (options: any): Promise<{ canceled: boolean; filePaths: string[] }> => {
+  showOpenDialog: async (options: { filters?: { name: string; extensions: string[] }[] }): Promise<{ canceled: boolean; filePaths: string[] }> => {
     console.log('[PRELOAD] showOpenDialog called');
     try {
-      const result = await ipcRenderer.invoke('select-datafile-dialog', options.filters);
+      const result = await ipcRenderer.invoke('show-open-dialog', options.filters);
       console.log('[PRELOAD] showOpenDialog result:', result.canceled ? 'cancelled' : 'selected file');
       return result;
     } catch (error) {
@@ -308,9 +288,6 @@ const api = {
   },
 
   // ─── Send Request via execution engine ───────────────────────────────────
-  // The execution engine handles variable substitution, dependency resolution,
-  // header/auth construction, the actual HTTP call and history recording.
-  // All that is delegated from the renderer through this IPC bridge.
   sendRequest: async (context: SendRequestContext): Promise<SendRequestResult> => {
     console.log('[PRELOAD] sendRequest called');
     try {
@@ -318,7 +295,7 @@ const api = {
       console.log('[PRELOAD] sendRequest completed', { status: result.response.status });
       return result;
     } catch (error) {
-console.error('[PRELOAD] sendRequest failed', error);
+      console.error('[PRELOAD] sendRequest failed', error);
       throw error;
     }
   },
@@ -335,7 +312,6 @@ console.error('[PRELOAD] sendRequest failed', error);
     redirectUri: string;
     state?: string;
   }): Promise<{ accessToken: string; refreshToken?: string; expiresIn?: number }> => {
-    // Retrieve codeVerifier from stored state if state is provided
     let codeVerifier: string | undefined;
     if (config.state) {
       codeVerifier = await ipcRenderer.invoke('get-oauth-state', config.state);
@@ -366,7 +342,6 @@ console.error('[PRELOAD] sendRequest failed', error);
   },
 
   // ─── Run Load Test via IPC ───────────────────────────────────────────────
-  // Delegates load test execution to the main process through executionEngine.
   runLoadTest: async (params: RunLoadTestParams): Promise<any[]> => {
     console.log('[PRELOAD] runLoadTest called');
     try {

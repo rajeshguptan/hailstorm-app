@@ -303,7 +303,7 @@ async function runCollection() {
    if (requests.length === 0) return;
 
    try {
-     await runnerStore.runLoadTest(updatedConfig, props.collections, props.environments);
+     await runnerStore.runLoadTest(updatedConfig, props.collections, props.environments, props.activeEnvironmentId);
    } catch (error) {
      console.error('Run failed:', error);
    }

@@ -20,9 +20,10 @@
         <div v-else class="text-zinc-400 dark:text-zinc-500">No output yet. Run the shell command to see results.</div>
       </div>
 
-      <div v-if="activeTab === 'console-output'">
-        <pre v-if="response?.error" class="text-sm font-mono text-red-600 dark:text-red-400 whitespace-pre-wrap">{{ response.error }}</pre>
-        <div v-else class="text-zinc-400 dark:text-zinc-500">No console errors.</div>
+<div v-if="activeTab === 'console-output'">
+        <pre v-if="response?.consoleOutput" class="text-sm font-mono text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{{ response.consoleOutput }}</pre>
+        <pre v-else-if="response?.error" class="text-sm font-mono text-red-600 dark:text-red-400 whitespace-pre-wrap">{{ response.error }}</pre>
+        <div v-else class="text-zinc-400 dark:text-zinc-500">No console output.</div>
       </div>
     </div>
   </div>

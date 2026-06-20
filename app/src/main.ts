@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, screen, dialog, nativeImage, shell } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
+import log from 'electron-log/main';
 import { initializeExecutionEngine } from './core/executionEngine';
 import { existsSync } from 'node:fs';
 
@@ -13,6 +14,7 @@ declare const MAIN_WINDOW_VITE_NAME: string;
 import './core/runnerEngine';
 
 console.log('[MAIN] Application starting...');
+log.initialize({ includeFutureSessions: true });
 
 // OAuth callback handling
 const oauthCallbackListeners = new Map<string, (url: string) => void>();

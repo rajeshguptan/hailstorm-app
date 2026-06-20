@@ -3,6 +3,7 @@ import type { Request, Tab, Variable, RequestTab, Folder } from '../types';
 import { useAppStore } from './';
 import { useCollectionsStore } from './collections';
 import { useResponseStore } from './response';
+import { logger } from '../utils/logger';
 
 export const useRequestsStore = defineStore('requests', {
 state: () => ({
@@ -155,52 +156,47 @@ resetCurrentRequest() {
       this.currentRequest.headers = [...this.requestHeaders];
     },
 
-    openRequest(item: Request | Folder) {
-      console.log('openRequest called with:', item, 'keys:', Object.keys(item));
-      let requestItem = item;
-      if ('request' in item) {
-        console.log('Item has nested request, extracting');
-        requestItem = (item as any).request;
-      }
-      if ('method' in requestItem) {
-        console.log('Item has method, creating tab for:', requestItem.name, requestItem.url);
-        const existingTab = this.tabs.find(t => t.request.id === requestItem.id);
-        if (existingTab) {
-          console.log('Found existing tab, switching to:', existingTab.id);
-          this.switchTab(existingTab.id);
-        } else {
-          console.log('Creating new tab for request:', requestItem.name, 'URL:', requestItem.url);
-const requestCopy = {
-               id: requestItem.id || this.generateId('req'),
-               name: requestItem.name || 'Untitled',
-               method: requestItem.method || 'GET',
-               url: requestItem.url || '',
-               headers: requestItem.headers || [],
-               body: requestItem.body || { type: 'none', content: '' },
-               preRequestScript: requestItem.preRequestScript || '',
-               postRequestScript: requestItem.postRequestScript || '',
-               testScript: requestItem.testScript || '',
-               flavors: requestItem.flavors || [],
-               variables: requestItem.variables || [],
-               dependsOn: requestItem.dependsOn || undefined
-             };
-          const tab: Tab = { id: this.generateId('tab'), request: requestCopy };
-          console.log('Tab created, request in tab:', tab.request.name, tab.request.url);
-          this.tabs.push(tab);
-          this.activeTabId = tab.id;
-          this.loadTabToCurrent(tab);
+openRequest(item: Request | Folder) {
+        logger.debug('[REQUESTS] openRequest called with:', item);
+        let requestItem = item;
+        if ('request' in item) {
+          requestItem = (item as any).request;
         }
-      }
-    },
+        if ('method' in requestItem) {
+          const existingTab = this.tabs.find(t => t.request.id === requestItem.id);
+          if (existingTab) {
+            this.switchTab(existingTab.id);
+          } else {
+            logger.debug('[REQUESTS] Creating new tab for request:', requestItem.name, 'URL:', requestItem.url);
+            const requestCopy = {
+                 id: requestItem.id || this.generateId('req'),
+                 name: requestItem.name || 'Untitled',
+                 method: requestItem.method || 'GET',
+                 url: requestItem.url || '',
+                 headers: requestItem.headers || [],
+                 body: requestItem.body || { type: 'none', content: '' },
+                 preRequestScript: requestItem.preRequestScript || '',
+                 postRequestScript: requestItem.postRequestScript || '',
+                 testScript: requestItem.testScript || '',
+                 flavors: requestItem.flavors || [],
+                 variables: requestItem.variables || [],
+                 dependsOn: requestItem.dependsOn || undefined
+               };
+            const tab: Tab = { id: this.generateId('tab'), request: requestCopy };
+            this.tabs.push(tab);
+            this.activeTabId = tab.id;
+            this.loadTabToCurrent(tab);
+          }
+        }
+      },
 
-    loadTabToCurrent(tab: Tab) {
-      console.log('loadTabToCurrent called with:', tab.request.name, tab.request.url);
-      const req = tab.request;
-      this.currentRequest = { ...req };
-      this.urlParams = this.extractParams(req.url || '');
-      this.requestHeaders = (req.headers && req.headers.length > 0) ? [...req.headers] : [];
-      console.log('After loadTabToCurrent, currentRequest:', this.currentRequest.name, 'url:', this.currentRequest.url);
-    },
+      loadTabToCurrent(tab: Tab) {
+        logger.debug('[REQUESTS] loadTabToCurrent called with:', tab.request.name, tab.request.url);
+        const req = tab.request;
+        this.currentRequest = { ...req };
+        this.urlParams = this.extractParams(req.url || '');
+        this.requestHeaders = (req.headers && req.headers.length > 0) ? [...req.headers] : [];
+      },
 
     saveRequest() {
       const collectionsStore = useCollectionsStore();
@@ -216,65 +212,56 @@ const requestCopy = {
       this.selectedRequestId = request.id;
     },
 
-    updateCurrentRequest() {
-      if (!this.selectedRequestId) {
-        console.log('updateCurrentRequest: no selectedRequestId, cannot update');
-        return;
-      }
-      console.log('updateCurrentRequest: updating item with id:', this.selectedRequestId);
-      const collectionsStore = useCollectionsStore();
-      if (collectionsStore.collections.length > 0) {
-        console.log('updateCurrentRequest: first collection items count:', collectionsStore.collections[0].items.length);
-      }
-      const updateInItems = (items: any[]): boolean => {
-        for (let i = 0; i < items.length; i++) {
-          console.log('updateCurrentRequest: checking item', i, 'id:', items[i].id);
-          if (items[i].id === this.selectedRequestId) {
-            console.log('updateCurrentRequest: found matching item at index', i);
-            if ('request' in items[i]) {
-              items[i].request = { ...this.currentRequest };
-            } else {
-              Object.assign(items[i], this.currentRequest);
-            }
-            return true;
-          }
-          if ('items' in items[i] && items[i].items) {
-            console.log('updateCurrentRequest: checking nested items of item', i);
-            if (updateInItems(items[i].items)) {
+updateCurrentRequest() {
+        if (!this.selectedRequestId) {
+          logger.debug('[REQUESTS] updateCurrentRequest: no selectedRequestId, cannot update');
+          return;
+        }
+        logger.debug('[REQUESTS] updateCurrentRequest: updating item with id:', this.selectedRequestId);
+        const collectionsStore = useCollectionsStore();
+        const updateInItems = (items: any[]): boolean => {
+          for (let i = 0; i < items.length; i++) {
+            if (items[i].id === this.selectedRequestId) {
+              if ('request' in items[i]) {
+                items[i].request = { ...this.currentRequest };
+              } else {
+                Object.assign(items[i], this.currentRequest);
+              }
               return true;
             }
+            if ('items' in items[i] && items[i].items) {
+              if (updateInItems(items[i].items)) {
+                return true;
+              }
+            }
+          }
+          return false;
+        };
+        for (const collection of collectionsStore.collections) {
+          if (updateInItems(collection.items)) {
+            logger.debug('[REQUESTS] updateCurrentRequest: found and updated!');
+            break;
           }
         }
-        return false;
-      };
-      for (const collection of collectionsStore.collections) {
-        console.log('updateCurrentRequest: checking collection:', collection.name);
-        if (updateInItems(collection.items)) {
-          console.log('updateCurrentRequest: found and updated!');
-          break;
-        }
-      }
-      console.log('updateCurrentRequest: after update, collections[0] items:', JSON.stringify(collectionsStore.collections[0]?.items));
-    },
+},
 
-selectRequest(id: string | null) {
-       console.log('[REQUESTS] selectRequest called with id:', id);
-       if (!id) {
-         console.log('[REQUESTS] No id provided, resetting currentRequest');
-         this.selectedRequestId = null;
-         this.currentRequest = {
-           id: '',
-           name: '',
-           method: 'GET',
-           url: '',
-           headers: [],
-           body: { type: 'none', content: '' },
-           auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' } },
-           preRequestScript: '',
-           postRequestScript: '',
-           testScript: '',
-           variables: []
-         };
+    selectRequest(id: string | null) {
+      logger.debug('[REQUESTS] selectRequest called with id:', id);
+      if (!id) {
+        this.selectedRequestId = null;
+        this.currentRequest = {
+          id: '',
+          name: '',
+          method: 'GET',
+          url: '',
+          headers: [],
+          body: { type: 'none', content: '' },
+          auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' }, oauth2: { grantType: 'client_credentials' } },
+          preRequestScript: '',
+          postRequestScript: '',
+          testScript: '',
+          variables: []
+        };
         this.requestHeaders = [];
         this.urlParams = [];
         const appStore = useAppStore();
@@ -282,70 +269,32 @@ selectRequest(id: string | null) {
         return;
       }
 
-      this.selectedRequestId = id;
-      console.log('[REQUESTS] selectedRequestId set to:', this.selectedRequestId);
-
-      // Load the selected request into currentRequest for editing
-      if (id) {
-        console.log('[REQUESTS] Loading request with id:', id);
-        const collectionsStore = useCollectionsStore();
-        const item = collectionsStore.findItemById(id);
-        console.log('[REQUESTS] Found item:', item);
-        if (item) {
-          const request = 'request' in item ? item.request : item;
-          console.log('[REQUESTS] Using request data:', request);
-          console.log('[REQUESTS] Request URL:', request.url, 'Body:', request.body);
-this.currentRequest = {
-             id: request.id || '',
-             name: item.name || request.name || '',
-             method: request.method || 'GET',
-             url: request.url || '',
-             headers: request.headers || [],
-             body: request.body || { type: 'none', content: '' },
-             auth: request.auth || { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' } },
-             preRequestScript: request.preRequestScript || '',
-             postRequestScript: request.postRequestScript || '',
-             testScript: request.testScript || '',
-             flavors: request.flavors || [],
-             variables: request.variables || [],
-             dependsOn: request.dependsOn || undefined,
-             response: request.response
-           };
-          console.log('[REQUESTS] Set currentRequest:', {
-            id: this.currentRequest.id,
-            name: this.currentRequest.name,
-            method: this.currentRequest.method,
-            url: this.currentRequest.url,
-            body: this.currentRequest.body,
-            bodyType: this.currentRequest.body?.type,
-            bodyContent: this.currentRequest.body?.content?.substring(0, 50)
-          });
-          // Set response if available
-          const responseStore = useResponseStore();
-          responseStore.setResponse(request.response || null);
-          // Convert headers to the expected format
-          this.requestHeaders = request.headers ? request.headers.map(h => ({ ...h, enabled: h.enabled !== false })) : [];
-          // Extract URL params
-this.urlParams = this.extractParams(request.url || '');
-} else {
-            // Reset to default request when no request is selected
-            this.currentRequest = {
-              id: '',
-              name: '',
-              method: 'GET',
-              url: '',
-              headers: [],
-              body: { type: 'none', content: '' },
-              auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' } },
-              preRequestScript: '',
-              postRequestScript: '',
-              testScript: '',
-              variables: []
-            };
-            this.requestHeaders = [];
-            this.urlParams = [];
-          }
-
+      const collectionsStore = useCollectionsStore();
+      const item = collectionsStore.findItemById(id);
+      logger.debug('[REQUESTS] Found item:', item);
+      if (item) {
+        const request = 'request' in item ? item.request : item;
+        logger.debug('[REQUESTS] Using request data:', request);
+        this.currentRequest = {
+          id: request.id || '',
+          name: item.name || request.name || '',
+          method: request.method || 'GET',
+          url: request.url || '',
+          headers: request.headers || [],
+          body: request.body || { type: 'none', content: '' },
+          auth: request.auth || { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' }, oauth2: { grantType: 'client_credentials' } },
+          preRequestScript: request.preRequestScript || '',
+          postRequestScript: request.postRequestScript || '',
+          testScript: request.testScript || '',
+          flavors: request.flavors || [],
+          variables: request.variables || [],
+          dependsOn: request.dependsOn || undefined,
+          response: request.response
+        };
+        const responseStore = useResponseStore();
+        responseStore.setResponse(request.response || null);
+        this.requestHeaders = request.headers ? request.headers.map(h => ({ ...h, enabled: h.enabled !== false })) : [];
+        this.urlParams = this.extractParams(request.url || '');
         const appStore = useAppStore();
         appStore.saveToLocalStorage();
       }

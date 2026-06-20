@@ -23,8 +23,9 @@
       <div v-for="item in filteredHistory" :key="item.id" class="history-item p-2 rounded cursor-pointer bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors" @click="handleHistoryClick(item)">
         <div class="flex items-center">
           <span class="badge mr-2" :class="getMethodClass(item.method)">{{ item.method }}</span>
-          <span class="truncate flex-1 text-sm text-zinc-700 dark:text-zinc-300">{{ item.url }}</span>
+          <span class="history-item-name truncate flex-1 text-sm font-medium text-zinc-900 dark:text-white">{{ item.request.name || item.url }}</span>
         </div>
+        <div class="history-item-url truncate text-xs text-zinc-500 dark:text-zinc-400 mt-1">{{ item.url }}</div>
         <div class="flex justify-between items-center mt-1">
           <div class="text-sm">
             <span :class="item.status >= 200 && item.status < 300 ? 'text-green-500' : 'text-red-500'">{{ item.status || 'Error' }}</span>
@@ -42,9 +43,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useHistoryStore } from '../../stores/history';
+import { useRequestsStore } from '../../stores/requests';
+import { logger } from '../../utils/logger';
 import type { HistoryItem } from '../../types';
 
 const historyStore = useHistoryStore();
+const requestsStore = useRequestsStore();
 
 const searchQuery = ref('');
 
@@ -93,7 +97,7 @@ function formatTimestamp(timestamp: number): string {
 }
 
 function handleHistoryClick(item: HistoryItem) {
-  console.log('[HISTORY_PANEL] History item clicked:', item);
+  logger.debug('[HISTORY_PANEL] History item clicked:', item);
   historyStore.loadFromHistory(item);
 }
 

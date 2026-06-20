@@ -67,36 +67,6 @@ export function setupDialogHandlers() {
     }
   });
 
-  ipcMain.handle('import-environment', async () => {
-    console.log('[EXECUTION_ENGINE] importEnvironment dialog requested');
-    try {
-      const result = await dialog.showOpenDialog({
-        properties: ['openFile'],
-        filters: [{ name: 'JSON', extensions: ['json'] }]
-      });
-
-      if (result.canceled || result.filePaths.length === 0) {
-        console.log('[EXECUTION_ENGINE] importEnvironment canceled');
-        return null;
-      }
-
-      const filePath = result.filePaths[0];
-      console.log('[EXECUTION_ENGINE] importEnvironment file selected:', filePath);
-
-      try {
-        const content = fs.readFileSync(filePath, 'utf-8');
-        console.log('[EXECUTION_ENGINE] importEnvironment read success, length:', content.length);
-        return content;
-      } catch (err) {
-        console.error('[EXECUTION_ENGINE] importEnvironment read error:', err);
-        return null;
-      }
-    } catch (err) {
-      console.error('[EXECUTION_ENGINE] importEnvironment dialog error:', err);
-      return null;
-    }
-  });
-
   ipcMain.handle('select-workspace', async () => {
     console.log('[EXECUTION_ENGINE] selectWorkspace called');
     try {
@@ -543,11 +513,12 @@ export function setupLoadTestExecutionHandlers() {
     environments: any[];
     secrets: any[];
     isSecretsUnlocked: boolean;
+    activeEnvironmentId?: string | null;
     runId?: string;
     runRepeated?: boolean;
   }) => {
     console.log('[EXECUTION_ENGINE] runLoadTest called');
-    const { config, collections, environments, secrets, isSecretsUnlocked, runId: existingRunId } = params;
+    const { config, collections, environments, secrets, isSecretsUnlocked, activeEnvironmentId, runId: existingRunId } = params;
 
     let runId = existingRunId;
     let newRun: LoadTestRun | null = null;
@@ -601,7 +572,8 @@ export function setupLoadTestExecutionHandlers() {
           stats.lastRequestName = result.requestName;
           _event.sender.send('load-test-stats-update', { runId, stats });
         }
-      }
+      },
+      activeEnvironmentId
     );
 
     console.log('[EXECUTION_ENGINE] runLoadTest completed');

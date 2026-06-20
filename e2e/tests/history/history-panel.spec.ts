@@ -65,6 +65,7 @@ test.describe('History Panel', () => {
 
     const historyItem = await historyPanel.getHistoryItem(0);
     expect(historyItem.method).toBe('POST');
+    expect(historyItem.name).toBe('POST Test Request');
     expect(historyItem.url).toContain('httpbin.org/post');
     expect(historyItem.status).toBe(200);
     expect(historyItem.time).toBeGreaterThan(0);

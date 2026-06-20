@@ -48,33 +48,30 @@ import { useRequestsStore } from '../../stores/requests';
 import { useUIStore } from '../../stores/ui';
 import RequestTree from '../RequestTree.vue';
 import type { Request, Folder } from '../../types';
+import { logger } from '../../utils/logger';
 
-console.log('[CollectionsPanel] Initializing stores...');
+logger.debug('[CollectionsPanel] Initializing stores...');
 const collectionsStore = useCollectionsStore();
 const requestsStore = useRequestsStore();
 const uiStore = useUIStore();
-console.log('[CollectionsPanel] Stores initialized:', { collectionsStore, requestsStore, uiStore });
+logger.debug('[CollectionsPanel] Stores initialized');
 
 const collections = computed(() => {
   const cols = collectionsStore.collections;
-  console.log('[CollectionsPanel] collections computed:', cols, 'length:', cols?.length);
+  logger.debug('[CollectionsPanel] collections computed, length:', cols?.length);
   return Array.isArray(cols) ? cols : [];
 });
 
 const expandedCollections = ref<string[]>([]);
 const expandedFolders = ref<string[]>([]);
-
-// Debug folder expansion
-console.log('[CollectionsPanel] expandedFolders ref created');
-watch(expandedFolders, (newVal) => {
-  console.log('[CollectionsPanel] expandedFolders changed:', newVal);
-});
 const showImportMenu = ref(false);
 
-// Watch for selectedRequestId changes and call selectRequest to load request details
+// Watch for v-model changes to selectedRequestId and load request details
+// This is needed because v-model only sets the ID, but we need to load the full request
 watch(() => requestsStore.selectedRequestId, (newId) => {
-  console.log('[CollectionsPanel] selectedRequestId watcher triggered:', newId);
-  if (newId) {
+  logger.debug('[CollectionsPanel] selectedRequestId watcher triggered:', newId);
+  // Only load if the request isn't already the one we want
+  if (newId && requestsStore.currentRequest.id !== newId) {
     requestsStore.selectRequest(newId);
   }
 });
@@ -362,15 +359,24 @@ function convertPostmanBody(postmanBody: any): { type: string; content: string }
   }
 }
 
+function normalizeCollectionVariables(variables: any[] = []): any[] {
+  return variables.map((variable: any) => ({
+    key: variable.key || '',
+    value: variable.value ?? variable.default ?? '',
+    enabled: variable.enabled !== false,
+    env: ''
+  }));
+}
+
 function importData(data: any) {
   if (!data) {
-    console.log('[IMPORT] importData called with null/undefined data');
+    logger.debug('[IMPORT] importData called with null/undefined data');
     return;
   }
 
-  console.log('[IMPORT] Starting import, data keys:', Object.keys(data));
+  logger.debug('[IMPORT] Starting import, data keys:', Object.keys(data));
   if (data.info) {
-    console.log('[IMPORT] Postman collection:', data.info.name, 'with', data.item?.length || 0, 'items');
+    logger.debug('[IMPORT] Postman collection:', data.info.name, 'with', data.item?.length || 0, 'items');
   }
 
   const processItems = (items: any[]): any[] => {
@@ -406,7 +412,8 @@ function importData(data: any) {
   };
   const processCollection = (c: any) => ({
     ...c,
-    items: processItems(c.items || [])
+    items: processItems(c.items || []),
+    variables: normalizeCollectionVariables(c.variables || c.variable || [])
   });
 
   if (data.collection) {
@@ -420,21 +427,19 @@ function importData(data: any) {
     collectionsStore.saveCollections();
   } else if (data.info && data.item) {
     const processedItems = processItems(data.item);
-    collectionsStore.collections.push({
+collectionsStore.collections.push({
       id: `coll_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: data.info.name || 'Imported Collection',
       items: processedItems,
-      variables: []
+      variables: normalizeCollectionVariables(data.variable || [])
     });
-    console.log(`[IMPORT] Successfully imported Postman collection "${data.info.name}" with ${processedItems.length} requests`);
+    logger.debug(`[IMPORT] Successfully imported Postman collection "${data.info.name}" with ${processedItems.length} requests`);
     collectionsStore.saveCollections();
-  } else {
-    console.log('[IMPORT] Unknown collection format:', Object.keys(data));
   }
 }
 
 function importOpenAPISpec(spec: any) {
-  console.log('[OPENAPI] Starting OpenAPI import:', spec.info?.title);
+  logger.debug('[OPENAPI] Starting OpenAPI import:', spec.info?.title);
 
   if (!spec || !spec.info) {
     console.error('[OPENAPI] Invalid OpenAPI spec - missing info');
@@ -493,8 +498,6 @@ function importOpenAPISpec(spec: any) {
 
   collectionsStore.collections.push(collection);
   collectionsStore.saveCollections();
-
-  console.log(`[OPENAPI] Successfully imported "${spec.info.title}" with ${Object.keys(tagGroups).length} folders and ${untaggedRequests.length} untagged requests`);
 }
 
 function getBaseServerUrl(spec: any): string {

@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import { logger } from '../utils/logger';
 import type {
   LoadTestRun,
   LoadTestRunMetrics,
@@ -75,7 +76,7 @@ export const useLoadTestStore = defineStore('loadTest', {
   },
 
   actions: {
-    async initialize() {
+async initialize() {
       if (this.isInitialized) return;
 
       try {
@@ -83,7 +84,7 @@ export const useLoadTestStore = defineStore('loadTest', {
         await window.api.initializeLoadTesting();
         this.isInitialized = true;
       } catch (error) {
-        console.error('Failed to initialize load testing:', error);
+        logger.error('Failed to initialize load testing:', error);
         // Don't set isInitialized to true if it failed
         throw error;
       }

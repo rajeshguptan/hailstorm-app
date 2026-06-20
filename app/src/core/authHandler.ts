@@ -10,10 +10,11 @@ export function substituteAll(
   envVars: VariableData[],
   reqVars: VariableData[],
   secrets?: { name: string; value: string }[],
+  collectionVars?: VariableData[],
 ): string {
   if (!text) return text;
-  return text.replace(/\{\{(\w+)\}\}/g, (_match, varName: string) =>
-    substituteVariable(_match, varName, envVars, reqVars, secrets),
+  return text.replace(/\{\{(\w+)\}/g, (_match, varName: string) =>
+    substituteVariable(_match, varName, envVars, reqVars, secrets, collectionVars),
   );
 }
 
@@ -23,11 +24,15 @@ export function substituteVariable(
   envVars: VariableData[],
   reqVars: VariableData[],
   secrets?: { name: string; value: string }[],
+  collectionVars?: VariableData[],
 ): string {
-  const envVar = envVars.find((v) => v.key === varName);
+  const envVar = envVars.find((v) => v.key === varName && v.enabled !== false);
   if (envVar) return envVar.value;
 
-  const reqVar = reqVars.find((v) => v.key === varName);
+  const collectionVar = collectionVars?.find((v) => v.key === varName && v.enabled !== false);
+  if (collectionVar) return collectionVar.value;
+
+  const reqVar = reqVars.find((v) => v.key === varName && v.enabled !== false);
   if (reqVar) return reqVar.value;
 
   if (secrets) {
@@ -56,19 +61,20 @@ export function applyAuthAndHeaders(
   seVars: VariableData[],
   reqVars: VariableData[],
   secrets?: { name: string; value: string }[],
+  collectionVars?: VariableData[],
 ): void {
   if (!auth) return;
 
   if (auth.type === 'bearer' && auth.bearerToken) {
-    opts.headers['Authorization'] = `Bearer ${substituteAll(auth.bearerToken, seVars, reqVars, secrets)}`;
+    opts.headers['Authorization'] = `Bearer ${substituteAll(auth.bearerToken, seVars, reqVars, secrets, collectionVars)}`;
   } else if (auth.type === 'basic' && auth.username && auth.password) {
-    const u = substituteAll(auth.username, seVars, reqVars, secrets);
-    const p = substituteAll(auth.password, seVars, reqVars, secrets);
+    const u = substituteAll(auth.username, seVars, reqVars, secrets, collectionVars);
+    const p = substituteAll(auth.password, seVars, reqVars, secrets, collectionVars);
     opts.headers['Authorization'] = `Basic ${Buffer.from(`${u}:${p}`).toString('base64')}`;
   } else if (auth.type === 'ntlm' && auth.ntlm) {
-    const domain = substituteAll(auth.ntlm.domain || '', seVars, reqVars, secrets);
-    const username = substituteAll(auth.ntlm.username || '', seVars, reqVars, secrets);
-    const password = substituteAll(auth.ntlm.password || '', seVars, reqVars, secrets);
+    const domain = substituteAll(auth.ntlm.domain || '', seVars, reqVars, secrets, collectionVars);
+    const username = substituteAll(auth.ntlm.username || '', seVars, reqVars, secrets, collectionVars);
+    const password = substituteAll(auth.ntlm.password || '', seVars, reqVars, secrets, collectionVars);
     const credentials = domain ? `${domain}\\${username}` : username;
     opts.headers['Authorization'] = `NTLM ${credentials}:${password}`;
   } else if (auth.type === 'oauth2' && auth.oauth2) {
@@ -76,8 +82,8 @@ export function applyAuthAndHeaders(
       opts.headers['Authorization'] = `Bearer ${auth.oauth2.accessToken}`;
     }
   } else if (auth.type === 'apikey' && auth.apikey) {
-    const k = substituteAll(auth.apikey.key, seVars, reqVars, secrets);
-    const v = substituteAll(auth.apikey.value, seVars, reqVars, secrets);
+    const k = substituteAll(auth.apikey.key, seVars, reqVars, secrets, collectionVars);
+    const v = substituteAll(auth.apikey.value, seVars, reqVars, secrets, collectionVars);
     if (auth.apikey.in === 'header') {
       opts.headers[k] = v;
     } else {

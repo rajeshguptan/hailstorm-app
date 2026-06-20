@@ -86,17 +86,25 @@ async function runCommand() {
   
   const cmd = requestsStore.currentRequest.url;
   if (!cmd) return;
-  
+
   isRunning.value = true;
 
   // Reset response at start
   let combinedError = '';
+  let consoleOutput = '';
 
-  // Run pre-request script
+  // Run pre-request script with console capture
   if (requestsStore.currentRequest.preRequestScript) {
     try {
+      const originalLog = console.log;
+      const logs: string[] = [];
+      console.log = (...args: any[]) => {
+        logs.push(args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' '));
+      };
       const scriptFn = new Function(requestsStore.currentRequest.preRequestScript);
       scriptFn();
+      console.log = originalLog;
+      consoleOutput = logs.join('\n');
     } catch (err: any) {
       combinedError = `[Pre-request] ${err.message || err}`;
       console.error(combinedError);
@@ -115,11 +123,17 @@ async function runCommand() {
       time: 0,
       headers: {},
       error: combinedError || result.error || undefined,
+      consoleOutput: consoleOutput || undefined,
     };
 
-    // Run post-request script with ability to set environment variables
+    // Run post-request script with ability to set environment variables and capture console output
     if (requestsStore.currentRequest.postRequestScript && responseStore.response?.data) {
       try {
+        const originalLog = console.log;
+        const postLogs: string[] = [];
+        console.log = (...args: any[]) => {
+          postLogs.push(args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' '));
+        };
         const hs = {
           output: responseStore.response.data,
           setEnv: (key: string, value: string) => {
@@ -135,6 +149,8 @@ async function runCommand() {
         };
         const scriptFn = new Function('hs', requestsStore.currentRequest.postRequestScript);
         scriptFn(hs);
+        console.log = originalLog;
+        responseStore.response.consoleOutput = (consoleOutput + '\n' + postLogs.join('\n')).trim() || undefined;
       } catch (err: any) {
         const postError = `[Post-request] ${err.message || err}`;
         console.error(postError);
@@ -152,6 +168,7 @@ async function runCommand() {
       time: 0,
       headers: {},
       error: (combinedError || err.message),
+      consoleOutput: consoleOutput || undefined,
     };
   } finally {
     isRunning.value = false;

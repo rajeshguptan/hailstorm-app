@@ -29,10 +29,11 @@ function logClass(type: string): string {
 
 function logTypeClass(type: string): string {
   switch (type) {
-    case 'info': return 'text-blue-400';
-    case 'warn': return 'text-yellow-400';
-    case 'error': return 'text-red-400';
-    case 'debug': return 'text-zinc-400';
+    case 'log': return 'text-zinc-400 dark:text-zinc-400';
+    case 'info': return 'text-blue-400 dark:text-blue-400';
+    case 'warn': return 'text-yellow-400 dark:text-yellow-400';
+    case 'error': return 'text-red-400 dark:text-red-400';
+    case 'debug': return 'text-zinc-400 dark:text-zinc-500';
     default: return 'text-zinc-400';
   }
 }

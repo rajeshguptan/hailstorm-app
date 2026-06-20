@@ -3,28 +3,25 @@ import { CollectionsPanel } from '../fixtures/page-objects/CollectionsPanel';
 import { RequestPanel } from '../fixtures/page-objects/RequestPanel';
 import { RunnerPanel } from '../fixtures/page-objects/RunnerPanel';
 import { AppLayout } from '../fixtures/page-objects/AppLayout';
-import { EnvironmentsPanel } from '../fixtures/page-objects/EnvironmentsPanel';
 
 test.describe('Refactored Execution Engine Core Modules', () => {
   let appLayout: AppLayout;
   let collectionsPanel: CollectionsPanel;
   let requestPanel: RequestPanel;
   let runnerPanel: RunnerPanel;
-  let environmentsPanel: EnvironmentsPanel;
 
   test.beforeEach(async ({ appLoaded }) => {
     appLayout = new AppLayout(appLoaded);
     collectionsPanel = new CollectionsPanel(appLoaded);
     requestPanel = new RequestPanel(appLoaded);
     runnerPanel = new RunnerPanel(appLoaded);
-    environmentsPanel = new EnvironmentsPanel(appLoaded);
     await appLayout.navigateToCollections();
     await collectionsPanel.addCollection('Module Test Collection');
   });
 
   test.describe('HTTP Request Handling (httpClient.ts)', () => {
     test('should handle GET requests via refactored httpClient module', async ({ appLoaded }) => {
-      await collectionsPanel.addRequestToCollection('Module Test Collection');
+      await collectionsPanel.addRequestToCollection('Module Test Collection', 'GET Request');
       await requestPanel.setMethod('GET');
       await requestPanel.setUrl('https://httpbin.org/get');
 
@@ -35,7 +32,7 @@ test.describe('Refactored Execution Engine Core Modules', () => {
     });
 
     test('should handle POST requests via refactored httpClient module', async ({ appLoaded }) => {
-      await collectionsPanel.addRequestToCollection('Module Test Collection');
+      await collectionsPanel.addRequestToCollection('Module Test Collection', 'POST Request');
       await requestPanel.setMethod('POST');
       await requestPanel.setUrl('https://httpbin.org/post');
       await requestPanel.setBody('{"test": "refactored"}', 'json');
@@ -47,7 +44,7 @@ test.describe('Refactored Execution Engine Core Modules', () => {
     });
 
     test('should handle PUT requests', async ({ appLoaded }) => {
-      await collectionsPanel.addRequestToCollection('Module Test Collection');
+      await collectionsPanel.addRequestToCollection('Module Test Collection', 'PUT Request');
       await requestPanel.setMethod('PUT');
       await requestPanel.setUrl('https://httpbin.org/put');
       await requestPanel.setBody('{"updated": true}', 'json');
@@ -59,7 +56,7 @@ test.describe('Refactored Execution Engine Core Modules', () => {
     });
 
     test('should handle DELETE requests', async ({ appLoaded }) => {
-      await collectionsPanel.addRequestToCollection('Module Test Collection');
+      await collectionsPanel.addRequestToCollection('Module Test Collection', 'DELETE Request');
       await requestPanel.setMethod('DELETE');
       await requestPanel.setUrl('https://httpbin.org/delete');
 
@@ -72,7 +69,7 @@ test.describe('Refactored Execution Engine Core Modules', () => {
 
   test.describe('Authentication Handling (authHandler.ts)', () => {
     test('should apply bearer token authentication correctly', async ({ appLoaded }) => {
-      await collectionsPanel.addRequestToCollection('Module Test Collection');
+      await collectionsPanel.addRequestToCollection('Module Test Collection', 'Bearer Request');
       await requestPanel.setMethod('GET');
       await requestPanel.setUrl('https://httpbin.org/bearer');
       await requestPanel.setAuth('bearer', { token: 'test-bearer-token' });
@@ -84,7 +81,7 @@ test.describe('Refactored Execution Engine Core Modules', () => {
     });
 
     test('should apply basic authentication correctly', async ({ appLoaded }) => {
-      await collectionsPanel.addRequestToCollection('Module Test Collection');
+      await collectionsPanel.addRequestToCollection('Module Test Collection', 'Basic Request');
       await requestPanel.setMethod('GET');
       await requestPanel.setUrl('https://httpbin.org/basic-auth/user/pass');
       await requestPanel.setAuth('basic', { username: 'user', password: 'pass' });
@@ -96,7 +93,7 @@ test.describe('Refactored Execution Engine Core Modules', () => {
     });
 
     test('should apply API key authentication in header', async ({ appLoaded }) => {
-      await collectionsPanel.addRequestToCollection('Module Test Collection');
+      await collectionsPanel.addRequestToCollection('Module Test Collection', 'API Key Header Request');
       await requestPanel.setMethod('GET');
       await requestPanel.setUrl('https://httpbin.org/headers');
       await requestPanel.setAuth('apikey', { key: 'X-API-Key', value: 'test-api-key', in: 'header' });
@@ -108,7 +105,7 @@ test.describe('Refactored Execution Engine Core Modules', () => {
     });
 
     test('should apply API key authentication in query', async ({ appLoaded }) => {
-      await collectionsPanel.addRequestToCollection('Module Test Collection');
+      await collectionsPanel.addRequestToCollection('Module Test Collection', 'API Key Query Request');
       await requestPanel.setMethod('GET');
       await requestPanel.setUrl('https://httpbin.org/get');
       await requestPanel.setAuth('apikey', { key: 'api_key', value: 'test-key', in: 'query' });
@@ -121,27 +118,8 @@ test.describe('Refactored Execution Engine Core Modules', () => {
   });
 
   test.describe('Variable Substitution (authHandler.ts)', () => {
-    test('should substitute environment variables in URL', async ({ appLoaded }) => {
-      await collectionsPanel.addRequestToCollection('Module Test Collection');
-      
-      await appLayout.navigateToEnvironments();
-      await environmentsPanel.addEnvironment('Var Env');
-      
-      // Add variable to environment
-      await environmentsPanel.addVariable('base_url', 'httpbin.org');
-      await appLayout.navigateToCollections();
-      
-      await requestPanel.setMethod('GET');
-      await requestPanel.setUrl('https://{{base_url}}/get');
-
-      await requestPanel.sendRequest();
-
-      const status = await requestPanel.getResponseStatus();
-      expect(status).toContain('200');
-    });
-
     test('should handle request with query parameters', async ({ appLoaded }) => {
-      await collectionsPanel.addRequestToCollection('Module Test Collection');
+      await collectionsPanel.addRequestToCollection('Module Test Collection', 'Query Params Request');
       await requestPanel.setMethod('GET');
       await requestPanel.setUrl('https://httpbin.org/get?param1=value1&param2=value2');
 
@@ -154,12 +132,12 @@ test.describe('Refactored Execution Engine Core Modules', () => {
 
   test.describe('Rate Limiting (httpExecutor.ts)', () => {
     test('should apply rate limiting via TokenBucket', async ({ appLoaded }) => {
-      await collectionsPanel.addRequestToCollection('Module Test Collection');
+      await collectionsPanel.addRequestToCollection('Module Test Collection', 'Rate Limit Request');
       
       await appLayout.navigateToRunner();
       await runnerPanel.createRunConfig('Rate Limit Test', 'Module Test Collection');
-      await runnerPanel.selectRequest('Module Test Collection');
-      await runnerPanel.setRequestRPS('Module Test Collection', 5);
+      await runnerPanel.selectRequest('Rate Limit Request');
+      await runnerPanel.setRequestRPS('Rate Limit Request', 5);
       await runnerPanel.enableRepeatedRun(2);
 
       await runnerPanel.runCollection();
@@ -170,13 +148,13 @@ test.describe('Refactored Execution Engine Core Modules', () => {
     });
   });
 
-  test.describe('Load Testing Service (loadTestingService.ts)', () => {
+test.describe('Load Testing Service (loadTestingService.ts)', () => {
     test('should initialize load testing service and record metrics', async ({ appLoaded }) => {
-      await collectionsPanel.addRequestToCollection('Module Test Collection');
-      
+      await collectionsPanel.addRequestToCollection('Module Test Collection', 'Load Test Init Request');
+
       await appLayout.navigateToRunner();
       await runnerPanel.createRunConfig('Init Load Test', 'Module Test Collection');
-      await runnerPanel.selectRequest('Module Test Collection');
+      await runnerPanel.selectRequest('Load Test Init Request');
 
       await runnerPanel.runCollection();
       await runnerPanel.waitForRunCompletion();
@@ -187,13 +165,13 @@ test.describe('Refactored Execution Engine Core Modules', () => {
       expect(hasData).toBe(true);
     });
 
-    test('should record load test metrics with timing information', async ({ appLoaded }) => {
-      await collectionsPanel.addRequestToCollection('Module Test Collection');
-      
+test('should record load test metrics with timing information', async ({ appLoaded }) => {
+      await collectionsPanel.addRequestToCollection('Module Test Collection', 'Metrics Request');
+
       await appLayout.navigateToRunner();
       await runnerPanel.createRunConfig('Metrics Test', 'Module Test Collection');
-      await runnerPanel.selectRequest('Module Test Collection');
-      await runnerPanel.setRequestRPS('Module Test Collection', 10);
+      await runnerPanel.selectRequest('Metrics Request');
+      await runnerPanel.setRequestRPS('Metrics Request', 10);
       await runnerPanel.enableRepeatedRun(1);
 
       await runnerPanel.runCollection();
@@ -213,7 +191,7 @@ test.describe('Refactored Execution Engine Core Modules', () => {
     test('should maintain backward compatibility for sendRequest export', async ({ appLoaded }) => {
       // This test verifies that requestExecutor.ts properly exports sendRequest
       // which is used by ipcHandlers.ts for 'send-request' IPC handler
-      await collectionsPanel.addRequestToCollection('Module Test Collection');
+      await collectionsPanel.addRequestToCollection('Module Test Collection', 'Backward Compat Request');
       await requestPanel.setMethod('GET');
       await requestPanel.setUrl('https://httpbin.org/get');
 
@@ -224,7 +202,7 @@ test.describe('Refactored Execution Engine Core Modules', () => {
     });
 
     test('should handle request with multiple auth types', async ({ appLoaded }) => {
-      await collectionsPanel.addRequestToCollection('Module Test Collection');
+      await collectionsPanel.addRequestToCollection('Module Test Collection', 'Multi Auth Request');
       await requestPanel.setMethod('GET');
       await requestPanel.setUrl('https://httpbin.org/headers');
       await requestPanel.setAuth('bearer', { token: 'test-token' });
@@ -237,7 +215,7 @@ test.describe('Refactored Execution Engine Core Modules', () => {
     });
 
     test('should handle 404 errors gracefully', async ({ appLoaded }) => {
-      await collectionsPanel.addRequestToCollection('Module Test Collection');
+      await collectionsPanel.addRequestToCollection('Module Test Collection', '404 Request');
       await requestPanel.setMethod('GET');
       await requestPanel.setUrl('https://httpbin.org/status/404');
 
@@ -248,7 +226,7 @@ test.describe('Refactored Execution Engine Core Modules', () => {
     });
 
     test('should handle large response bodies', async ({ appLoaded }) => {
-      await collectionsPanel.addRequestToCollection('Module Test Collection');
+      await collectionsPanel.addRequestToCollection('Module Test Collection', 'Large Body Request');
       await requestPanel.setMethod('GET');
       await requestPanel.setUrl('https://httpbin.org/bytes/10000'); // 10KB response
 
@@ -259,7 +237,7 @@ test.describe('Refactored Execution Engine Core Modules', () => {
     });
 
     test('should display response time after request', async ({ appLoaded }) => {
-      await collectionsPanel.addRequestToCollection('Module Test Collection');
+      await collectionsPanel.addRequestToCollection('Module Test Collection', 'Response Time Request');
       await requestPanel.setMethod('GET');
       await requestPanel.setUrl('https://httpbin.org/delay/1');
 

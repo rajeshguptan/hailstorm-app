@@ -55,6 +55,7 @@ import { ref, computed, watch } from 'vue';
 import { useAppStore } from '../../stores';
 import { useEnvironmentsStore } from '../../stores/environments';
 import { useSecretsStore } from '../../stores/secrets';
+import { logger } from '../../utils/logger';
 
 const appStore = useAppStore();
 const environmentsStore = useEnvironmentsStore();
@@ -62,7 +63,7 @@ const secretsStore = useSecretsStore();
 
 const searchQuery = ref('');
 const secrets = computed(() => {
-  console.log('[DEBUG] secrets computed, length:', appStore.secrets.length);
+  logger.debug('[DEBUG] secrets computed, length:', appStore.secrets.length);
   return appStore.secrets;
 });
 
@@ -108,8 +109,8 @@ async function importSecrets() {
 
     const { filePath, content } = result;
 
-    console.log('Importing from file:', filePath);
-    console.log('File content length:', content.length);
+    logger.debug('Importing from file:', filePath);
+    logger.debug('File content length:', content.length);
 
     // Check if file content is empty
     if (!content || content.trim().length === 0) {
@@ -121,7 +122,7 @@ async function importSecrets() {
     let importedSecrets;
     try {
       importedSecrets = JSON.parse(content);
-      console.log('Parsed secrets:', importedSecrets);
+      logger.debug('Parsed secrets:', importedSecrets);
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
       alert(`Invalid JSON file: ${parseError.message}\n\nPlease ensure the file contains valid JSON.`);
@@ -138,8 +139,6 @@ async function importSecrets() {
       alert('The file contains an empty array. No secrets to import.');
       return;
     }
-
-    console.log(`Processing ${importedSecrets.length} secrets from file`);
 
     let importedCount = 0;
     let skippedCount = 0;
@@ -161,30 +160,27 @@ async function importSecrets() {
         continue;
       }
 
-      // Check for duplicate names
-      const existingSecret = appStore.secrets.find(s => s.name === secret.name.trim());
-      if (existingSecret) {
-        if (confirm(`A secret with name "${secret.name}" already exists. Overwrite it?\n\nExisting value: ${existingSecret.value ? '[HIDDEN]' : '[EMPTY]'}\nNew value: ${secret.value ? '[HIDDEN]' : '[EMPTY]'}`)) {
-          existingSecret.value = secret.value || '';
-          existingSecret.env = secret.env || '';
-          importedCount++;
-          console.log(`Overwrote existing secret: ${secret.name}`);
-        } else {
-          skippedCount++;
-          console.log(`Skipped duplicate secret: ${secret.name}`);
-        }
-      } else {
-        const newSecret = {
-          id: generateId(),
-          name: secret.name.trim(),
-          env: secret.env || '',
-          value: secret.value || ''
-        };
-        appStore.secrets.push(newSecret);
-        importedCount++;
-        console.log(`Added new secret: ${secret.name}`);
-      }
-    }
+// Check for duplicate names
+       const existingSecret = appStore.secrets.find(s => s.name === secret.name.trim());
+       if (existingSecret) {
+         if (confirm(`A secret with name "${secret.name}" already exists. Overwrite it?\n\nExisting value: ${existingSecret.value ? '[HIDDEN]' : '[EMPTY]'}\nNew value: ${secret.value ? '[HIDDEN]' : '[EMPTY]'}`)) {
+           existingSecret.value = secret.value || '';
+           existingSecret.env = secret.env || '';
+           importedCount++;
+         } else {
+           skippedCount++;
+         }
+       } else {
+         const newSecret = {
+           id: generateId(),
+           name: secret.name.trim(),
+           env: secret.env || '',
+           value: secret.value || ''
+         };
+         appStore.secrets.push(newSecret);
+         importedCount++;
+       }
+     }
 
     if (importedCount > 0) {
       saveSecrets();
@@ -245,7 +241,6 @@ async function exportSecrets() {
       alert(`Successfully exported ${appStore.secrets.length} unencrypted secrets to:\n\n${savedFilePath}\n\nNote: Both 'env' and 'value' fields are exported in plain text.`);
     } else {
       // User cancelled the save dialog
-      console.log('Export cancelled by user');
     }
   } catch (error) {
     console.error('Error exporting secrets:', error);
@@ -278,18 +273,15 @@ function loadSecrets() {
   if (!secretsStore.isUnlocked) return;
 
   const saved = localStorage.getItem('hailstorm_secrets');
-  console.log('[DEBUG] SecretsPanel loadSecrets, saved:', saved);
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      console.log('[DEBUG] SecretsPanel loadSecrets, parsed secrets:', parsed.length);
       appStore.secrets = parsed.map((s: any) => ({
         ...s,
         value: secretsStore.simpleDecrypt(s.value, secretsStore.encryptionKey)
       }));
-      console.log('[DEBUG] SecretsPanel loadSecrets, set appStore.secrets to:', appStore.secrets.length);
     } catch (e) {
-      console.error('[DEBUG] SecretsPanel loadSecrets, error parsing:', e);
+      console.error('Error parsing secrets:', e);
     }
   }
 }

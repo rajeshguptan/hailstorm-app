@@ -16,12 +16,15 @@
     
  <main class="flex-1 flex">
 <!-- Full width views -->
-  <div v-if="uiStore.activeSidebar === 'settings'" class="main-content flex-1 flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
-  <SettingsContent />
-</div>
-<div v-else-if="uiStore.activeSidebar === 'stats'" class="main-content flex-1 flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
-  <StatsPanel />
-</div>
+<div v-if="uiStore.activeSidebar === 'settings'" class="main-content flex-1 flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
+   <SettingsContent />
+ </div>
+ <div v-else-if="uiStore.activeSidebar === 'stats'" class="main-content flex-1 flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
+   <StatsPanel />
+ </div>
+ <div v-else-if="uiStore.activeSidebar === 'console'" class="main-content flex-1 flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
+   <ConsolePanel />
+ </div>
 
 <!-- Sidebar + main content layout -->
 <div v-else-if="showSidebarMain" class="flex-1 flex">
@@ -32,8 +35,9 @@
       <h5 class="mb-0 text-zinc-900 dark:text-white">{{ sidebarTitle }}</h5>
       <div v-if="uiStore.activeSidebar === 'collections'" class="flex items-center gap-2">
         <span class="text-sm text-zinc-600 dark:text-zinc-400">Env :</span>
-        <select :value="activeEnvironmentId || ''" @change="environmentsStore.selectEnvironment($event.target.value)" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 text-sm w-32">
-          <option value="">No Environment</option>
+        <select :value="activeEnvironmentId || ''" @change="handleEnvironmentChange" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 text-sm w-32">
+          <option value=""></option>
+          <option :value="NEW_ENVIRONMENT_OPTION" class="text-blue-600">New Env</option>
           <option v-for="env in environments" :key="env.id" :value="env.id">{{ env.name }}</option>
         </select>
       </div>
@@ -59,9 +63,7 @@
      <!-- Secrets detail when selected -->
     <SecretsDetail v-if="uiStore.activeSidebar === 'secrets' && appStore.selectedSecretId !== null" />
 
-    <EnvironmentsDetail v-if="uiStore.activeSidebar === 'environments' && environmentsStore.activeEnvironmentId !== null" />
-
-<CollectionPanel v-if="uiStore.activeSidebar === 'collections' && collectionsStore.selectedCollectionId !== null && requestsStore.selectedRequestId === null" />
+    <CollectionPanel v-if="uiStore.activeSidebar === 'collections' && collectionsStore.selectedCollectionId !== null && requestsStore.selectedRequestId === null" />
      <!-- Runner panel -->
     <RunnerPanel
       v-if="uiStore.activeSidebar === 'runner'"
@@ -115,11 +117,27 @@
     @close="secretsStore.hideUnlockModal()"
   />
 
+  <div v-if="showNewEnvironmentModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" @click="showNewEnvironmentModal = false">
+    <div class="bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border border-zinc-300 dark:border-zinc-600 rounded p-4" style="width: 350px;" @click.stop>
+      <h5 class="mb-3">New Env</h5>
+      <input
+        v-model="newEnvironmentName"
+        type="text"
+        class="form-input bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded mb-3 w-full px-3 py-2"
+        placeholder="Environment name"
+        @keydown.enter="createNewEnvironment"
+      />
+      <div class="flex gap-2 justify-end">
+        <button class="btn btn-sm border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="showNewEnvironmentModal = false">Cancel</button>
+        <button class="btn btn-sm bg-blue-500 text-white hover:bg-blue-600" @click="createNewEnvironment">Create</button>
+      </div>
+    </div>
+  </div>
 </div>
 </template>
 
 <script setup lang="ts">
-import { computed, watch, onMounted } from 'vue';
+import { computed, watch, onMounted, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import type { SidebarView } from '../types';
 import { useAppStore } from '../stores';
@@ -131,7 +149,6 @@ import { useRunnerStore } from '../stores/runner';
 import { useSecretsStore } from '../stores/secrets';
 import { useHistoryStore } from '../stores/history';
 import ContextMenu from '../components/ContextMenu.vue';
-import EnvModal from '../components/EnvModal.vue';
 import RenameModal from '../components/RenameModal.vue';
 import SecretsEncryptionModal from '../components/SecretsEncryptionModal.vue';
 import TabsBar from '../components/TabsBar.vue';
@@ -139,11 +156,11 @@ import RequestPanel from '../components/RequestPanel.vue';
 import ResponsePanel from '../components/ResponsePanel.vue';
 import SettingsContent from '../components/SettingsContent.vue';
 import SecretsDetail from '../components/SecretsDetail.vue';
-import EnvironmentsDetail from '../components/EnvironmentsDetail.vue';
 import CollectionPanel from '../components/CollectionPanel.vue';
 import ShellScriptDetail from '../components/ShellScriptDetail.vue';
 import RunnerPanel from '../components/RunnerPanel.vue';
 import StatsPanel from '../components/StatsPanel.vue';
+import ConsolePanel from '../components/ConsolePanel.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -223,7 +240,6 @@ watch(
     // Map route paths to sidebar IDs
     const routeToSidebar: Record<string, SidebarView> = {
       '/collections': 'collections',
-      '/environments': 'environments',
       '/history': 'history',
       '/secrets': 'secrets',
       '/stats': 'stats',
@@ -245,25 +261,22 @@ watch(
 
 const ribbonItems = computed(() => [
   { id: 'collections' as SidebarView, icon: '📁', label: 'Collections', route: '/collections' },
-  { id: 'environments' as SidebarView, icon: '🌍', label: 'Environments', route: '/environments' },
   { id: 'history' as SidebarView, icon: '🕒', label: 'History', route: '/history' },
   { id: 'secrets' as SidebarView, icon: secretsStore.isLocked ? '🔒' : '🔓', iconStyle: secretsStore.isLocked ? 'filter: sepia(1) hue-rotate(0deg) saturate(2) brightness(1.3)' : 'filter: sepia(1) hue-rotate(120deg) saturate(2) brightness(1.3)', label: 'Secrets', route: '/secrets' },
   { id: 'stats' as SidebarView, icon: '📊', label: 'Stats', route: '/stats' },
   { id: 'runner' as SidebarView, icon: '🏃', label: 'Runner', route: '/runner' },
+  { id: 'console' as SidebarView, icon: '🖥️', label: 'Console', route: '/console' },
   { id: 'settings' as SidebarView, icon: '⚙️', label: 'Settings', route: '/settings' },
 ]);
 
-const sidebarPanels: SidebarView[] = ['collections', 'environments', 'history', 'secrets', 'runner'];
+const sidebarPanels: SidebarView[] = ['collections', 'history', 'secrets', 'runner'];
 
 const showSidebarMain = computed(() => {
   return sidebarPanels.includes(uiStore.activeSidebar);
 });
 
 const showRequestDetail = computed(() => {
-  const shouldShow = (uiStore.activeSidebar === 'collections' || uiStore.activeSidebar === 'history') && requestsStore.selectedRequestId !== null;
-  console.log('showRequestDetail computed:', shouldShow, 'activeSidebar:', uiStore.activeSidebar, 'selectedRequestId:', requestsStore.selectedRequestId);
-  console.log('showRequestDetail - collections check:', uiStore.activeSidebar === 'collections', 'history check:', uiStore.activeSidebar === 'history', 'selectedRequestId check:', requestsStore.selectedRequestId !== null);
-  return shouldShow;
+  return (uiStore.activeSidebar === 'collections' || uiStore.activeSidebar === 'history') && requestsStore.selectedRequestId !== null;
 });
 
 const sidebarTitle = computed(() => {
@@ -272,6 +285,29 @@ const sidebarTitle = computed(() => {
 
 const activeEnvironmentId = computed(() => environmentsStore.activeEnvironmentId);
 const environments = computed(() => environmentsStore.environments);
+const NEW_ENVIRONMENT_OPTION = '__new_environment__';
+const showNewEnvironmentModal = ref(false);
+const newEnvironmentName = ref('');
+
+function handleEnvironmentChange(event: Event) {
+  const selectedEnvironmentId = (event.target as HTMLSelectElement).value;
+  if (selectedEnvironmentId === NEW_ENVIRONMENT_OPTION) {
+    newEnvironmentName.value = '';
+    showNewEnvironmentModal.value = true;
+    return;
+  }
+
+  environmentsStore.selectEnvironment(selectedEnvironmentId || null);
+}
+
+function createNewEnvironment() {
+  const name = newEnvironmentName.value.trim();
+  if (!name) return;
+
+  environmentsStore.addEnvironment(name);
+  newEnvironmentName.value = '';
+  showNewEnvironmentModal.value = false;
+}
 
 let resizeStartX = 0;
 let resizeStartWidth = 0;
@@ -354,23 +390,16 @@ function navigate(id: SidebarView) {
     }
 
     // Navigate to the corresponding route
-    router.push(`/${id}`).catch(err => {
+    router.push(item.route).catch(err => {
       console.error('Router navigation error:', err);
     });
 
     // Clear selections when navigating to different views
     if (id === 'collections') {
       requestsStore.selectRequest(null); // This will reset to default request
-    } else if (id === 'environments') {
-      environmentsStore.activeEnvironmentId = null;
     } else if (id === 'secrets') {
-      console.log('[DEBUG] navigate to secrets, setting selectedSecretId to null');
       appStore.selectedSecretId = null;
-    } else if (id === 'runner') {
-      // Sidebar title is set in watch(route)
     }
-
-    router.push(item.route);
   }
 }
 </script>

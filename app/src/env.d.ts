@@ -25,7 +25,6 @@ interface ResponseData {
       makeRequest: (options: RequestOptions) => Promise<ResponseData>;
       runShell: (command: { command: string }) => Promise<{ output: string; error: string }>;
       importCollection: () => Promise<string | null>;
-      importEnvironment: () => Promise<string | null>;
       selectWorkspace: () => Promise<string | null>;
       saveCollectionToFiles: (collection: any, workspacePath: string) => Promise<boolean>;
       loadCollectionFromFiles: (collectionName: string, workspacePath: string) => Promise<any>;

@@ -61,6 +61,14 @@ test.describe('File-based Storage', () => {
     expect(await collectionsPanel.page.locator('text=Auto Save Collection').isVisible()).toBe(false);
   });
 
+  test('should preserve collection metadata in files', async () => {
+    await collectionsPanel.addCollection('Metadata Collection');
+
+    // Collection metadata like description, auth, variables should be preserved
+    // This would require full file system mocking to test properly
+    expect(await collectionsPanel.page.locator('text=Metadata Collection').isVisible()).toBe(true);
+  });
+
   test('should maintain folder structure in file system', async () => {
     await collectionsPanel.addCollection('Folder Structure Collection');
     await collectionsPanel.addFolderToCollection('Folder Structure Collection', 'Test Folder');
@@ -71,14 +79,6 @@ test.describe('File-based Storage', () => {
 
     expect(await collectionsPanel.page.locator('text=Test Folder').isVisible()).toBe(true);
     expect(await collectionsPanel.page.locator('text=Folder Request').isVisible()).toBe(true);
-  });
-
-  test('should preserve collection metadata in files', async () => {
-    await collectionsPanel.addCollection('Metadata Collection');
-
-    // Collection metadata like description, auth, variables should be preserved
-    // This would require full file system mocking to test properly
-    expect(await collectionsPanel.page.locator('text=Metadata Collection').isVisible()).toBe(true);
   });
 
   test('should handle concurrent file operations', async () => {

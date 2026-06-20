@@ -39,6 +39,17 @@ import type { SettingsCategory, Setting, SubSetting } from '../../types';
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const settingsCategories = computed(() => settingsStore.settingsCategories);
+const expandedSubSettingsMap = computed(() => {
+  const map: Record<string, SubSetting[]> = {};
+  settingsStore.settingsCategories.forEach((category: SettingsCategory) => {
+    category.settings.forEach((setting: Setting) => {
+      if (setting.subSettings) {
+        map[setting.id] = setting.subSettings;
+      }
+    });
+  });
+  return map;
+});
 
 // Expand states
 const expandedCategories = ref<string[]>([]);
@@ -65,9 +76,8 @@ async function handleImport() {
       input.click();
       return;
     }
-    const content = await window.api.importCollection(); // Reusing importCollection for settings import
+    const content = await window.api.importCollection();
     if (!content) {
-      console.log('No content returned from file dialog');
       return;
     }
     const data = JSON.parse(content);
@@ -80,13 +90,11 @@ async function handleImport() {
 function importSettings(data: any) {
   if (!data) return;
   if (data.settingsCategories) {
-    store.settingsCategories = data.settingsCategories;
-    store.saveToLocalStorage();
+    settingsStore.settingsCategories = data.settingsCategories;
+    settingsStore.saveToLocalStorage();
   } else if (Array.isArray(data)) {
-    store.settingsCategories = data;
-    store.saveToLocalStorage();
-  } else {
-    console.log('Unknown settings data format:', Object.keys(data));
+    settingsStore.settingsCategories = data;
+    settingsStore.saveToLocalStorage();
   }
 }
 
@@ -94,7 +102,6 @@ function toggleCategory(id: string) {
   const index = expandedCategories.value.indexOf(id);
   if (index > -1) {
     expandedCategories.value.splice(index, 1);
-    // Collapse sub-settings when parent category is collapsed
     if (activeSubSettingParentId.value === id) {
       activeSubSettingParentId.value = null;
       expandedSubSettings.value = [];
@@ -110,7 +117,7 @@ function handleSettingClick(event: MouseEvent, setting: Setting) {
   if (hasSubSettings(setting)) {
     toggleSubSettings(setting.id);
   } else {
-    store.selectSetting(setting.id);
+    settingsStore.selectSetting(setting.id);
   }
 }
 
@@ -128,7 +135,7 @@ function toggleSubSettings(id: string) {
 function handleSubSettingClick(event: MouseEvent, subSetting: SubSetting) {
   event.preventDefault();
   event.stopPropagation();
-  store.selectSubSetting(subSetting.id);
+  settingsStore.selectSubSetting(subSetting.id);
 }
 
 function hasSubSettings(setting: Setting): boolean {
@@ -136,6 +143,6 @@ function hasSubSettings(setting: Setting): boolean {
 }
 
 function resetToDefaults() {
-  store.resetSettingsToDefaults();
+  settingsStore.resetSettingsToDefaults();
 }
 </script>

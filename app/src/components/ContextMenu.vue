@@ -23,11 +23,9 @@
 <script setup lang="ts">
 import { useUIStore } from '../stores/ui';
 import { useCollectionsStore } from '../stores/collections';
-import { useEnvironmentsStore } from '../stores/environments';
 
 const uiStore = useUIStore();
 const collectionsStore = useCollectionsStore();
-const environmentsStore = useEnvironmentsStore();
 
 function handleAction(action: string) {
   const { type, id } = uiStore.contextMenu;
@@ -36,8 +34,6 @@ function handleAction(action: string) {
     case 'delete':
       if (type === 'collection') {
         collectionsStore.deleteCollection(id);
-      } else if (type === 'environment') {
-        environmentsStore.deleteEnvironment(id);
       } else if (type === 'request') {
         collectionsStore.deleteRequest(id);
       } else if (type === 'folder') {

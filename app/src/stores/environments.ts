@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import type { Environment } from '../types';
 import { useAppStore } from './index';
+import { logger } from '../utils/logger';
 
 export const useEnvironmentsStore = defineStore('environments', {
   state: () => ({
@@ -19,19 +20,21 @@ export const useEnvironmentsStore = defineStore('environments', {
       return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     },
 
-    addEnvironment() {
+    addEnvironment(name = 'New Env') {
       const env: Environment = {
         id: this.generateId('env'),
-        name: 'New Environment',
+        name,
         variables: [],
         active: false
       };
       this.environments.push(env);
       this.selectEnvironment(env.id);
+      this.saveEnvironment();
+      return env;
     },
 
-    selectEnvironment(id: string) {
-      console.log('[ENVIRONMENTS] selectEnvironment called with id:', id);
+    selectEnvironment(id: string | null) {
+      logger.debug('[ENVIRONMENTS] selectEnvironment called with id:', id);
       this.activeEnvironmentId = id;
       this.environments.forEach(e => e.active = e.id === id);
     },

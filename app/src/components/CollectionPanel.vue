@@ -64,28 +64,42 @@
               Collections and requests will be saved as files in this directory
             </p>
           </div>
+        </div>
 
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Variables</label>
-            <button @click="addVariable" class="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm mb-2">
+        <!-- Description Tab -->
+        <div v-if="activeTab === 'description'" class="p-4">
+          <MarkdownDescription v-model="editingCollection.description" />
+        </div>
+
+        <!-- Variables Tab -->
+        <div v-if="activeTab === 'variables'" class="p-4">
+          <div class="flex justify-between items-center mb-3">
+            <div>
+              <h3 class="text-base font-semibold text-zinc-900 dark:text-white">Collection Variables</h3>
+              <p class="text-xs text-zinc-500 mt-1">Variables scoped to this collection. Set Env to apply a variable only when that environment is active.</p>
+            </div>
+            <button @click="addVariable" class="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm">
               + Add Variable
             </button>
+          </div>
 
-            <div v-if="editingCollection.variables.length === 0" class="text-center text-zinc-500 py-4 text-sm">
-              No variables defined
-            </div>
+          <div v-if="editingCollection.variables.length === 0" class="text-center text-zinc-500 py-8 text-sm border border-dashed border-zinc-300 dark:border-zinc-700 rounded">
+            No collection variables defined
+          </div>
 
-            <table v-else class="w-full border-collapse">
+          <div v-else class="overflow-auto rounded border border-zinc-200 dark:border-zinc-700">
+            <table class="w-full border-collapse min-w-[640px]">
               <thead>
-                <tr class="border-b border-zinc-200 dark:border-zinc-700">
-                  <th class="text-left p-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">Enabled</th>
+                <tr class="border-b border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800">
+                  <th class="p-2 w-16 text-xs font-medium text-zinc-500 uppercase tracking-wider">Enabled</th>
                   <th class="text-left p-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">Key</th>
                   <th class="text-left p-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">Value</th>
-                  <th class="text-left p-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">Actions</th>
+                  <th class="text-left p-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">Env</th>
+                  <th class="p-2 w-16 text-xs font-medium text-zinc-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(variable, index) in editingCollection.variables" :key="index" class="border-b border-zinc-100 dark:border-zinc-800">
+                <tr v-for="(variable, index) in editingCollection.variables" :key="index" class="border-b border-zinc-100 dark:border-zinc-800 last:border-b-0">
                   <td class="p-2">
                     <input
                       type="checkbox"
@@ -108,6 +122,17 @@
                     >
                   </td>
                   <td class="p-2">
+                    <select
+                      v-model="variable.env"
+                      class="w-full px-2 py-1 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm"
+                    >
+                      <option value="">All environments</option>
+                      <option v-for="environment in environments" :key="environment.id" :value="environment.id">
+                        {{ environment.name }}
+                      </option>
+                    </select>
+                  </td>
+                  <td class="p-2 text-right">
                     <button @click="removeVariable(index)" class="text-red-500 hover:text-red-700">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -118,11 +143,6 @@
               </tbody>
             </table>
           </div>
-        </div>
-
-        <!-- Description Tab -->
-        <div v-if="activeTab === 'description'" class="p-4">
-          <MarkdownDescription v-model="editingCollection.description" />
         </div>
 
         <!-- Scripts Tab -->
@@ -357,18 +377,21 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { useAppStore } from '../stores';
 import { useCollectionsStore } from '../stores/collections';
+import { useEnvironmentsStore } from '../stores/environments';
 import MarkdownDescription from './MarkdownDescription.vue';
 import ScriptTabs from './ScriptTabs.vue';
-import type { Collection, Variable, Auth } from '../types';
+import type { Collection, Auth } from '../types';
 
 const appStore = useAppStore();
 const collectionsStore = useCollectionsStore();
+const environmentsStore = useEnvironmentsStore();
 
 const activeTab = ref('properties');
 
 const tabs = [
   { id: 'properties', name: 'Properties' },
   { id: 'description', name: 'Description' },
+  { id: 'variables', name: 'Variables' },
   { id: 'scripts', name: 'Scripts' },
   { id: 'auth', name: 'Auth' }
 ];
@@ -376,6 +399,8 @@ const tabs = [
 const selectedCollection = computed(() => {
   return collectionsStore.collections.find(c => c.id === collectionsStore.selectedCollectionId) || null;
 });
+
+const environments = computed(() => environmentsStore.environments);
 
 const editingCollection = ref<Collection>({
    id: '',
@@ -394,6 +419,7 @@ const initializeEditingCollection = () => {
   if (selectedCollection.value) {
     editingCollection.value = {
       ...selectedCollection.value,
+      variables: selectedCollection.value.variables || [],
       auth: selectedCollection.value.auth || { type: 'noauth', apikey: { key: '', value: '', in: 'header' } }
     };
   }
@@ -425,7 +451,7 @@ onMounted(() => {
 });
 
 const addVariable = () => {
-  editingCollection.value.variables.push({ key: '', value: '', enabled: true });
+  editingCollection.value.variables.push({ key: '', value: '', enabled: true, env: '' });
 };
 
 const removeVariable = (index: number) => {

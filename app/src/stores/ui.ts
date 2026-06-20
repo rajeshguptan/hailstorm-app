@@ -19,14 +19,6 @@ export const useUIStore = defineStore('ui', {
 
     copiedRequest: null as any,
 
-    showEnvModal: false,
-    editingEnv: {
-      id: '',
-      name: '',
-      variables: [],
-      active: false
-    } as any,
-
     showRenameModal: false,
     renameTarget: { id: '', currentName: '' } as { id: string; currentName: string },
 

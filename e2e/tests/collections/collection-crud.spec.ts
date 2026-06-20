@@ -53,7 +53,7 @@ test.describe('Collection CRUD Operations', () => {
   test('should rename a folder via context menu', async () => {
     await collectionsPanel.addCollection('Test Collection');
     await collectionsPanel.addFolderToCollection('Test Collection', 'Original Folder');
-    await collectionsPanel.renameCollection('Original Folder', 'Renamed Folder'); // Note: reusing method, adjust selector
+    await collectionsPanel.renameFolder('Test Collection', 'Original Folder', 'Renamed Folder');
     expect(await collectionsPanel.page.locator('text=Renamed Folder').isVisible()).toBe(true);
   });
 
@@ -95,6 +95,55 @@ test.describe('Collection CRUD Operations', () => {
     await expect(collectionsPanel.page.locator('text=Add Request')).toBeVisible();
     await expect(collectionsPanel.page.locator('text=Add Folder')).toBeVisible();
     await expect(collectionsPanel.page.locator('text=Delete')).toBeVisible();
+  });
+
+  test('should show correct context menu options for request', async () => {
+    await collectionsPanel.addCollection('Test Collection');
+    await collectionsPanel.addRequestToCollection('Test Collection', 'Test Request');
+    // Requests use .tree-node class
+    await collectionsPanel.page.locator('.tree-node:has-text("Test Request")').first().click({ button: 'right' });
+
+    await expect(collectionsPanel.page.locator('text=Rename')).toBeVisible();
+    await expect(collectionsPanel.page.locator('text=Duplicate')).toBeVisible();
+    await expect(collectionsPanel.page.locator('text=Copy')).toBeVisible();
+    await expect(collectionsPanel.page.locator('text=Delete')).toBeVisible();
+  });
+
+  test('should duplicate a request via context menu', async () => {
+    await collectionsPanel.addCollection('Test Collection');
+    await collectionsPanel.addRequestToCollection('Test Collection', 'Original Request');
+    const initialCount = await collectionsPanel.page.locator('.tree-node').count();
+
+    await collectionsPanel.duplicateRequest('Test Collection', 'Original Request');
+
+    const finalCount = await collectionsPanel.page.locator('.tree-node').count();
+    expect(finalCount).toBe(initialCount + 1);
+    expect(await collectionsPanel.page.locator('text=Original Request (copy)').isVisible()).toBe(true);
+  });
+
+  test('should copy and paste a request via context menu', async () => {
+    await collectionsPanel.addCollection('Test Collection');
+    await collectionsPanel.addRequestToCollection('Test Collection', 'Copied Request');
+    const initialCount = await collectionsPanel.page.locator('.tree-node').count();
+
+    await collectionsPanel.copyRequest('Test Collection', 'Copied Request');
+    await collectionsPanel.pasteRequest('Test Collection', 'collection');
+
+    const finalCount = await collectionsPanel.page.locator('.tree-node').count();
+    expect(finalCount).toBe(initialCount + 1);
+    expect(await collectionsPanel.page.locator('text=Copied Request (copy)').isVisible()).toBe(true);
+  });
+
+  test('should paste copied request into a folder', async () => {
+    await collectionsPanel.addCollection('Test Collection');
+    await collectionsPanel.addFolderToCollection('Test Collection', 'Target Folder');
+    await collectionsPanel.addRequestToCollection('Test Collection', 'Source Request');
+
+    await collectionsPanel.copyRequest('Test Collection', 'Source Request');
+    await collectionsPanel.pasteRequest('Target Folder', 'folder');
+
+    await collectionsPanel.expandFolder('Test Collection', 'Target Folder');
+    expect(await collectionsPanel.page.locator('.tree-node:has-text("Source Request (copy)")').isVisible()).toBe(true);
   });
 
   test('should show empty message when no collections exist', async ({ appLoaded }) => {

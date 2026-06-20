@@ -15,30 +15,31 @@
 import { ref, watch } from 'vue';
 import { useUIStore } from '../stores/ui';
 import { useAppStore } from '../stores';
+import { logger } from '../utils/logger';
 
 const uiStore = useUIStore();
 const appStore = useAppStore();
 const newName = ref('');
 
 watch(() => uiStore.showRenameModal, (show) => {
-  console.log('[RENAME_MODAL] showRenameModal changed to:', show);
-  console.log('[RENAME_MODAL] renameTarget:', uiStore.renameTarget);
+  logger.debug('[RENAME_MODAL] showRenameModal changed to:', show);
+  logger.debug('[RENAME_MODAL] renameTarget:', uiStore.renameTarget);
   if (show) {
     newName.value = uiStore.renameTarget?.currentName || '';
-    console.log('[RENAME_MODAL] Set newName to:', newName.value);
+    logger.debug('[RENAME_MODAL] Set newName to:', newName.value);
   }
 });
 
 function handleRename() {
-  console.log('[RENAME_MODAL] handleRename called with newName:', newName.value);
-  console.log('[RENAME_MODAL] renameTarget:', uiStore.renameTarget);
+  logger.debug('[RENAME_MODAL] handleRename called with newName:', newName.value);
+  logger.debug('[RENAME_MODAL] renameTarget:', uiStore.renameTarget);
   if (newName.value.trim() && uiStore.renameTarget) {
-    console.log('[RENAME_MODAL] Calling appStore.renameItem with id:', uiStore.renameTarget.id, 'newName:', newName.value.trim());
+    logger.debug('[RENAME_MODAL] Calling appStore.renameItem with id:', uiStore.renameTarget.id, 'newName:', newName.value.trim());
     appStore.renameItem(uiStore.renameTarget.id, newName.value.trim());
     uiStore.showRenameModal = false;
-    console.log('[RENAME_MODAL] Rename completed and modal closed');
+    logger.debug('[RENAME_MODAL] Rename completed and modal closed');
   } else {
-    console.log('[RENAME_MODAL] Cannot rename - missing data');
+    logger.debug('[RENAME_MODAL] Cannot rename - missing data');
   }
 }
 </script>

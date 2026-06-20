@@ -232,23 +232,23 @@
           <span style="width: 30px;"></span>
           <span class="flex-1 text-sm text-zinc-500">Key</span>
           <span class="flex-1 text-sm text-zinc-500">Value</span>
-          <div class="flex items-center flex-1">
-            <span class="text-sm text-zinc-500 mr-2">Dataset</span>
-            <select v-model="selectedDataset" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1">
-              <option value="">All</option>
-              <option v-for="dataset in uniqueDatasets" :key="dataset" :value="dataset">{{ dataset }}</option>
-            </select>
-          </div>
+          <span class="flex-1 text-sm text-zinc-500">Env</span>
           <span style="width: 30px;"></span>
         </div>
-        <div v-for="(variable, index) in filteredVariables" :key="index" class="flex gap-2 mb-1">
+        <div v-for="(variable, index) in requestsStore.currentRequest.variables || []" :key="index" class="flex gap-2 mb-1">
           <input type="checkbox" v-model="variable.enabled" class="rounded border-zinc-300 dark:border-zinc-600">
           <input v-model="variable.key" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="Key" />
           <input v-model="variable.value" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="Value" />
-          <input v-model="variable.dataset" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="Dataset" />
+          <select
+            v-model="variable.env"
+            class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1"
+          >
+            <option value="">All environments</option>
+            <option v-for="environment in environmentsStore.environments" :key="environment.id" :value="environment.id">{{ environment.name }}</option>
+          </select>
           <button class="btn btn-sm border border-red-500 text-red-500 px-2" @click="removeVariable(index)">×</button>
         </div>
-        <button class="btn btn-sm border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 mt-2 hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="addVariable()">+ Add Variable</button>
+        <button class="btn btn-sm border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 mt-2 hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="addVariable">+ Add Variable</button>
       </div>
 
 <div v-if="requestsStore.activeRequestTab === 'scripts'" class="p-2 h-full">
@@ -272,6 +272,7 @@ import { useHistoryStore } from '../stores/history';
 import { useUIStore } from '../stores/ui';
 import { useSecretsStore } from '../stores/secrets';
 import { useAppStore } from '../stores';
+import { logger } from '../utils/logger';
 import OAuthConfig from './OAuthConfig.vue';
 import MarkdownDescription from './MarkdownDescription.vue';
 import ScriptTabs from './ScriptTabs.vue';
@@ -285,7 +286,6 @@ const uiStore = useUIStore();
 const collectionsStore = useCollectionsStore();
 const secretsStore = useSecretsStore();
 const appStore = useAppStore();
-const selectedDataset = ref<string>('');
 const showSaveMenu = ref<boolean>(false);
 const clientCertFormat = ref<string>('pfx');
 const graphqlQuery = ref<string>('');
@@ -293,47 +293,25 @@ const graphqlVariables = ref<string>('{}');
 const graphqlOperationName = ref<string>('');
 const graphqlError = ref<string>('');
 
-// Track if request has been modified
-watch(() => requestsStore.selectedRequestId, (newId) => {
-  if (uiStore.setRequestModified) {
-    uiStore.setRequestModified(false);
-  } else {
-    uiStore.requestModified = false;
+function toSerializable<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value ?? null)) as T;
+}
+
+watch(() => requestsStore.currentRequest.body.type, (newType) => {
+  if (newType === 'graphql') {
+    try {
+      const currentBody = requestsStore.currentRequest.body.content;
+      if (currentBody) {
+        const parsed = JSON.parse(currentBody);
+        graphqlQuery.value = parsed.query || '';
+        graphqlVariables.value = JSON.stringify(parsed.variables || {}, null, 2);
+        graphqlOperationName.value = parsed.operationName || '';
+      }
+    } catch {
+      // Invalid JSON, keep current values
+    }
   }
 });
-
-// Track modifications to request parameters
-watch(() => [
-  requestsStore.currentRequest.url,
-  requestsStore.currentRequest.method,
-  requestsStore.currentRequest.body?.content,
-  requestsStore.urlParams,
-  requestsStore.requestHeaders
-], () => {
-  if (requestsStore.selectedRequestId) {
-    if (uiStore.setRequestModified) {
-      uiStore.setRequestModified(true);
-    } else {
-      uiStore.requestModified = true;
-    }
-  }
-}, { deep: true });
-
-  watch(() => requestsStore.currentRequest.body.type, (newType) => {
-    if (newType === 'graphql') {
-      try {
-        const currentBody = requestsStore.currentRequest.body.content;
-        if (currentBody) {
-          const parsed = JSON.parse(currentBody);
-          graphqlQuery.value = parsed.query || '';
-          graphqlVariables.value = JSON.stringify(parsed.variables || {}, null, 2);
-          graphqlOperationName.value = parsed.operationName || '';
-        }
-      } catch {
-        // Invalid JSON, keep current values
-      }
-    }
-  });
 
 const graphqlBody = computed({
   get: () => {
@@ -375,6 +353,115 @@ watch(clientCertFormat, (newFormat) => {
   }
 });
 
+const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'SHELL'];
+
+const commonHeaders = [
+  { key: 'Accept', value: 'application/json' },
+  { key: 'Accept', value: 'application/xml' },
+  { key: 'Accept', value: 'text/html' },
+  { key: 'Accept-Encoding', value: 'gzip, deflate, br' },
+  { key: 'Accept-Language', value: 'en-US,en;q=0.9' },
+  { key: 'Authorization', value: 'Bearer ' },
+  { key: 'Content-Type', value: 'application/json' },
+  { key: 'Content-Type', value: 'application/x-www-form-urlencoded' },
+  { key: 'Content-Type', value: 'multipart/form-data' },
+  { key: 'Content-Type', value: 'text/plain' },
+  { key: 'Cache-Control', value: 'no-cache' },
+  { key: 'Cache-Control', value: 'max-age=0' },
+  { key: 'Connection', value: 'keep-alive' },
+  { key: 'Connection', value: 'close' },
+  { key: 'Cookie', value: '' },
+  { key: 'Host', value: '' },
+  { key: 'Origin', value: '' },
+  { key: 'Referer', value: '' },
+  { key: 'User-Agent', value: 'Mozilla/5.0' },
+  { key: 'X-Requested-With', value: 'XMLHttpRequest' },
+  { key: 'X-CSRF-Token', value: '' },
+  { key: 'X-API-Key', value: '' },
+  { key: 'X-Auth-Token', value: '' },
+  { key: 'If-None-Match', value: '' },
+  { key: 'If-Match', value: '' },
+];
+
+const uniqueCommonHeaders = [...new Set(commonHeaders.map(h => h.key))];
+
+const method = computed({
+  get: () => requestsStore.currentRequest.method,
+  set: (val) => { requestsStore.currentRequest.method = val; }
+});
+
+const url = computed({
+  get: () => requestsStore.currentRequest.url,
+  set: (val) => { requestsStore.currentRequest.url = val; }
+});
+
+const name = computed({
+  get: () => requestsStore.currentRequest.name,
+  set: (val) => { requestsStore.currentRequest.name = val; }
+});
+
+const dependsOn = computed({
+  get: () => requestsStore.currentRequest.dependsOn || '',
+  set: (val) => { requestsStore.currentRequest.dependsOn = val || undefined; }
+});
+
+const collectionRequests = computed(() => {
+  const currentCollection = collectionsStore.selectedCollection;
+  if (!currentCollection) return [];
+
+  const allRequests: any[] = [];
+
+  function collectRequests(items: any[]) {
+    for (const item of items) {
+      if (item.method && item.url) {
+        if (item.id !== requestsStore.selectedRequestId) {
+          allRequests.push(item);
+        }
+      } else if (item.items) {
+        collectRequests(item.items);
+      }
+    }
+  }
+
+  collectRequests(currentCollection.items);
+  return allRequests;
+});
+
+function hasCircularDependency(startRequestId: string, targetRequestId: string, visited = new Set<string>()): boolean {
+  if (visited.has(startRequestId)) {
+    return true;
+  }
+
+  visited.add(startRequestId);
+
+  const request = collectionRequests.value.find((req: any) => req.id === startRequestId) ||
+                  (requestsStore.selectedRequestId === startRequestId ? requestsStore.currentRequest : null);
+
+  if (!request || !request.dependsOn) {
+    return false;
+  }
+
+  if (request.dependsOn === targetRequestId) {
+    return true;
+  }
+
+  return hasCircularDependency(request.dependsOn, targetRequestId, visited);
+}
+
+const validDependencyOptions = computed(() => {
+  return collectionRequests.value.filter((req: any) => {
+    const currentId = requestsStore.selectedRequestId || requestsStore.currentRequest.id;
+    return !hasCircularDependency(req.id, currentId || '');
+  });
+});
+
+function addVariable() {
+  if (!requestsStore.currentRequest.variables) {
+    requestsStore.currentRequest.variables = [];
+  }
+  requestsStore.currentRequest.variables.push({ key: '', value: '', enabled: true, env: '' });
+}
+
 function toggleSaveMenu() {
   showSaveMenu.value = !showSaveMenu.value;
 }
@@ -383,9 +470,9 @@ async function copyToClipboard() {
   try {
     const markdown = generateMarkdown();
     await navigator.clipboard.writeText(markdown);
-    console.log('Copied to clipboard');
+    logger.debug('Copied to clipboard');
   } catch (err) {
-    console.error('Failed to copy to clipboard:', err);
+    logger.error('Failed to copy to clipboard:', err);
   }
 }
 
@@ -450,286 +537,80 @@ function generateMarkdown(): string {
   return markdown;
 }
 
-watch(
-  () => requestsStore.currentRequest,
-  (newVal) => {
-    console.log('RequestPanel watch: currentRequest changed:', newVal.name, newVal.url);
-  },
-  { deep: true, immediate: true }
-);
-
-const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'SHELL'];
-
-const commonHeaders = [
-  { key: 'Accept', value: 'application/json' },
-  { key: 'Accept', value: 'application/xml' },
-  { key: 'Accept', value: 'text/html' },
-  { key: 'Accept-Encoding', value: 'gzip, deflate, br' },
-  { key: 'Accept-Language', value: 'en-US,en;q=0.9' },
-  { key: 'Authorization', value: 'Bearer ' },
-  { key: 'Content-Type', value: 'application/json' },
-  { key: 'Content-Type', value: 'application/x-www-form-urlencoded' },
-  { key: 'Content-Type', value: 'multipart/form-data' },
-  { key: 'Content-Type', value: 'text/plain' },
-  { key: 'Cache-Control', value: 'no-cache' },
-  { key: 'Cache-Control', value: 'max-age=0' },
-  { key: 'Connection', value: 'keep-alive' },
-  { key: 'Connection', value: 'close' },
-  { key: 'Cookie', value: '' },
-  { key: 'Host', value: '' },
-  { key: 'Origin', value: '' },
-  { key: 'Referer', value: '' },
-  { key: 'User-Agent', value: 'Mozilla/5.0' },
-  { key: 'X-Requested-With', value: 'XMLHttpRequest' },
-  { key: 'X-CSRF-Token', value: '' },
-  { key: 'X-API-Key', value: '' },
-  { key: 'X-Auth-Token', value: '' },
-  { key: 'If-None-Match', value: '' },
-  { key: 'If-Match', value: '' },
-];
-
-const uniqueCommonHeaders = [...new Set(commonHeaders.map(h => h.key))];
-
-const method = computed({
-  get: () => requestsStore.currentRequest.method,
-  set: (val) => { requestsStore.currentRequest.method = val; }
-});
-
-const url = computed({
-  get: () => {
-    const currentUrl = requestsStore.currentRequest.url;
-    console.log('[RequestPanel] url getter:', currentUrl);
-    return currentUrl;
-  },
-  set: (val) => {
-    console.log('[RequestPanel] url setter:', val);
-    requestsStore.currentRequest.url = val;
-  }
-});
-
-const name = computed({
-  get: () => requestsStore.currentRequest.name,
-  set: (val) => { requestsStore.currentRequest.name = val; }
-});
-
-const dependsOn = computed({
-  get: () => requestsStore.currentRequest.dependsOn || '',
-  set: (val) => { requestsStore.currentRequest.dependsOn = val || undefined; }
-});
-
-const collectionRequests = computed(() => {
-  const currentCollection = collectionsStore.selectedCollection;
-  if (!currentCollection) return [];
-
-  const allRequests: any[] = [];
-
-  function collectRequests(items: any[]) {
-    for (const item of items) {
-      if (item.method && item.url) {
-        if (item.id !== requestsStore.selectedRequestId) {
-          allRequests.push(item);
-        }
-      } else if (item.items) {
-        collectRequests(item.items);
-      }
-    }
-  }
-
-  collectRequests(currentCollection.items);
-  return allRequests;
-});
-
-function hasCircularDependency(startRequestId: string, targetRequestId: string, visited = new Set<string>()): boolean {
-  if (visited.has(startRequestId)) {
-    return true;
-  }
-
-  visited.add(startRequestId);
-
-  const request = collectionRequests.value.find((req: any) => req.id === startRequestId) ||
-                  (requestsStore.selectedRequestId === startRequestId ? requestsStore.currentRequest : null);
-
-  if (!request || !request.dependsOn) {
-    return false;
-  }
-
-  if (request.dependsOn === targetRequestId) {
-    return true;
-  }
-
-  return hasCircularDependency(request.dependsOn, targetRequestId, visited);
-}
-
-const validDependencyOptions = computed(() => {
-  return collectionRequests.value.filter((req: any) => {
-    const currentId = requestsStore.selectedRequestId || requestsStore.currentRequest.id;
-    return !hasCircularDependency(req.id, currentId || '');
-  });
-});
-
-watch(() => requestsStore.selectedRequestId, () => {
-  console.log('[RequestPanel] selectedRequestId changed to:', requestsStore.selectedRequestId);
-  if (requestsStore.selectedRequestId) {
-    const request = requestsStore.selectedRequest;
-    console.log('[RequestPanel] selectedRequest:', request);
-    if (request) {
-      console.log('[RequestPanel] Setting variables from request');
-      requestsStore.currentRequest.variables = request.variables || [];
-    }
-  }
-});
-
-const uniqueDatasets = computed(() => {
-  const datasets = new Set<string>();
-  if (requestsStore.currentRequest.variables) {
-    requestsStore.currentRequest.variables.forEach(v => {
-      if (v.dataset) datasets.add(v.dataset);
-    });
-  }
-  return Array.from(datasets);
-});
-
-const filteredVariables = computed(() => {
-  if (!selectedDataset.value) {
-    return requestsStore.currentRequest.variables || [];
-  }
-  return (requestsStore.currentRequest.variables || []).filter(v => v.dataset === selectedDataset.value);
-});
-
 async function sendRequest() {
-  console.log('[SEND] sendRequest called');
+  logger.debug('Sending request:', requestsStore.currentRequest);
   responseStore.isLoading = true;
 
   try {
     const context: SendRequestContext = {
-      requestsStore: {
-        currentRequest: JSON.parse(JSON.stringify(requestsStore.currentRequest)),
-        requestHeaders: JSON.parse(JSON.stringify(requestsStore.requestHeaders)),
-        urlParams: JSON.parse(JSON.stringify(requestsStore.urlParams)),
-        activeRequestTab: requestsStore.activeRequestTab,
-      },
-      responseStore: {
-        response: JSON.parse(JSON.stringify(responseStore.response)),
-        testResults: responseStore.testResults,
-        activeResponseTab: responseStore.activeResponseTab,
-        isLoading: responseStore.isLoading,
-      },
-      historyStore: {
-        history: JSON.parse(JSON.stringify(historyStore.history ?? [])),
-      },
-      environmentsStore: {
-        environments: JSON.parse(JSON.stringify(environmentsStore.environments ?? [])),
+      requestsStore: toSerializable({
+        currentRequest: requestsStore.currentRequest,
+        requestHeaders: requestsStore.requestHeaders,
+      }),
+      responseStore: toSerializable({ response: responseStore.response }),
+      historyStore: toSerializable({ history: historyStore.history }),
+      environmentsStore: toSerializable({
+        environments: environmentsStore.environments,
         activeEnvironmentId: environmentsStore.activeEnvironmentId,
-      },
-      appStore: {
-        secrets: JSON.parse(JSON.stringify(appStore.secrets ?? [])),
+      }),
+      appStore: toSerializable({
+        secrets: appStore.secrets,
         selectedSecretId: appStore.selectedSecretId,
-      },
-      collectionsStore: {
-        collections: JSON.parse(JSON.stringify(collectionsStore.collections ?? [])),
+      }),
+      collectionsStore: toSerializable({
+        collections: collectionsStore.collections,
         selectedCollectionId: collectionsStore.selectedCollectionId,
-      },
-      secretsStore: {
-        isUnlocked: secretsStore.isUnlocked,
-      },
+      }),
+      secretsStore: toSerializable({ isUnlocked: secretsStore.isUnlocked }),
     };
 
     const result = await window.api.sendRequest(context);
 
-    responseStore.response = {
-      status: result.response.status,
-      statusText: result.response.statusText,
-      data: result.response.data,
-      time: result.response.time,
-      headers: result.response.headers,
-      error: result.response.error,
-    };
+    responseStore.setResponse(result.response);
+    if (result.testResults) {
+      responseStore.setTestResults(result.testResults, result.scriptSource);
+    }
 
+    requestsStore.currentRequest.response = result.response;
     if (requestsStore.selectedRequestId) {
-      requestsStore.currentRequest.response = responseStore.response;
       requestsStore.updateCurrentRequest();
     } else {
-      requestsStore.currentRequest = {
-        ...requestsStore.currentRequest,
-        response: responseStore.response,
-      };
       requestsStore.saveRequest();
     }
 
-    for (const dep of result.executedDependencies) {
-      const depItem = collectionsStore.findItemById(dep.id);
-      if (depItem) {
-        if ('request' in depItem) {
-          depItem.request.response = {
-            status: dep.status, statusText: dep.statusText, data: '', time: dep.time,
-            headers: {}, error: dep.error,
-          };
-        } else {
-          depItem.response = {
-            status: dep.status, statusText: dep.statusText, data: '', time: dep.time,
-            headers: {}, error: dep.error,
-          };
-        }
-        collectionsStore.saveCollections();
-      }
-    }
+    result.historyEntries.forEach((entry: any) => {
+      historyStore.addToHistory(entry as any);
+    });
 
-for (const entry of result.historyEntries) {
-      historyStore.addToHistory(entry);
-    }
-    
-    // Reset the modified flag after sending
     uiStore.clearRequestModified();
-    
-    responseStore.testResults = result.testResults;
-    responseStore.activeResponseTab = 'body';
-
-    console.log('[SEND] sendRequest completed successfully');
   } catch (err: any) {
-    const startTime = Date.now();
-    console.error('[SEND] Error:', err);
-    responseStore.response = {
+    responseStore.setResponse({
       status: 0,
       statusText: 'Error',
       data: err.message || 'Failed to make request',
-      time: Date.now() - startTime,
+      time: 0,
       headers: {},
       error: err.message,
-    };
-    responseStore.testResults = '';
+    });
   } finally {
     responseStore.isLoading = false;
   }
 }
 
-function addVariable() {
-  if (!requestsStore.currentRequest.variables) {
-    requestsStore.currentRequest.variables = [];
-  }
-  requestsStore.currentRequest.variables.push({
-    key: '',
-    value: '',
-    dataset: '',
-    enabled: true,
-  });
-}
-
 function removeVariable(index: number) {
-  const variable = filteredVariables.value[index];
-  const realIndex = requestsStore.currentRequest.variables.indexOf(variable);
+  const variables = requestsStore.currentRequest.variables || [];
+  const variable = variables[index];
+  const realIndex = variables.indexOf(variable);
   if (realIndex > -1) {
-    requestsStore.currentRequest.variables.splice(realIndex, 1);
+    variables.splice(realIndex, 1);
   }
 }
 
 function saveRequest() {
   showSaveMenu.value = false;
-  console.log('saveRequest called, currentRequest.id:', requestsStore.currentRequest.id);
   if (requestsStore.currentRequest.id) {
-    console.log('Calling updateCurrentRequest');
     requestsStore.updateCurrentRequest();
   } else {
-    console.log('Calling saveRequest (new)');
     requestsStore.saveRequest();
   }
 }
