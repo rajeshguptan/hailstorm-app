@@ -171,6 +171,6 @@ export class CollectionsPanel {
 
   async selectRequest(requestName: string): Promise<void> {
     const requestNode = this.page.locator(`.tree-node:has-text("${requestName}")`).first();
-    await requestNode.click();
+    await requestNode.locator('[role="button"]').click();
   }
 }

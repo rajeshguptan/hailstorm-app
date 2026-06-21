@@ -1,9 +1,30 @@
 import { defineStore } from 'pinia';
-import type { Request, Tab, Variable, RequestTab, Folder } from '../types';
+import type { Auth, Request, Tab, Variable, RequestTab, Folder } from '../types';
 import { useAppStore } from './';
 import { useCollectionsStore } from './collections';
 import { useResponseStore } from './response';
 import { logger } from '../utils/logger';
+
+function getDefaultAuth(): Auth {
+  return {
+    type: 'noauth',
+    apikey: { key: '', value: '', in: 'header' },
+    ntlm: {},
+    clientCertificate: { type: 'pkcs12' },
+    oauth2: { grantType: 'client_credentials' }
+  };
+}
+
+export function normalizeRequestAuth(auth?: Auth): Auth {
+  return {
+    ...getDefaultAuth(),
+    ...auth,
+    apikey: { ...getDefaultAuth().apikey, ...auth?.apikey },
+    ntlm: { ...getDefaultAuth().ntlm, ...auth?.ntlm },
+    clientCertificate: { ...getDefaultAuth().clientCertificate, ...auth?.clientCertificate },
+    oauth2: { ...getDefaultAuth().oauth2, ...auth?.oauth2 }
+  };
+}
 
 export const useRequestsStore = defineStore('requests', {
 state: () => ({
@@ -14,11 +35,12 @@ state: () => ({
        url: '',
        headers: [],
        body: { type: 'none', content: '' },
-       auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' }, oauth2: { grantType: 'client_credentials' } },
+       auth: getDefaultAuth(),
        preRequestScript: '',
        postRequestScript: '',
        testScript: '',
-       variables: []
+       variables: [],
+       description: ''
      } as Request,
 
     urlParams: [] as Variable[],
@@ -50,9 +72,12 @@ addNewTab() {
          url: '',
          headers: [],
          body: { type: 'none', content: '' },
+         auth: getDefaultAuth(),
          preRequestScript: '',
          postRequestScript: '',
-         testScript: ''
+         testScript: '',
+         variables: [],
+         description: ''
        };
       const tab: Tab = { id: this.generateId('tab'), request };
       this.tabs.push(tab);
@@ -98,10 +123,12 @@ resetCurrentRequest() {
          url: '',
          headers: [],
          body: { type: 'none', content: '' },
-         auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' } },
+         auth: getDefaultAuth(),
          preRequestScript: '',
          postRequestScript: '',
-         testScript: ''
+         testScript: '',
+         variables: [],
+         description: ''
        };
        this.urlParams = [];
        this.requestHeaders = [];
@@ -175,13 +202,17 @@ openRequest(item: Request | Folder) {
                  url: requestItem.url || '',
                  headers: requestItem.headers || [],
                  body: requestItem.body || { type: 'none', content: '' },
+                 auth: normalizeRequestAuth(requestItem.auth),
                  preRequestScript: requestItem.preRequestScript || '',
                  postRequestScript: requestItem.postRequestScript || '',
                  testScript: requestItem.testScript || '',
                  flavors: requestItem.flavors || [],
                   variables: requestItem.variables || [],
                   dependsOn: requestItem.dependsOn || undefined,
-                  isJsonRpc: requestItem.isJsonRpc
+                  response: requestItem.response,
+                  description: requestItem.description || '',
+                  isJsonRpc: requestItem.isJsonRpc,
+                  isWebSocket: requestItem.isWebSocket
                 };
             const tab: Tab = { id: this.generateId('tab'), request: requestCopy };
             this.tabs.push(tab);
@@ -194,7 +225,10 @@ openRequest(item: Request | Folder) {
       loadTabToCurrent(tab: Tab) {
         logger.debug('[REQUESTS] loadTabToCurrent called with:', tab.request.name, tab.request.url);
         const req = tab.request;
-        this.currentRequest = { ...req };
+        this.currentRequest = {
+          ...req,
+          auth: normalizeRequestAuth(req.auth)
+        };
         this.urlParams = this.extractParams(req.url || '');
         this.requestHeaders = (req.headers && req.headers.length > 0) ? [...req.headers] : [];
       },
@@ -257,11 +291,12 @@ updateCurrentRequest() {
           url: '',
           headers: [],
           body: { type: 'none', content: '' },
-          auth: { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' }, oauth2: { grantType: 'client_credentials' } },
+          auth: getDefaultAuth(),
           preRequestScript: '',
           postRequestScript: '',
           testScript: '',
-          variables: []
+          variables: [],
+          description: ''
         };
         this.requestHeaders = [];
         this.urlParams = [];
@@ -274,6 +309,7 @@ updateCurrentRequest() {
       const item = collectionsStore.findItemById(id);
       logger.debug('[REQUESTS] Found item:', item);
       if (item) {
+        this.selectedRequestId = id;
         const request = 'request' in item ? item.request : item;
         logger.debug('[REQUESTS] Using request data:', request);
         this.currentRequest = {
@@ -283,15 +319,17 @@ updateCurrentRequest() {
           url: request.url || '',
           headers: request.headers || [],
           body: request.body || { type: 'none', content: '' },
-          auth: request.auth || { type: 'noauth', apikey: { key: '', value: '', in: 'header' }, ntlm: {}, clientCertificate: { type: 'pkcs12' }, oauth2: { grantType: 'client_credentials' } },
+          auth: normalizeRequestAuth(request.auth),
           preRequestScript: request.preRequestScript || '',
           postRequestScript: request.postRequestScript || '',
           testScript: request.testScript || '',
           flavors: request.flavors || [],
           variables: request.variables || [],
           dependsOn: request.dependsOn || undefined,
+          response: request.response,
+          description: request.description || '',
           isJsonRpc: request.isJsonRpc,
-          response: request.response
+          isWebSocket: request.isWebSocket
         };
         const responseStore = useResponseStore();
         responseStore.setResponse(request.response || null);

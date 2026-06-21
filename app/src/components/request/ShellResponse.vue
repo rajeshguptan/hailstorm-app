@@ -31,7 +31,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { useResponseStore } from '../stores/response';
+import { useResponseStore } from '../../stores/response';
 
 const responseStore = useResponseStore();
 

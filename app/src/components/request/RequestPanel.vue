@@ -14,7 +14,6 @@
         <button class="px-3 py-1.5 border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-sm" @click="toggleSaveMenu">Save ▾</button>
         <div v-if="showSaveMenu" class="absolute right-0 mt-1 w-32 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded shadow-lg z-10">
           <button class="block w-full text-left px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700" @click="saveRequest">Save</button>
-          <button class="block w-full text-left px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700" @click="saveNewRequest">Save New</button>
         </div>
       </div>
       <button class="px-3 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm" :disabled="responseStore.isLoading" @click="sendRequest">
@@ -22,7 +21,7 @@
       </button>
     </div>
 
-<!-- Second row: Method and URL -->
+    <!-- Second row: Method and URL -->
 <div class="flex gap-2 mb-2">
         <select v-if="requestsStore.currentRequest.body?.type !== 'graphql'" v-model="method" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1" style="width: 100px;">
           <option v-for="m in methods" :key="m" :value="m">{{ m }}</option>
@@ -264,19 +263,19 @@
 
 <script setup lang="ts">
 import { watch, computed, ref } from 'vue';
-import { useRequestsStore } from '../stores/requests';
-import { useEnvironmentsStore } from '../stores/environments';
-import { useResponseStore } from '../stores/response';
-import { useCollectionsStore } from '../stores/collections';
-import { useHistoryStore } from '../stores/history';
-import { useUIStore } from '../stores/ui';
-import { useSecretsStore } from '../stores/secrets';
-import { useAppStore } from '../stores';
-import { logger } from '../utils/logger';
+import { useRequestsStore } from '../../stores/requests';
+import { useEnvironmentsStore } from '../../stores/environments';
+import { useResponseStore } from '../../stores/response';
+import { useCollectionsStore } from '../../stores/collections';
+import { useHistoryStore } from '../../stores/history';
+import { useUIStore } from '../../stores/ui';
+import { useSecretsStore } from '../../stores/secrets';
+import { useAppStore } from '../../stores';
+import { logger } from '../../utils/logger';
 import OAuthConfig from './OAuthConfig.vue';
-import MarkdownDescription from './MarkdownDescription.vue';
-import ScriptTabs from './ScriptTabs.vue';
-import type { SendRequestContext } from '../types';
+import MarkdownDescription from '../editors/MarkdownDescription.vue';
+import ScriptTabs from '../editors/ScriptTabs.vue';
+import type { SendRequestContext } from '../../types';
 
 const requestsStore = useRequestsStore();
 const environmentsStore = useEnvironmentsStore();
@@ -335,21 +334,20 @@ watch(graphqlBody, (newVal) => {
   requestsStore.currentRequest.body.content = newVal;
 });
 
-watch(() => requestsStore.currentRequest.auth.type, (newType) => {
-  if (newType === 'clientcertificate' && requestsStore.currentRequest.auth.clientCertificate) {
+watch(() => requestsStore.currentRequest.auth?.type, (newType) => {
+  if (newType === 'clientcertificate' && requestsStore.currentRequest.auth?.clientCertificate) {
     clientCertFormat.value = requestsStore.currentRequest.auth.clientCertificate.type || 'pfx';
   }
-  if (newType === 'oauth2' && !requestsStore.currentRequest.auth.oauth2) {
-    requestsStore.currentRequest.auth.oauth2 = { grantType: 'client_credentials' };
+  if (newType === 'oauth2' && !requestsStore.currentRequest.auth?.oauth2) {
+    requestsStore.currentRequest.auth!.oauth2 = { grantType: 'client_credentials' };
   }
 });
 
 watch(clientCertFormat, (newFormat) => {
-  if (requestsStore.currentRequest.auth.type === 'clientcertificate') {
-    if (!requestsStore.currentRequest.auth.clientCertificate) {
-      requestsStore.currentRequest.auth.clientCertificate = {};
-    }
-    requestsStore.currentRequest.auth.clientCertificate.type = newFormat as 'pkcs12' | 'pem';
+  const auth = requestsStore.currentRequest.auth;
+  if (auth?.type === 'clientcertificate') {
+    auth.clientCertificate = auth.clientCertificate || { type: 'pkcs12' };
+    auth.clientCertificate.type = newFormat as 'pkcs12' | 'pem';
   }
 });
 
@@ -613,11 +611,6 @@ function saveRequest() {
   } else {
     requestsStore.saveRequest();
   }
-}
-
-function saveNewRequest() {
-  showSaveMenu.value = false;
-  requestsStore.saveRequest();
 }
 
 function onHeaderKeyChange(header: { key: string; value: string }) {

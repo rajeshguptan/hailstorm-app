@@ -61,9 +61,9 @@
 </template>
 
 <script setup lang="ts">
-import type { Request, Folder } from '../types';
+import type { Request, Folder } from '../../types';
 import { computed } from 'vue';
-import { useUIStore } from '../stores/ui';
+import { useUIStore } from '../../stores/ui';
 
 interface Props {
   item: Request | Folder;

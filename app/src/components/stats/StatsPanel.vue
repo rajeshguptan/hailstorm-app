@@ -14,14 +14,14 @@
         <div class="flex gap-2">
           <button
             @click="printStats"
-            class="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+            class="px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
             :disabled="!currentRun && completedRuns.length === 0"
           >
             Print
           </button>
           <button
             @click="exportStats"
-            class="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
+            class="px-4 py-2 text-sm bg-green-500 text-white rounded hover:bg-green-600"
             :disabled="!selectedRunId && !currentRun"
           >
             Export JSON
@@ -29,14 +29,14 @@
           <button
             @click="deleteRun(selectedRunId)"
             :disabled="!selectedRunId"
-            class="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-4 py-2 text-sm bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Delete
           </button>
           <button
             @click="deleteAllRuns"
             :disabled="completedRuns.length === 0"
-            class="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-4 py-2 text-sm bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Delete all
           </button>
@@ -191,8 +191,8 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
-import { useLoadTestStore } from '../stores/loadTest';
-import type { LoadTestStats, LoadTestTimeSeriesPoint, LoadTestTimeSeriesByRequestPoint, LoadTestRun } from '../types';
+import { useLoadTestStore } from '../../stores/loadTest';
+import type { LoadTestStats, LoadTestTimeSeriesPoint, LoadTestTimeSeriesByRequestPoint, LoadTestRun } from '../../types';
 import {
   Chart as ChartJS,
   CategoryScale,

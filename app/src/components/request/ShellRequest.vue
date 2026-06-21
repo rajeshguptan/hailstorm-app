@@ -53,9 +53,9 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { useRequestsStore } from '../stores/requests';
-import { useResponseStore } from '../stores/response';
-import { useEnvironmentsStore } from '../stores/environments';
+import { useRequestsStore } from '../../stores/requests';
+import { useResponseStore } from '../../stores/response';
+import { useEnvironmentsStore } from '../../stores/environments';
 
 const requestsStore = useRequestsStore();
 const responseStore = useResponseStore();

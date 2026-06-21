@@ -271,17 +271,17 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import type { Request, Variable, RequestVariable } from '../types';
-import { useAppStore } from '../stores';
-import { useRequestsStore } from '../stores/requests';
-import { useResponseStore } from '../stores/response';
-import { useHistoryStore } from '../stores/history';
-import { useUIStore } from '../stores/ui';
-import { useCollectionsStore } from '../stores/collections';
-import { useEnvironmentsStore } from '../stores/environments';
-import { logger } from '../utils/logger';
-import MarkdownDescription from './MarkdownDescription.vue';
-import ScriptTabs from './ScriptTabs.vue';
+import type { Request, Variable, RequestVariable } from '../../types';
+import { useAppStore } from '../../stores';
+import { useRequestsStore } from '../../stores/requests';
+import { useResponseStore } from '../../stores/response';
+import { useHistoryStore } from '../../stores/history';
+import { useUIStore } from '../../stores/ui';
+import { useCollectionsStore } from '../../stores/collections';
+import { useEnvironmentsStore } from '../../stores/environments';
+import { logger } from '../../utils/logger';
+import MarkdownDescription from '../editors/MarkdownDescription.vue';
+import ScriptTabs from '../editors/ScriptTabs.vue';
 
 const appStore = useAppStore();
 const requestsStore = useRequestsStore();

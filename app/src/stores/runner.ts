@@ -32,6 +32,8 @@ async startLoadTest(
           isSecretsUnlocked,
           runId,
           activeEnvironmentId,
+          requestConfigs: config.requestConfigs,
+          runRepeated: config.runRepeated,
         });
       } finally {
         this._activeRun = null;

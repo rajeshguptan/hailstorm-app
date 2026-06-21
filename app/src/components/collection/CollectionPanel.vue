@@ -375,12 +375,12 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
-import { useAppStore } from '../stores';
-import { useCollectionsStore } from '../stores/collections';
-import { useEnvironmentsStore } from '../stores/environments';
-import MarkdownDescription from './MarkdownDescription.vue';
-import ScriptTabs from './ScriptTabs.vue';
-import type { Collection, Auth } from '../types';
+import { useAppStore } from '../../stores';
+import { useCollectionsStore } from '../../stores/collections';
+import { useEnvironmentsStore } from '../../stores/environments';
+import MarkdownDescription from '../editors/MarkdownDescription.vue';
+import ScriptTabs from '../editors/ScriptTabs.vue';
+import type { Collection, Auth } from '../../types';
 
 const appStore = useAppStore();
 const collectionsStore = useCollectionsStore();

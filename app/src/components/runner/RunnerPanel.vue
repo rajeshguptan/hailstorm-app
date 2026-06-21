@@ -7,7 +7,7 @@
 
 <script setup lang="ts">
 import RunnerDetails from './RunnerDetails.vue';
-import type { RunConfig } from '../types';
+import type { RunConfig } from '../../types';
 
 interface Request {
   id: string;

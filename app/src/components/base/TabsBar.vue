@@ -12,7 +12,7 @@
 </template>
 
 <script setup lang="ts">
-import { useAppStore } from '../stores';
+import { useAppStore } from '../../stores';
 
 const store = useAppStore();
 

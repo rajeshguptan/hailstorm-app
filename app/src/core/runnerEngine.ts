@@ -20,9 +20,9 @@ export class RunnerEngine {
     console.log('[RUNNER_ENGINE] Initialized (main process only)');
   }
 
-/**
-    * Execute a single request through the execution engine.
-    */
+  /**
+   * Execute a single request through the execution engine.
+   */
   async executeRequest(context: SendRequestContext, rps: number = 0, requestId: string = ''): Promise<SendRequestResult> {
     return sendRequest(context, rps, requestId);
   }
@@ -31,16 +31,16 @@ export class RunnerEngine {
    * Execute a load test with the given configuration.
    * Integrates with loadTestStore for request recording.
    */
- async executeLoadTest(
-     config: RunConfig,
-     collections: any[],
-     environments: any[],
-     secrets: Array<{ id: string; name: string; env: string; value: string }> = [],
-     isSecretsUnlocked: boolean = false,
-     requestConfigs?: Record<string, { rps: number; datafile?: string }>,
-     onRequestComplete?: (result: any) => Promise<void> | void,
-     activeEnvironmentId?: string | null
-   ): Promise<void> {
+  async executeLoadTest(
+    config: RunConfig,
+    collections: any[],
+    environments: any[],
+    secrets: Array<{ id: string; name: string; env: string; value: string }> = [],
+    isSecretsUnlocked: boolean = false,
+    requestConfigs?: Record<string, { rps: number; datafile?: string }>,
+    onRequestComplete?: (result: any) => Promise<void> | void,
+    activeEnvironmentId?: string | null
+  ): Promise<void> {
     this.running = true;
 
     const collection = collections.find((c: any) => c.id === config.collectionId);
@@ -78,7 +78,7 @@ export class RunnerEngine {
 
         try {
           const rpsConfig = requestConfigs?.[request.id]?.rps || 0;
-          const result = await this.executeSingleRequest(request, environments, collections, secrets, isSecretsUnlocked, rpsConfig, activeEnvironmentId);
+          const result = await this.executeSingleRequest(request, config, environments, collections, secrets, isSecretsUnlocked, rpsConfig, activeEnvironmentId);
           if (onRequestComplete) {
             await onRequestComplete(result);
           }
@@ -97,59 +97,63 @@ export class RunnerEngine {
   /**
    * Execute a single request with full context including secrets.
    */
- async executeSingleRequest(
-     request: any,
-     environments: any[],
-     collections: any[],
-     secrets: Array<{ id: string; name: string; env: string; value: string }>,
-     isSecretsUnlocked: boolean,
-     rps: number = 0,
-     activeEnvironmentId?: string | null
-   ): Promise<any> {
-     const activeEnv = environments.find((e: any) => e.active);
-     const requestMap = flatRequests(collections.flatMap((c: any) => c.items || []));
+  async executeSingleRequest(
+    request: any,
+    config: RunConfig,
+    environments: any[],
+    collections: any[],
+    secrets: Array<{ id: string; name: string; env: string; value: string }>,
+    isSecretsUnlocked: boolean,
+    rps: number = 0,
+    activeEnvironmentId?: string | null
+  ): Promise<any> {
+    const activeEnv = environments.find((e: any) => e.active);
+    const requestMap = flatRequests(collections.flatMap((c: any) => c.items || []));
+    const requestUrl = requestMap.get(request.id)?.url || request.url;
 
-     const context: SendRequestContext = {
-       requestsStore: {
-         currentRequest: request,
-         requestHeaders: request.headers || [],
-         urlParams: [],
-         activeRequestTab: 'body',
-       },
-responseStore: {
-          response: null,
-          testResults: '',
-          scriptSource: '',
-          activeResponseTab: 'body',
-          isLoading: false,
-        },
-       historyStore: { history: [] },
-       environmentsStore: {
-         environments,
-         activeEnvironmentId: activeEnvironmentId ?? activeEnv?.id ?? null,
-       },
-       appStore: {
-         secrets,
-         selectedSecretId: null,
-       },
-       collectionsStore: {
-         collections,
-         selectedCollectionId: config.collectionId,
-       },
-       secretsStore: {
-         isUnlocked: isSecretsUnlocked,
-       },
-     };
+    const context: SendRequestContext = {
+      requestsStore: {
+        currentRequest: request,
+        requestHeaders: request.headers || [],
+        urlParams: [],
+        activeRequestTab: 'body',
+      },
+      responseStore: {
+        response: null,
+        testResults: '',
+        scriptSource: '',
+        activeResponseTab: 'body',
+        isLoading: false,
+      },
+      historyStore: { history: [] },
+      environmentsStore: {
+        environments,
+        activeEnvironmentId: activeEnvironmentId ?? activeEnv?.id ?? null,
+      },
+      appStore: {
+        secrets,
+        selectedSecretId: null,
+      },
+      collectionsStore: {
+        collections,
+        selectedCollectionId: config.collectionId,
+      },
+      secretsStore: {
+        isUnlocked: isSecretsUnlocked,
+      },
+    };
 
-     const result = await this.executeRequest(context, rps, request.id);
+    const result = await this.executeRequest(context, rps, request.id);
 
     return {
       status: result.response.status,
       statusText: result.response.statusText,
       time: result.response.time,
       error: result.response.error,
+      requestId: request.id,
       requestName: request.name,
       method: request.method,
+      url: requestUrl,
     };
   }
 

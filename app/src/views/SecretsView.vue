@@ -3,5 +3,5 @@
 </template>
 
 <script setup lang="ts">
-import SecretsPanel from '../components/sidebar/SecretsPanel.vue';
+import SecretsPanel from '../components/secrets/SecretsPanel.vue';
 </script>

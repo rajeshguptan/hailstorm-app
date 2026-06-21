@@ -52,6 +52,8 @@ export type RunLoadTestParams = {
   isSecretsUnlocked: boolean;
   activeEnvironmentId?: string | null;
   runId?: string;
+  requestConfigs?: Record<string, { rps: number; datafile?: string }>;
+  runRepeated?: boolean;
 };
 
 const api = {

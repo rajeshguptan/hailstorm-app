@@ -5,5 +5,5 @@
 </template>
 
 <script setup lang="ts">
-import ConsolePanel from '../components/ConsolePanel.vue';
+import ConsolePanel from '../components/console/ConsolePanel.vue';
 </script>

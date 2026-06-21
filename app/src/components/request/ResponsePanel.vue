@@ -40,7 +40,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useResponseStore } from '../stores/response';
+import { useResponseStore } from '../../stores/response';
 
 const store = useResponseStore();
 

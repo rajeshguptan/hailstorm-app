@@ -13,9 +13,9 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { useUIStore } from '../stores/ui';
-import { useAppStore } from '../stores';
-import { logger } from '../utils/logger';
+import { useUIStore } from '../../stores/ui';
+import { useAppStore } from '../../stores';
+import { logger } from '../../utils/logger';
 
 const uiStore = useUIStore();
 const appStore = useAppStore();

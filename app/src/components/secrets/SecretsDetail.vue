@@ -58,9 +58,9 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { useAppStore } from '../stores';
-import { useEnvironmentsStore } from '../stores/environments';
-import { useSecretsStore } from '../stores/secrets';
+import { useAppStore } from '../../stores';
+import { useEnvironmentsStore } from '../../stores/environments';
+import { useSecretsStore } from '../../stores/secrets';
 
 const store = useAppStore();
 const environmentsStore = useEnvironmentsStore();

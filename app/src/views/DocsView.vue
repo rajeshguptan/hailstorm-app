@@ -3,5 +3,5 @@
 </template>
 
 <script setup lang="ts">
-import DocsPanel from '../components/DocsPanel.vue';
+import DocsPanel from '../components/docs/DocsPanel.vue';
 </script>

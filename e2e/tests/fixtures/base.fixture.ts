@@ -98,7 +98,7 @@ export const test = base.extend({
 
           getLoadTestRunStats: (runId) => {
             console.log('[MOCK API] getLoadTestRunStats:', runId);
-            return Promise.resolve({
+            return Promise.resolve((window as any).__mockLoadTest?.stats || {
               runId,
               totalRequests: 10,
               successfulRequests: 9,
@@ -149,6 +149,78 @@ export const test = base.extend({
           deleteLoadTestRun: (runId) => {
             console.log('[MOCK API] deleteLoadTestRun:', runId);
             return Promise.resolve();
+          },
+
+          runLoadTest: async (params) => {
+            console.log('[MOCK API] runLoadTest:', params);
+            const callbacks = (window as any).__mockLoadTest?.callbacks || [];
+            const runId = params.runId || 'mock-run-' + Date.now();
+            const stats = {
+              runId,
+              totalRequests: 0,
+              successfulRequests: 0,
+              failedRequests: 0,
+              errorRate: 0,
+              avgResponseTime: 0,
+              minResponseTime: 0,
+              maxResponseTime: 0,
+              requestsPerSecond: 0,
+              lastLatency: 0,
+              lastStatus: 0,
+              lastRequestName: ''
+            };
+            (window as any).__mockLoadTest = {
+              callbacks,
+              runId,
+              running: true,
+              completed: false,
+              stats,
+              release: () => {
+                (window as any).__mockLoadTest.running = false;
+              },
+              emitStats: (nextStats) => {
+                (window as any).__mockLoadTest.stats = nextStats;
+                callbacks.forEach((callback) => callback({ runId, stats: nextStats }));
+              }
+            };
+
+            for (let i = 1; i <= 3 && (window as any).__mockLoadTest.running; i++) {
+              await new Promise((resolve) => setTimeout(resolve, 50));
+              const nextStats = {
+                ...stats,
+                totalRequests: i,
+                successfulRequests: i,
+                failedRequests: 0,
+                errorRate: 0,
+                avgResponseTime: 100 + i,
+                minResponseTime: 90 + i,
+                maxResponseTime: 110 + i,
+                requestsPerSecond: i,
+                lastLatency: 100 + i,
+                lastStatus: 200,
+                lastRequestName: 'GET Request'
+              };
+              (window as any).__mockLoadTest.emitStats(nextStats);
+            }
+
+            (window as any).__mockLoadTest.completed = true;
+            (window as any).__mockLoadTest.running = false;
+            return { run: { id: runId, status: 'completed' }, results: [] };
+          },
+
+          stopLoadTest: async () => {
+            console.log('[MOCK API] stopLoadTest');
+            if ((window as any).__mockLoadTest) {
+              (window as any).__mockLoadTest.release();
+            }
+            return Promise.resolve();
+          },
+
+          onLoadTestStatsUpdate: (callback) => {
+            if (!(window as any).__mockLoadTest) {
+              (window as any).__mockLoadTest = { callbacks: [], running: false, completed: false };
+            }
+            (window as any).__mockLoadTest.callbacks.push(callback);
           },
 
           // File dialog mocks

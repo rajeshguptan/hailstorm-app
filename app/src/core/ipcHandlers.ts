@@ -554,10 +554,10 @@ export function setupLoadTestExecutionHandlers() {
         results.push(result);
 
         await loadTestingService.recordRequest(runId, {
-          requestId: config.selectedRequests[0] || 'unknown',
+          requestId: result.requestId || 'unknown',
           requestName: result.requestName,
           method: result.method,
-          url: '',
+          url: result.url || '',
           status: result.status,
           latency: result.time,
           responseSize: 0,

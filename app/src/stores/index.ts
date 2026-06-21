@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import type { Secret, ConsoleLog } from '../types';
 import { useCollectionsStore } from './collections';
-import { useRequestsStore } from './requests';
+import { useRequestsStore, normalizeRequestAuth } from './requests';
 import { useEnvironmentsStore } from './environments';
 import { useUIStore } from './ui';
 import { useResponseStore } from './response';
@@ -122,13 +122,24 @@ async loadFromLocalStorage() {
 
             collectionsStore.selectedCollectionId = parsed.selectedCollectionId || null;
             this.collections = collectionsStore.collections;
-            requestsStore.currentRequest = parsed.currentRequest || requestsStore.currentRequest;
+            const loadedCurrentRequest = parsed.currentRequest || requestsStore.currentRequest;
+            requestsStore.currentRequest = {
+              ...loadedCurrentRequest,
+              headers: loadedCurrentRequest.headers || [],
+              body: loadedCurrentRequest.body || { type: 'none', content: '' },
+              auth: normalizeRequestAuth(loadedCurrentRequest.auth),
+              variables: loadedCurrentRequest.variables || []
+            };
             requestsStore.urlParams = parsed.urlParams || [];
             requestsStore.requestHeaders = parsed.requestHeaders || [];
             requestsStore.activeRequestTab = parsed.activeRequestTab || 'params';
             requestsStore.tabs = parsed.tabs || [];
             requestsStore.activeTabId = parsed.activeTabId || null;
-            requestsStore.selectedRequestId = parsed.selectedRequestId || null;
+            const selectedRequestId = parsed.selectedRequestId || null;
+            requestsStore.selectedRequestId = selectedRequestId;
+            if (selectedRequestId) {
+              requestsStore.selectRequest(selectedRequestId);
+            }
             environmentsStore.environments = parsed.environments || [];
             environmentsStore.activeEnvironmentId = parsed.activeEnvironmentId || null;
             uiStore.activeSidebar = parsed.activeSidebar || 'collections';
@@ -159,7 +170,7 @@ async loadFromLocalStorage() {
           }
         }
         const requestsStore = useRequestsStore();
-        if (requestsStore.tabs.length === 0) {
+        if (requestsStore.tabs.length === 0 && !requestsStore.selectedRequestId) {
           requestsStore.addNewTab();
         }
       },

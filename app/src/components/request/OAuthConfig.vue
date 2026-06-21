@@ -94,7 +94,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import type { Auth } from '../types';
+import type { Auth } from '../../types';
 
 const props = defineProps<{
   auth: Auth;

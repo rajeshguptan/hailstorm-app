@@ -4,13 +4,15 @@
   "description": "Mock API server for Hailstorm testing",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js",
+    "start": "node start.js",
+    "dev": "node start.js",
+    "websocket": "node websocket-server.js",
     "test": "node test.js"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.18.2",
     "multer": "^1.4.5-lts.1",
-    "cors": "^2.8.5"
+    "ws": "^8.21.0"
   }
 }

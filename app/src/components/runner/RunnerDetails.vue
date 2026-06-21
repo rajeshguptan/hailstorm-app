@@ -122,11 +122,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
-import { useLoadTestStore } from '../stores/loadTest';
-import { useRunnerStore } from '../stores/runner';
-import { useAppStore } from '../stores/index';
-import type { RunConfig, RequestConfig } from '../types';
+import { ref, computed, watch, onMounted, nextTick } from 'vue';
+import { useLoadTestStore } from '../../stores/loadTest';
+import { useRunnerStore } from '../../stores/runner';
+import { useAppStore } from '../../stores/index';
+import type { RunConfig, RequestConfig } from '../../types';
 
 const loadTestStore = useLoadTestStore();
 const runnerStore = useRunnerStore();
@@ -185,17 +185,25 @@ const editingConfig = ref<RunConfig | null>(null);
 const editedName = ref('');
 const selectedRequests = ref<string[]>([]);
 const requestConfigs = ref<Record<string, RequestConfig>>({});
+let suppressSelectedRequestsEmit = false;
 
 const selectedConfig = computed(() => {
   if (!props.runConfigs || !props.selectedConfigId) return null;
   return props.runConfigs.find(c => c.id === props.selectedConfigId) || null;
 });
 
+const activeConfig = computed<RunConfig | null>(() => {
+  if (editMode.value && editingConfig.value) {
+    return editingConfig.value;
+  }
+  return selectedConfig.value;
+});
+
 const liveStats = computed(() => loadTestStore.liveStats);
 
 const currentCollection = computed(() => {
-  if (!selectedConfig.value || !props.collections) return null;
-  return props.collections.find(c => c.id === selectedConfig.value?.collectionId) || null;
+  if (!activeConfig.value || !props.collections) return null;
+  return props.collections.find(c => c.id === activeConfig.value?.collectionId) || null;
 });
 
 const collectionRequests = computed(() => {
@@ -206,28 +214,37 @@ const collectionRequests = computed(() => {
 });
 
 const currentCollectionId = computed({
-  get: () => editMode.value ? editingConfig.value?.collectionId : selectedConfig.value?.collectionId,
+  get: () => activeConfig.value?.collectionId || '',
   set: (value: string) => {
-    if (editMode.value && editingConfig.value) {
-      editingConfig.value.collectionId = value;
-    }
+    const config = activeConfig.value;
+    if (!config) return;
+
+    const collection = props.collections.find(c => c.id === value);
+    config.collectionId = value;
+    config.collectionName = collection?.name || '';
+    suppressSelectedRequestsEmit = true;
+    selectedRequests.value = [];
+    requestConfigs.value = {};
+    void nextTick(() => {
+      suppressSelectedRequestsEmit = false;
+    });
   }
 });
 
 const currentRunRepeated = computed({
-  get: () => editMode.value ? editingConfig.value?.runRepeated : selectedConfig.value?.runRepeated || false,
+  get: () => activeConfig.value?.runRepeated || false,
   set: (value: boolean) => {
-    if (editMode.value && editingConfig.value) {
-      editingConfig.value.runRepeated = value;
+    if (activeConfig.value) {
+      activeConfig.value.runRepeated = value;
     }
   }
 });
 
 const currentDuration = computed({
-  get: () => editMode.value ? editingConfig.value?.duration : selectedConfig.value?.duration || 60,
+  get: () => activeConfig.value?.duration || 60,
   set: (value: number) => {
-    if (editMode.value && editingConfig.value) {
-      editingConfig.value.duration = value;
+    if (activeConfig.value) {
+      activeConfig.value.duration = value;
     }
   }
 });
@@ -301,12 +318,14 @@ async function runCollection() {
    const requests = collectionRequests.value.filter(r => updatedConfig.selectedRequests.includes(r.id));
    if (requests.length === 0) return;
 
-   try {
-     await runnerStore.runLoadTest(updatedConfig, props.collections, props.environments, props.activeEnvironmentId);
-   } catch (error) {
-     console.error('Run failed:', error);
-   }
- }
+    try {
+      void runnerStore.runLoadTest(updatedConfig, props.collections, props.environments, props.activeEnvironmentId).catch((error) => {
+        console.error('Run failed:', error);
+      });
+    } catch (error) {
+      console.error('Run failed:', error);
+    }
+  }
 
 async function stopRun() {
   runnerStore.stopRun();
@@ -356,8 +375,9 @@ function duplicateConfig() {
 
 function initializeRequestConfigs() {
   const configs: Record<string, RequestConfig> = {};
+  const config = activeConfig.value;
   collectionRequests.value.forEach(req => {
-    const savedConfig = selectedConfig.value?.requestConfigs?.[req.id];
+    const savedConfig = config?.requestConfigs?.[req.id];
     configs[req.id] = {
       id: req.id,
       rps: savedConfig?.rps || 1,
@@ -374,6 +394,10 @@ function generateId(prefix: string): string {
 function cancelEdit() {
   editMode.value = false;
   editingConfig.value = null;
+  if (selectedConfig.value) {
+    selectedRequests.value = [...selectedConfig.value.selectedRequests];
+  }
+  initializeRequestConfigs();
 }
 
 watch(() => selectedConfig.value, (newConfig) => {
@@ -389,8 +413,11 @@ watch(() => selectedConfig.value, (newConfig) => {
 }, { immediate: true });
 
 watch(selectedRequests, (newVal) => {
-  if (selectedConfig.value && (!lastEmitted.value || JSON.stringify(newVal) !== JSON.stringify(lastEmitted.value.selectedRequests))) {
-    const updated = { ...selectedConfig.value, selectedRequests: newVal };
+  if (suppressSelectedRequestsEmit || editMode.value) return;
+
+  const config = activeConfig.value;
+  if (config && (!lastEmitted.value || JSON.stringify(newVal) !== JSON.stringify(lastEmitted.value.selectedRequests))) {
+    const updated = { ...config, selectedRequests: newVal };
     lastEmitted.value = JSON.parse(JSON.stringify(updated));
     emit('update-run-config', updated);
   }

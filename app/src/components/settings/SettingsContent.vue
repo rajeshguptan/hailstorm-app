@@ -470,9 +470,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
-import { useTheme } from '../composables/useTheme';
-import { useSecretsStore } from '../stores/secrets';
-import { useUIStore } from '../stores/ui';
+import { useTheme } from '../../composables/useTheme';
+import { useSecretsStore } from '../../stores/secrets';
+import { useUIStore } from '../../stores/ui';
 
 const uiStore = useUIStore();
 

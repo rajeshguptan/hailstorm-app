@@ -31,11 +31,11 @@
 </template>
 
 <script setup lang="ts">
-import type { Collection, Request, Folder } from '../types';
+import type { Collection, Request, Folder } from '../../types';
 import TreeNode from './TreeNode.vue';
-import { useUIStore } from '../stores/ui';
-import { useCollectionsStore } from '../stores/collections';
-import { useRequestsStore } from '../stores/requests';
+import { useUIStore } from '../../stores/ui';
+import { useCollectionsStore } from '../../stores/collections';
+import { useRequestsStore } from '../../stores/requests';
 
 interface Props {
   collections: Collection[];
@@ -77,9 +77,7 @@ function onCollectionMouseLeave() {
 
 function toggleCollection(id: string) {
   // Clear request selection when selecting a collection
-  if (requestsStore.selectedRequestId) {
-    requestsStore.selectedRequestId = null;
-  }
+  requestsStore.selectRequest(null);
   // Select the collection when clicking
   collectionsStore.selectedCollectionId = id;
   // Also toggle expansion
@@ -105,6 +103,7 @@ function toggleFolder(id: string) {
 }
 
 function selectRequest(id: string | null) {
+  requestsStore.selectRequest(id);
   emit('update:selected-request-id', id);
 }
 

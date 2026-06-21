@@ -1,0 +1,39 @@
+{
+  "info": {
+    "name": "Hailstorm Mock WebSocket Chat",
+    "description": "Connect to the local Hailstorm mock WebSocket chat service and send messages to receive an echo with the running message count.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "chatUrl",
+      "value": "ws://localhost:3002/chat",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Chat WebSocket",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{chatUrl}}",
+          "protocol": "ws",
+          "host": [
+            "localhost"
+          ],
+          "port": "3002",
+          "path": [
+            "chat"
+          ]
+        }
+      }
+    }
+  ]
+}

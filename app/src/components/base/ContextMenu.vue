@@ -22,8 +22,8 @@
 </template>
 
 <script setup lang="ts">
-import { useUIStore } from '../stores/ui';
-import { useCollectionsStore } from '../stores/collections';
+import { useUIStore } from '../../stores/ui';
+import { useCollectionsStore } from '../../stores/collections';
 
 const uiStore = useUIStore();
 const collectionsStore = useCollectionsStore();

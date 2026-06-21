@@ -7,7 +7,7 @@
           :class="{ 'bg-zinc-300 dark:bg-zinc-700': isActive(item.id) }" 
           @click="navigate(item.id)"
         >
-          <span class="text-xl" :style="item.iconStyle">{{ item.icon }}</span>
+          <span class="text-2xl leading-none" :style="item.iconStyle">{{ item.icon }}</span>
           <span class="text-xs">{{ item.label }}</span>
         </button>
         <div class="separator" v-if="item.id !== 'settings'"></div>
@@ -56,7 +56,7 @@
           </div>
         </div>
       </div>
-      <div v-if="uiStore.activeSidebar === 'collections'" class="relative group">
+      <div v-if="uiStore.activeSidebar === 'collections'" class="relative group ml-auto">
         <span class="pointer-events-none absolute bottom-full left-1/2 mb-1 hidden -translate-x-1/2 rounded bg-zinc-900 px-2 py-1 text-xs text-white shadow group-hover:block">Env</span>
         <select :value="activeEnvironmentId || ''" @change="handleEnvironmentChange" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 text-sm w-32">
           <option value=""></option>
@@ -201,20 +201,20 @@ import { useCollectionsStore } from '../stores/collections';
 import { useRunnerStore } from '../stores/runner';
 import { useSecretsStore } from '../stores/secrets';
 import { useHistoryStore } from '../stores/history';
-import ContextMenu from '../components/ContextMenu.vue';
-import RenameModal from '../components/RenameModal.vue';
-import SecretsEncryptionModal from '../components/SecretsEncryptionModal.vue';
-import RequestPanel from '../components/RequestPanel.vue';
-import ResponsePanel from '../components/ResponsePanel.vue';
-import SettingsContent from '../components/SettingsContent.vue';
-import SecretsDetail from '../components/SecretsDetail.vue';
-import CollectionPanel from '../components/CollectionPanel.vue';
-import ShellScriptDetail from '../components/ShellScriptDetail.vue';
-import StatsPanel from '../components/StatsPanel.vue';
-import ConsolePanel from '../components/ConsolePanel.vue';
-import DocsPanel from '../components/DocsPanel.vue';
-import RunConfigsPanel from '../components/RunConfigsPanel.vue';
-import RunnerDetails from '../components/RunnerDetails.vue';
+import ContextMenu from '../components/base/ContextMenu.vue';
+import RenameModal from '../components/base/RenameModal.vue';
+import SecretsEncryptionModal from '../components/secrets/SecretsEncryptionModal.vue';
+import RequestPanel from '../components/request/RequestPanel.vue';
+import ResponsePanel from '../components/request/ResponsePanel.vue';
+import SettingsContent from '../components/settings/SettingsContent.vue';
+import SecretsDetail from '../components/secrets/SecretsDetail.vue';
+import CollectionPanel from '../components/collection/CollectionPanel.vue';
+import ShellScriptDetail from '../components/request/ShellScriptDetail.vue';
+import StatsPanel from '../components/stats/StatsPanel.vue';
+import ConsolePanel from '../components/console/ConsolePanel.vue';
+import DocsPanel from '../components/docs/DocsPanel.vue';
+import RunConfigsPanel from '../components/runner/RunConfigsPanel.vue';
+import RunnerDetails from '../components/runner/RunnerDetails.vue';
 
 const router = useRouter();
 const route = useRoute();

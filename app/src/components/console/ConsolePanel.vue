@@ -17,7 +17,7 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue';
-import { useAppStore } from '../stores';
+import { useAppStore } from '../../stores';
 
 const store = useAppStore();
 

@@ -34,8 +34,8 @@
 </template>
 
 <script setup lang="ts">
-import RunConfigsPanel from '../components/RunConfigsPanel.vue';
-import RunnerDetails from '../components/RunnerDetails.vue';
+import RunConfigsPanel from '../components/runner/RunConfigsPanel.vue';
+import RunnerDetails from '../components/runner/RunnerDetails.vue';
 import { useRunnerStore } from '../stores/runner';
 import { useUIStore } from '../stores/ui';
 import { useCollectionsStore } from '../stores/collections';

@@ -15,6 +15,7 @@ export const useLoadTestStore = defineStore('loadTest', {
   state: () => ({
     currentRun: null as LoadTestRun | null,
     isInitialized: false,
+    statsListenerInitialized: false,
     liveStats: {
       totalRequests: 0,
       successfulRequests: 0,
@@ -290,6 +291,9 @@ async initialize() {
     },
 
     setupStatsListener() {
+      if (this.statsListenerInitialized) return;
+      this.statsListenerInitialized = true;
+
       // Listen for live stats updates from main process
       window.api.onLoadTestStatsUpdate(({ runId, stats }) => {
         // Only update if this matches the current run

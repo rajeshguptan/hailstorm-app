@@ -3,6 +3,7 @@ import { Page, Locator } from '@playwright/test';
 export class RequestPanel {
   readonly page: Page;
   readonly panel: Locator;
+  readonly nameInput: Locator;
   readonly methodSelect: Locator;
   readonly urlInput: Locator;
   readonly sendBtn: Locator;
@@ -19,8 +20,9 @@ export class RequestPanel {
   constructor(page: Page) {
     this.page = page;
     this.panel = page.locator('.request-panel');
-    this.methodSelect = page.locator('.request-panel select');
-    this.urlInput = page.locator('.request-panel input[type="text"]').first();
+    this.nameInput = page.locator('.request-panel input[placeholder="Request Name"]');
+    this.methodSelect = page.locator('.request-panel select').first();
+    this.urlInput = page.locator('.request-panel input[type="text"]').nth(1);
     this.sendBtn = page.locator('.request-panel button:has-text("Send")');
     this.tabs = {
       params: page.locator('.request-panel button:has-text("Parameters")'),
