@@ -10,6 +10,7 @@ import SettingsView from '../views/SettingsView.vue';
 import RunnerView from '../views/RunnerView.vue';
 import ConsoleView from '../views/ConsoleView.vue';
 import DocsView from '../views/DocsView.vue';
+import FeedbackView from '../views/FeedbackView.vue';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -59,6 +60,11 @@ const routes: RouteRecordRaw[] = [
         path: 'docs',
         name: 'docs',
         component: DocsView
+      },
+      {
+        path: 'feedback',
+        name: 'feedback',
+        component: FeedbackView
       }
     ]
   }

@@ -10,38 +10,32 @@
       <div class="p-4 border-b border-zinc-200 dark:border-zinc-700">
         <div class="mb-4">
           <h3 class="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2" data-testid="runner-config-name">
-            <span v-if="!editMode">{{ selectedConfig?.name }}</span>
-            <span v-if="editMode" class="flex items-center gap-1">
-              <input v-model="editedName" class="bg-transparent border-b border-zinc-400 dark:border-zinc-600 focus:outline-none text-zinc-900 dark:text-white" data-testid="runner-config-name-input" />
-            </span>
+            <input v-model="editedName" class="bg-transparent border-b border-zinc-400 dark:border-zinc-600 focus:outline-none text-zinc-900 dark:text-white flex-1" data-testid="runner-config-name-input" />
           </h3>
           <div class="flex gap-2 mt-4">
             <button class="btn bg-green-500 text-white" :disabled="isRunning || selectedRequests.length === 0" @click="runCollection" data-testid="runner-run-btn">Run</button>
             <button class="btn bg-red-500 text-white" :disabled="!isRunning" @click="stopRun" data-testid="runner-stop-btn">Stop</button>
-            <button class="btn bg-gray-500 text-white" :disabled="editMode" @click="startEdit" data-testid="runner-edit-btn">Edit</button>
-            <button class="btn bg-blue-500 text-white" :disabled="!editMode" @click="saveConfig" data-testid="runner-save-btn">Save</button>
-            <button class="btn bg-purple-500 text-white" @click="duplicateConfig" data-testid="runner-duplicate-btn">Duplicate</button>
-            <button class="btn bg-gray-500 text-white" :disabled="!editMode" @click="cancelEdit" data-testid="runner-cancel-btn">Cancel</button>
+            <button class="btn bg-blue-500 text-white" @click="saveConfig" data-testid="runner-save-btn">Save</button>
           </div>
         </div>
 
         <div class="flex gap-4 mb-4">
            <div class="flex-1">
-             <label class="block text-sm text-zinc-600 dark:text-gray-400 mb-1">Collection</label>
-             <select v-model="currentCollectionId" :disabled="!editMode" class="form-select bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
-               <option v-for="coll in collections || []" :key="coll.id" :value="coll.id">{{ coll.name }}</option>
-             </select>
-           </div>
-         </div>
+              <label class="block text-sm text-zinc-600 dark:text-gray-400 mb-1">Collection</label>
+              <select v-model="currentCollectionId" class="form-select bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
+                <option v-for="coll in collections || []" :key="coll.id" :value="coll.id">{{ coll.name }}</option>
+              </select>
+            </div>
+          </div>
 
         <div class="flex gap-4 mb-4">
           <label class="flex items-center gap-2 cursor-pointer">
-            <input v-model="currentRunRepeated" :disabled="!editMode" type="checkbox" class="form-checkbox" />
+            <input v-model="currentRunRepeated" type="checkbox" class="form-checkbox" />
             <span class="checkbox-label">Run Repeated</span>
           </label>
           <div v-if="currentRunRepeated" class="flex items-center gap-2">
             <label class="text-sm text-zinc-600 dark:text-gray-400">Duration (sec):</label>
-            <input v-model.number="currentDuration" :disabled="!editMode" type="number" class="form-input bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1" style="width: 80px;" />
+            <input v-model.number="currentDuration" type="number" class="form-input bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1" style="width: 80px;" />
           </div>
         </div>
       </div>
@@ -136,6 +130,7 @@ onMounted(() => {
   loadTestStore.initialize();
   if (selectedConfig.value) {
     selectedRequests.value = [...selectedConfig.value.selectedRequests];
+    editedName.value = selectedConfig.value.name;
   }
 });
 
@@ -180,8 +175,6 @@ const emit = defineEmits<{
 
 const isRunning = computed(() => runnerStore.isRunning);
 const lastEmitted = ref<RunConfig | null>(null);
-const editMode = ref(false);
-const editingConfig = ref<RunConfig | null>(null);
 const editedName = ref('');
 const selectedRequests = ref<string[]>([]);
 const requestConfigs = ref<Record<string, RequestConfig>>({});
@@ -192,18 +185,11 @@ const selectedConfig = computed(() => {
   return props.runConfigs.find(c => c.id === props.selectedConfigId) || null;
 });
 
-const activeConfig = computed<RunConfig | null>(() => {
-  if (editMode.value && editingConfig.value) {
-    return editingConfig.value;
-  }
-  return selectedConfig.value;
-});
-
 const liveStats = computed(() => loadTestStore.liveStats);
 
 const currentCollection = computed(() => {
-  if (!activeConfig.value || !props.collections) return null;
-  return props.collections.find(c => c.id === activeConfig.value?.collectionId) || null;
+  if (!selectedConfig.value || !props.collections) return null;
+  return props.collections.find(c => c.id === selectedConfig.value?.collectionId) || null;
 });
 
 const collectionRequests = computed(() => {
@@ -214,9 +200,9 @@ const collectionRequests = computed(() => {
 });
 
 const currentCollectionId = computed({
-  get: () => activeConfig.value?.collectionId || '',
+  get: () => selectedConfig.value?.collectionId || '',
   set: (value: string) => {
-    const config = activeConfig.value;
+    const config = selectedConfig.value;
     if (!config) return;
 
     const collection = props.collections.find(c => c.id === value);
@@ -232,19 +218,19 @@ const currentCollectionId = computed({
 });
 
 const currentRunRepeated = computed({
-  get: () => activeConfig.value?.runRepeated || false,
+  get: () => selectedConfig.value?.runRepeated || false,
   set: (value: boolean) => {
-    if (activeConfig.value) {
-      activeConfig.value.runRepeated = value;
+    if (selectedConfig.value) {
+      selectedConfig.value.runRepeated = value;
     }
   }
 });
 
 const currentDuration = computed({
-  get: () => activeConfig.value?.duration || 60,
+  get: () => selectedConfig.value?.duration || 60,
   set: (value: number) => {
-    if (activeConfig.value) {
-      activeConfig.value.duration = value;
+    if (selectedConfig.value) {
+      selectedConfig.value.duration = value;
     }
   }
 });
@@ -284,6 +270,28 @@ function validateRPS(requestId: string) {
   }
 }
 
+function initializeRequestConfigs() {
+  const configs: Record<string, RequestConfig> = {};
+  selectedConfig.value?.selectedRequests.forEach(id => {
+    configs[id] = {
+      id,
+      rps: 1,
+      datafile: ''
+    };
+  });
+  collectionRequests.value.forEach(req => {
+    if (!configs[req.id]) {
+      configs[req.id] = { id: req.id, rps: 1, datafile: '' };
+    }
+    const savedConfig = selectedConfig.value?.requestConfigs?.[req.id];
+    if (savedConfig) {
+      configs[req.id].rps = savedConfig.rps || 1;
+      configs[req.id].datafile = savedConfig.datafile || '';
+    }
+  });
+  requestConfigs.value = configs;
+}
+
 async function selectDatafile(requestId: string) {
   try {
     const result = await window.api.showOpenDialog({
@@ -304,8 +312,27 @@ async function selectDatafile(requestId: string) {
   }
 }
 
+function saveConfig() {
+  if (!selectedConfig.value) return;
+  if (editedName.value !== selectedConfig.value.name) {
+    selectedConfig.value.name = editedName.value;
+  }
+  const updated = {
+    ...selectedConfig.value,
+    requestConfigs: JSON.parse(JSON.stringify(requestConfigs.value)),
+    selectedRequests: [...selectedRequests.value]
+  };
+  lastEmitted.value = JSON.parse(JSON.stringify(updated));
+  emit('update-run-config', updated);
+}
+
 async function runCollection() {
    if (!selectedConfig.value) return;
+
+   // Update the config name if it changed
+   if (editedName.value !== selectedConfig.value.name) {
+     selectedConfig.value.name = editedName.value;
+   }
 
    const updatedConfig = {
      ...selectedConfig.value,
@@ -318,104 +345,35 @@ async function runCollection() {
    const requests = collectionRequests.value.filter(r => updatedConfig.selectedRequests.includes(r.id));
    if (requests.length === 0) return;
 
-    try {
-      void runnerStore.runLoadTest(updatedConfig, props.collections, props.environments, props.activeEnvironmentId).catch((error) => {
-        console.error('Run failed:', error);
-      });
-    } catch (error) {
-      console.error('Run failed:', error);
-    }
-  }
+   try {
+     void runnerStore.runLoadTest(updatedConfig, props.collections, props.environments, props.activeEnvironmentId).catch((error) => {
+       console.error('Run failed:', error);
+     });
+   } catch (error) {
+     console.error('Run failed:', error);
+   }
+ }
 
-async function stopRun() {
-  runnerStore.stopRun();
-}
-
-function startEdit() {
-  if (!selectedConfig.value) return;
-  editMode.value = true;
-  editingConfig.value = JSON.parse(JSON.stringify(selectedConfig.value));
-  editingConfig.value.selectedRequests = [...selectedRequests.value];
-  editedName.value = selectedConfig.value.name;
-}
-
-function saveConfig() {
-  if (!editingConfig.value) return;
-  editingConfig.value.name = editedName.value;
-  editingConfig.value.selectedRequests = [...selectedRequests.value];
-  editingConfig.value.requestConfigs = JSON.parse(JSON.stringify(requestConfigs.value));
-  lastEmitted.value = JSON.parse(JSON.stringify(editingConfig.value));
-  emit('update-run-config', editingConfig.value);
-  editMode.value = false;
-  editingConfig.value = null;
-}
-
-function duplicateConfig() {
-  const sourceConfig = editMode.value ? editingConfig.value : selectedConfig.value;
-  if (!sourceConfig) return;
-
-  const newName = prompt('Enter name for new run config:', sourceConfig.name + ' Copy');
-  if (newName) {
-    const collection = props.collections.find(c => c.id === sourceConfig?.collectionId);
-    const newConfig: RunConfig = {
-      id: generateId('run'),
-      name: newName,
-      collectionId: sourceConfig?.collectionId || '',
-      collectionName: collection?.name || sourceConfig?.collectionName || '',
-      selectedRequests: [...selectedRequests.value],
-      runRepeated: sourceConfig?.runRepeated || false,
-      duration: sourceConfig?.duration || 60,
-      requestConfigs: sourceConfig?.requestConfigs ? JSON.parse(JSON.stringify(sourceConfig.requestConfigs)) : undefined
-    };
-    emit('update-run-config', newConfig);
-    editMode.value = false;
-    editingConfig.value = null;
-  }
-}
-
-function initializeRequestConfigs() {
-  const configs: Record<string, RequestConfig> = {};
-  const config = activeConfig.value;
-  collectionRequests.value.forEach(req => {
-    const savedConfig = config?.requestConfigs?.[req.id];
-    configs[req.id] = {
-      id: req.id,
-      rps: savedConfig?.rps || 1,
-      datafile: savedConfig?.datafile || ''
-    };
-  });
-  requestConfigs.value = configs;
-}
-
-function generateId(prefix: string): string {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-}
-
-function cancelEdit() {
-  editMode.value = false;
-  editingConfig.value = null;
-  if (selectedConfig.value) {
-    selectedRequests.value = [...selectedConfig.value.selectedRequests];
-  }
-  initializeRequestConfigs();
-}
+function stopRun() {
+   runnerStore.stopRun();
+ }
 
 watch(() => selectedConfig.value, (newConfig) => {
   if (newConfig) {
     selectedRequests.value = [...newConfig.selectedRequests];
+    editedName.value = newConfig.name;
     lastEmitted.value = JSON.parse(JSON.stringify(newConfig));
   } else {
     selectedRequests.value = [];
+    editedName.value = '';
     lastEmitted.value = null;
   }
-  editMode.value = false;
-  editingConfig.value = null;
 }, { immediate: true });
 
 watch(selectedRequests, (newVal) => {
-  if (suppressSelectedRequestsEmit || editMode.value) return;
+  if (suppressSelectedRequestsEmit) return;
 
-  const config = activeConfig.value;
+  const config = selectedConfig.value;
   if (config && (!lastEmitted.value || JSON.stringify(newVal) !== JSON.stringify(lastEmitted.value.selectedRequests))) {
     const updated = { ...config, selectedRequests: newVal };
     lastEmitted.value = JSON.parse(JSON.stringify(updated));

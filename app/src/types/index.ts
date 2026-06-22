@@ -177,6 +177,7 @@ export interface LoadTestRun {
   delay: number;
   runRepeated: boolean;
   iterations: number;
+  duration?: number;
   startTime: number;
   endTime?: number;
   status: 'running' | 'completed' | 'stopped';

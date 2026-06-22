@@ -1,5 +1,5 @@
 <template>
-  <div v-if="uiStore.contextMenu.show" class="context-menu fixed bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border border-zinc-300 dark:border-zinc-600 rounded p-1" :style="{ left: uiStore.contextMenu.x + 'px', top: uiStore.contextMenu.y + 'px', zIndex: 1000 }">
+  <div v-if="uiStore.contextMenu.show" data-testid="context-menu" class="context-menu fixed bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border border-zinc-300 dark:border-zinc-600 rounded p-1" :style="{ left: uiStore.contextMenu.x + 'px', top: uiStore.contextMenu.y + 'px', zIndex: 1000 }">
     <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('rename')">Rename</div>
     <div v-if="uiStore.contextMenu.type === 'collection'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('duplicate')">Duplicate</div>
     <div v-if="uiStore.contextMenu.type === 'request'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('rename')">Rename</div>
@@ -16,17 +16,22 @@
     <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-shell-command')">Add Shell Command</div>
 
     <div v-if="uiStore.contextMenu.type === 'flavor'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('run')">Run</div>
-    <div v-if="uiStore.contextMenu.type === 'run-config'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('run')">Run</div>
-    <div class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 text-red-500" @click="handleAction('delete')">Delete</div>
+    <div v-if="uiStore.contextMenu.type === 'run-config'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" data-testid="context-menu-run" @click="handleAction('run')">Run</div>
+    <div v-if="uiStore.contextMenu.type === 'run-config'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" data-testid="context-menu-duplicate" @click="handleAction('duplicate')">Duplicate</div>
+    <div class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 text-red-500" data-testid="context-menu-delete" @click="handleAction('delete')">Delete</div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useUIStore } from '../../stores/ui';
 import { useCollectionsStore } from '../../stores/collections';
+import { useRunnerStore } from '../../stores/runner';
+import { useEnvironmentsStore } from '../../stores/environments';
 
 const uiStore = useUIStore();
 const collectionsStore = useCollectionsStore();
+const runnerStore = useRunnerStore();
+const environmentsStore = useEnvironmentsStore();
 
 function handleAction(action: string) {
   const { type, id } = uiStore.contextMenu;
@@ -39,6 +44,18 @@ function handleAction(action: string) {
         collectionsStore.deleteRequest(id);
       } else if (type === 'folder') {
         collectionsStore.deleteFolder(id);
+      } else if (type === 'run-config') {
+        runnerStore.deleteRunConfig(id);
+      }
+      break;
+    case 'run':
+      if (type === 'run-config') {
+        const config = runnerStore.runConfigs.find(c => c.id === id);
+        if (config) {
+          void runnerStore.runLoadTest(config, collectionsStore.collections, environmentsStore.environments, environmentsStore.activeEnvironmentId).catch((error) => {
+            console.error('Run failed:', error);
+          });
+        }
       }
       break;
     case 'rename':
@@ -53,6 +70,11 @@ function handleAction(action: string) {
         collectionsStore.duplicateCollection(id);
       } else if (type === 'request') {
         collectionsStore.duplicateRequest(id);
+      } else if (type === 'run-config') {
+        const newName = prompt('Enter name for new run config:', `${runnerStore.runConfigs.find(c => c.id === id)?.name || 'Run Config'} Copy`);
+        if (newName) {
+          runnerStore.duplicateRunConfig(id, newName);
+        }
       }
       break;
     case 'copy':

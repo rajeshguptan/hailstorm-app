@@ -522,6 +522,10 @@ export function setupLoadTestExecutionHandlers() {
 
     let runId = existingRunId;
     let newRun: LoadTestRun | null = null;
+    let runStartTime = 0;
+    const runDurationMs = config.runRepeated && config.duration && config.duration > 0 
+      ? config.duration * 1000 
+      : 0;
 
     if (!runId) {
       newRun = await loadTestingService.startRun({
@@ -535,6 +539,13 @@ export function setupLoadTestExecutionHandlers() {
         iterations: 1
       });
       runId = newRun.id;
+      runStartTime = newRun.startTime;
+    } else {
+      // Get the existing run's start time for duration check
+      const existingRun = await loadTestingService.getRunStats(runId);
+      if (existingRun) {
+        runStartTime = existingRun.startTime;
+      }
     }
 
     console.log('[EXECUTION_ENGINE] runLoadTest started with runId:', runId);
@@ -552,6 +563,11 @@ export function setupLoadTestExecutionHandlers() {
       rpsConfigs,
       async (result) => {
         results.push(result);
+
+        // Check if duration has elapsed before recording or sending stats
+        if (runDurationMs > 0 && (Date.now() - runStartTime) >= runDurationMs) {
+          return;
+        }
 
         await loadTestingService.recordRequest(runId, {
           requestId: result.requestId || 'unknown',

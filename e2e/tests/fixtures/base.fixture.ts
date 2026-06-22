@@ -111,12 +111,22 @@ export const test = base.extend({
             });
           },
 
-          getLoadTestTimeSeriesData: (runId) => {
-            console.log('[MOCK API] getLoadTestTimeSeriesData:', runId);
+          getLoadTestTimeSeriesData: (runId, startTime, endTime) => {
+            console.log('[MOCK API] getLoadTestTimeSeriesData:', runId, startTime, endTime);
             return Promise.resolve([
-              { timestamp: Date.now() - 60000, requests: 5, errors: 0, avgResponseTime: 120 },
-              { timestamp: Date.now() - 30000, requests: 3, errors: 1, avgResponseTime: 180 },
-              { timestamp: Date.now(), requests: 2, errors: 0, avgResponseTime: 90 }
+              { timestamp: Date.now() - 60000, requests: 5, errors: 0, avgResponseTime: 120, p50ResponseTime: 100, p75ResponseTime: 110, p90ResponseTime: 120, p95ResponseTime: 130, p99ResponseTime: 150 },
+              { timestamp: Date.now() - 30000, requests: 3, errors: 1, avgResponseTime: 180, p50ResponseTime: 150, p75ResponseTime: 170, p90ResponseTime: 180, p95ResponseTime: 190, p99ResponseTime: 200 },
+              { timestamp: Date.now(), requests: 2, errors: 0, avgResponseTime: 90, p50ResponseTime: 80, p75ResponseTime: 85, p90ResponseTime: 90, p95ResponseTime: 95, p99ResponseTime: 100 }
+            ]);
+          },
+
+          getLoadTestTimeSeriesDataByRequest: (runId, startTime, endTime) => {
+            console.log('[MOCK API] getLoadTestTimeSeriesDataByRequest:', runId, startTime, endTime);
+            return Promise.resolve([
+              { requestName: 'GET Request', timestamp: Date.now() - 60000, requests: 5, errors: 0, avgResponseTime: 120, p50ResponseTime: 100, p75ResponseTime: 110, p90ResponseTime: 120, p95ResponseTime: 130, p99ResponseTime: 150 },
+              { requestName: 'POST Request', timestamp: Date.now() - 60000, requests: 3, errors: 0, avgResponseTime: 90, p50ResponseTime: 80, p75ResponseTime: 85, p90ResponseTime: 90, p95ResponseTime: 95, p99ResponseTime: 100 },
+              { requestName: 'GET Request', timestamp: Date.now() - 30000, requests: 4, errors: 1, avgResponseTime: 180, p50ResponseTime: 150, p75ResponseTime: 170, p90ResponseTime: 180, p95ResponseTime: 190, p99ResponseTime: 200 },
+              { requestName: 'POST Request', timestamp: Date.now() - 30000, requests: 2, errors: 0, avgResponseTime: 85, p50ResponseTime: 80, p75ResponseTime: 82, p90ResponseTime: 85, p95ResponseTime: 88, p99ResponseTime: 90 }
             ]);
           },
 

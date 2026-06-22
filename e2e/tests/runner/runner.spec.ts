@@ -148,7 +148,7 @@ test.describe('Collection Runner', () => {
     expect(isRunning).toBe(false);
   });
 
-  test('should edit run configuration', async () => {
+  test('should edit run configuration directly without edit button', async () => {
     await collectionsPanel.addRequestToCollection('Runner Test Collection', 'GET Request 1');
     await collectionsPanel.addRequestToCollection('Runner Test Collection', 'GET Request 2');
 
@@ -156,13 +156,15 @@ test.describe('Collection Runner', () => {
     await runnerPanel.createRunConfig('Edit Test Run', 'Runner Test Collection');
     await runnerPanel.selectRequest('GET Request 1');
 
-    // Enter edit mode
-    await runnerPanel.startEdit();
+    // Config is now always editable - directly change the name
     await runnerPanel.setConfigName('Edited Test Run');
     await runnerPanel.selectRequest('GET Request 2'); // Add second request
-    await runnerPanel.saveConfig();
 
-    // Verify changes were saved
+    // Run the configuration to save changes
+    await runnerPanel.runCollection();
+    await runnerPanel.waitForRunCompletion();
+
+    // Verify the edited config was used
     const configName = await runnerPanel.getSelectedConfigName();
     expect(configName).toBe('Edited Test Run');
   });
@@ -174,12 +176,24 @@ test.describe('Collection Runner', () => {
     await runnerPanel.createRunConfig('Original Run', 'Runner Test Collection');
     await runnerPanel.selectRequest('GET Request');
 
-    await runnerPanel.duplicateConfig('Duplicated Run');
+    await runnerPanel.duplicateConfig('Original Run', 'Duplicated Run');
 
     // Should have two configs now
     const configs = await runnerPanel.getAvailableConfigs();
     expect(configs.length).toBeGreaterThanOrEqual(2);
     expect(configs.some(name => name === 'Duplicated Run')).toBe(true);
+  });
+
+  test('should delete run configuration from context menu', async () => {
+    await collectionsPanel.addRequestToCollection('Runner Test Collection', 'GET Request');
+
+    await appLayout.navigateToRunner();
+    await runnerPanel.createRunConfig('Delete Me Run', 'Runner Test Collection');
+
+    await runnerPanel.deleteConfig('Delete Me Run');
+
+    const configs = await runnerPanel.getAvailableConfigs();
+    expect(configs.some(name => name === 'Delete Me Run')).toBe(false);
   });
 
   test('should select data file for request', async () => {

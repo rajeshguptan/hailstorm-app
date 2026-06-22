@@ -87,7 +87,7 @@
           <!-- Requests vs Time Chart -->
           <div class="chart-container bg-zinc-100 dark:bg-zinc-800 p-6 rounded shadow-sm">
             <div class="h-64">
-              <Bar
+              <Line
                 v-if="requestsChartData"
                 :data="requestsChartData"
                 :options="requestsChartOptions"
@@ -105,7 +105,7 @@
           <!-- Errors vs Time Chart -->
           <div class="chart-container bg-zinc-100 dark:bg-zinc-800 p-6 rounded shadow-sm">
             <div class="h-64">
-              <Bar
+              <Line
                 v-if="errorsChartData"
                 :data="errorsChartData"
                 :options="errorsChartOptions"
@@ -199,13 +199,12 @@ import {
   LinearScale,
   PointElement,
   LineElement,
-  BarElement,
   Title,
   Tooltip,
   Legend,
   Filler
 } from 'chart.js';
-import { Bar, Line } from 'vue-chartjs';
+import { Line } from 'vue-chartjs';
 
 // Register Chart.js components
 ChartJS.register(
@@ -213,7 +212,6 @@ ChartJS.register(
   LinearScale,
   PointElement,
   LineElement,
-  BarElement,
   Title,
   Tooltip,
   Legend,
@@ -242,6 +240,24 @@ const completedRuns = ref<LoadTestRun[]>([]);
 // Make sure store is reactive to changes
 const currentRun = computed(() => loadTestStore.currentRun);
 
+type ChartPoint = { x: number; y: number };
+type ChartDataset = { label: string; data: ChartPoint[]; [key: string]: any };
+
+const runStartTime = computed(() => currentStats.value?.startTime || loadTestStore.liveStats.startTime || 0);
+const runDurationMs = computed(() => {
+  if (currentStats.value?.duration !== undefined) return currentStats.value.duration;
+  if (currentRun.value?.duration) {
+    return Math.min(Date.now() - currentRun.value.startTime, currentRun.value.duration * 1000);
+  }
+  return currentRun.value ? Date.now() - currentRun.value.startTime : 0;
+});
+const runDurationSeconds = computed(() => Math.max(0, runDurationMs.value / 1000));
+
+function getElapsedSeconds(timestamp: number): number {
+  const start = runStartTime.value || timestamp;
+  return Math.max(0, (timestamp - start) / 1000);
+}
+
 // Function to update current stats
 async function updateCurrentStats() {
   try {
@@ -250,6 +266,8 @@ async function updateCurrentStats() {
     } else if (currentRun.value) {
       // Return live stats for current run
       const liveStats = loadTestStore.liveStats;
+      const elapsedMs = Date.now() - liveStats.startTime;
+      const durationMs = currentRun.value.duration ? Math.min(elapsedMs, currentRun.value.duration * 1000) : elapsedMs;
       currentStats.value = {
         runId: currentRun.value.id,
         totalRequests: liveStats.totalRequests,
@@ -264,8 +282,8 @@ async function updateCurrentStats() {
         p99ResponseTime: 0,
         requestsPerSecond: liveStats.requestsPerSecond,
         startTime: liveStats.startTime,
-        endTime: Date.now(),
-        duration: Date.now() - liveStats.startTime
+        endTime: currentRun.value.duration ? liveStats.startTime + durationMs : Date.now(),
+        duration: durationMs
       };
     } else {
       currentStats.value = null;
@@ -290,15 +308,22 @@ const timeSeriesByRequestData = ref<LoadTestTimeSeriesByRequestPoint[]>([]);
       // Live data from rolling window
       timeSeriesData.value = [...loadTestStore.rollingWindow];
       // Build by-request data from rolling window
-      timeSeriesByRequestData.value = Object.entries(loadTestStore.rollingWindowByRequest).flatMap(([requestName, points]) =>
-        points.map(point => ({
-          requestName,
-          timestamp: point.timestamp,
-          requests: point.requests,
-          errors: point.errors,
-          avgResponseTime: point.avgResponseTime
-        }))
-      );
+      timeSeriesByRequestData.value = Object.entries(loadTestStore.rollingWindowByRequest)
+        .filter(([requestName]) => requestName)
+        .flatMap(([requestName, points]) =>
+          points.map(point => ({
+            requestName,
+            timestamp: point.timestamp,
+            requests: point.requests,
+            errors: point.errors,
+            avgResponseTime: point.avgResponseTime,
+            p50ResponseTime: point.p50ResponseTime,
+            p75ResponseTime: point.p75ResponseTime,
+            p90ResponseTime: point.p90ResponseTime,
+            p95ResponseTime: point.p95ResponseTime,
+            p99ResponseTime: point.p99ResponseTime
+          }))
+        );
     }
   }
 
@@ -307,26 +332,25 @@ const chartData = computed(() => {
   const data = timeSeriesData.value;
   if (data.length === 0) return null;
 
-  // Prepare data for charts
-  const labels = data.map(point => {
-    const date = new Date(point.timestamp);
-    return date.toLocaleTimeString('en-US', {
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-  });
-
-  const requestsData = data.map(point => point.requests);
-  const errorsData = data.map(point => point.errors);
-  const responseTimeData = data.map(point => point.avgResponseTime);
+  const points = data.map(point => ({
+    elapsedSeconds: getElapsedSeconds(point.timestamp),
+    point
+  }));
 
   return {
-    labels,
-    requests: requestsData,
-    errors: errorsData,
-    responseTime: responseTimeData
+    labels: points.map(point => formatDuration(point.elapsedSeconds * 1000)),
+    requests: points.map(point => ({
+      x: point.elapsedSeconds,
+      y: point.point.requests
+    })),
+    errors: points.map(point => ({
+      x: point.elapsedSeconds,
+      y: point.point.errors
+    })),
+    responseTime: points.map(point => ({
+      x: point.elapsedSeconds,
+      y: getResponseTimeValue(point.point, selectedPercentile.value)
+    }))
   };
 });
 
@@ -353,18 +377,12 @@ const chartDataByRequest = computed(() => {
   const requestNames = [...new Set(data.map(point => point.requestName))].sort();
 
   // Create labels from timestamps
-  const labels = Object.keys(timeBuckets).sort((a, b) => parseInt(a) - parseInt(b)).map(timestamp => {
-    const date = new Date(parseInt(timestamp));
-    return date.toLocaleTimeString('en-US', {
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-  });
+  const timestamps = Object.keys(timeBuckets).sort((a, b) => parseInt(a) - parseInt(b));
+  const labels = timestamps.map(timestamp => formatDuration(getElapsedSeconds(parseInt(timestamp)) * 1000));
 
   return {
     labels,
+    timestamps,
     timeBuckets,
     requestNames
   };
@@ -385,6 +403,32 @@ const progressiveLineAnimation = {
   }
 };
 
+const xAxisOptions = computed(() => ({
+  type: 'linear' as const,
+  min: 0,
+  max: Math.max(1, runDurationSeconds.value),
+  title: {
+    display: true,
+    text: `Elapsed Time (run duration: ${formatDuration(currentStats.value?.duration || 0)})`
+  },
+  ticks: {
+    callback: (value: number | string) => formatDuration(Number(value) * 1000)
+  },
+  grid: {
+    display: false
+  }
+}));
+
+const countTooltipCallbacks = {
+  title: (items: any[]) => `Elapsed: ${formatDuration((items[0]?.parsed?.x || 0) * 1000)}`,
+  label: (context: any) => `${context.dataset.label}: ${context.parsed.y}`
+};
+
+const responseTimeTooltipCallbacks = {
+  title: (items: any[]) => `Elapsed: ${formatDuration((items[0]?.parsed?.x || 0) * 1000)}`,
+  label: (context: any) => `${context.dataset.label}: ${context.parsed.y}ms`
+};
+
 const requestsChartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
@@ -398,17 +442,19 @@ const requestsChartOptions = computed(() => ({
     },
     title: {
       display: true,
-      text: 'Requests vs Time' + (chartDataByRequest.value && chartDataByRequest.value.requestNames.length > 0 ? ' (by Request Name)' : ''),
+      text: 'Requests over Run Duration' + (chartDataByRequest.value && chartDataByRequest.value.requestNames.length > 0 ? ' (by Request Name)' : ''),
       font: {
         size: 16,
         weight: 'bold'
       }
+    },
+    tooltip: {
+      callbacks: countTooltipCallbacks
     }
   },
   scales: {
     y: {
       beginAtZero: true,
-      stacked: true,
       title: {
         display: true,
         text: 'Number of Requests'
@@ -417,18 +463,17 @@ const requestsChartOptions = computed(() => ({
         color: 'rgba(0, 0, 0, 0.1)'
       }
     },
-    x: {
-      title: {
-        display: true,
-        text: 'Time'
-      },
-      grid: {
-        display: false
-      }
-    }
+    x: xAxisOptions.value
   },
-  animation: {
-    duration: 500
+  animation: progressiveLineAnimation,
+  elements: {
+    point: {
+      radius: 3,
+      hoverRadius: 6
+    },
+    line: {
+      borderWidth: 3
+    }
   }
 }));
 
@@ -445,17 +490,19 @@ const errorsChartOptions = computed(() => ({
     },
     title: {
       display: true,
-      text: 'Errors vs Time' + (chartDataByRequest.value && chartDataByRequest.value.requestNames.length > 0 ? ' (by Request Name)' : ''),
+      text: 'Errors over Run Duration' + (chartDataByRequest.value && chartDataByRequest.value.requestNames.length > 0 ? ' (by Request Name)' : ''),
       font: {
         size: 16,
         weight: 'bold'
       }
+    },
+    tooltip: {
+      callbacks: countTooltipCallbacks
     }
   },
   scales: {
     y: {
       beginAtZero: true,
-      stacked: true,
       title: {
         display: true,
         text: 'Number of Errors'
@@ -464,18 +511,17 @@ const errorsChartOptions = computed(() => ({
         color: 'rgba(0, 0, 0, 0.1)'
       }
     },
-    x: {
-      title: {
-        display: true,
-        text: 'Time'
-      },
-      grid: {
-        display: false
-      }
-    }
+    x: xAxisOptions.value
   },
-  animation: {
-    duration: 500
+  animation: progressiveLineAnimation,
+  elements: {
+    point: {
+      radius: 3,
+      hoverRadius: 6
+    },
+    line: {
+      borderWidth: 3
+    }
   }
 }));
 
@@ -497,6 +543,9 @@ const responseTimeChartOptions = computed(() => ({
         size: 16,
         weight: 'bold'
       }
+    },
+    tooltip: {
+      callbacks: responseTimeTooltipCallbacks
     }
   },
   scales: {
@@ -510,15 +559,7 @@ const responseTimeChartOptions = computed(() => ({
         color: 'rgba(0, 0, 0, 0.1)'
       }
     },
-    x: {
-      title: {
-        display: true,
-        text: 'Time'
-      },
-      grid: {
-        display: false
-      }
-    }
+    x: xAxisOptions.value
   },
   animation: progressiveLineAnimation,
   elements: {
@@ -576,10 +617,10 @@ function getResponseTimeValue(point: any, percentile: string): number {
 }
 
   // Chart data objects
-  const requestsChartData = computed(() => {
+  const requestsChartData = computed((): ChartDataset | null => {
     // Show by-request view if available (for both live and historical data)
     if (chartDataByRequest.value && chartDataByRequest.value.requestNames.length > 0) {
-      const { labels, timeBuckets, requestNames } = chartDataByRequest.value;
+      const { timestamps, timeBuckets, requestNames } = chartDataByRequest.value;
 
       // Create color palette for different request names
       const colors = [
@@ -595,39 +636,36 @@ function getResponseTimeValue(point: any, percentile: string): number {
         const colorIndex = index % colors.length;
         const color = colors[colorIndex];
 
-        const data = labels.map((_, labelIndex) => {
-          const timestamp = Object.keys(timeBuckets).sort((a, b) => parseInt(a) - parseInt(b))[labelIndex];
-          const requestData = timeBuckets[parseInt(timestamp)]?.[requestName];
-          return requestData?.requests || 0;
-        });
+        const data = timestamps.map(timestamp => ({
+          x: getElapsedSeconds(parseInt(timestamp)),
+          y: timeBuckets[parseInt(timestamp)]?.[requestName]?.requests || 0
+        }));
 
     return {
       label: requestName,
       data,
       ...color,
-      stack: 'requests',
-      borderWidth: 1,
-      borderRadius: 4,
-      borderSkipped: false,
+      borderWidth: 3,
+      pointRadius: 3,
+      pointHoverRadius: 6,
     };
       });
 
       return {
-        labels,
+        labels: [],
         datasets
       };
     } else if (chartData.value) {
       // Fallback to aggregated view for historical data
       return {
-        labels: chartData.value.labels,
+        labels: [],
         datasets: [{
           label: 'Total Requests',
           data: chartData.value.requests,
           ...colorSchemes.requests,
-          stack: 'requests',
-          borderWidth: 1,
-          borderRadius: 4,
-          borderSkipped: false,
+          borderWidth: 3,
+          pointRadius: 3,
+          pointHoverRadius: 6,
         }]
       };
     }
@@ -635,26 +673,11 @@ function getResponseTimeValue(point: any, percentile: string): number {
     return null;
   });
 
-const errorsChartData = computed(() => {
-  // For live data, show aggregated view
-  if (!selectedRunId.value && chartData.value) {
-    return {
-      labels: chartData.value.labels,
-      datasets: [{
-        label: 'Errors (5xx)',
-        data: chartData.value.errors,
-        ...colorSchemes.errors,
-        stack: 'errors',
-        borderWidth: 1,
-        borderRadius: 4,
-        borderSkipped: false,
-      }]
-    };
-  }
-
-  // For historical data, show by-request view if available, otherwise aggregated view
+const errorsChartData = computed((): ChartDataset[] | null => {
+  // For live and historical data, show by-request view if available
+  const hasLiveOrHistoricalData = !selectedRunId.value;
   if (chartDataByRequest.value && chartDataByRequest.value.requestNames.length > 0) {
-    const { labels, timeBuckets, requestNames } = chartDataByRequest.value;
+    const { timestamps, timeBuckets, requestNames } = chartDataByRequest.value;
 
     // Create color palette for different request names
     const colors = [
@@ -670,30 +693,30 @@ const errorsChartData = computed(() => {
       const colorIndex = index % colors.length;
       const color = colors[colorIndex];
 
-      const data = labels.map((_, labelIndex) => {
-        const timestamp = Object.keys(timeBuckets).sort((a, b) => parseInt(a) - parseInt(b))[labelIndex];
-        const requestData = timeBuckets[parseInt(timestamp)]?.[requestName];
-        return requestData?.errors || 0;
-      });
+      const data = timestamps.map(timestamp => ({
+        x: getElapsedSeconds(parseInt(timestamp)),
+        y: timeBuckets[parseInt(timestamp)]?.[requestName]?.errors || 0
+      }));
 
-      // Only include datasets that have at least one error
-      const hasErrors = data.some(val => val > 0);
-      if (!hasErrors) return null;
+      // For live runs, show all requests; for historical, only show requests with errors
+      if (!hasLiveOrHistoricalData) {
+        const hasErrors = data.some(val => val.y > 0);
+        if (!hasErrors) return null;
+      }
 
       return {
         label: requestName,
         data,
         ...color,
-        stack: 'errors',
-        borderWidth: 1,
-        borderRadius: 4,
-        borderSkipped: false,
+        borderWidth: 3,
+        pointRadius: 3,
+        pointHoverRadius: 6,
       };
-    }).filter(dataset => dataset !== null);
+    }).filter(dataset => dataset !== null) as ChartDataset[];
 
     if (datasets.length > 0) {
       return {
-        labels,
+        labels: [],
         datasets
       };
     }
@@ -702,15 +725,14 @@ const errorsChartData = computed(() => {
   // Fallback to aggregated view for historical data or when no by-request errors
   if (chartData.value) {
     return {
-      labels: chartData.value.labels,
+      labels: [],
       datasets: [{
         label: 'Errors (5xx)',
         data: chartData.value.errors,
         ...colorSchemes.errors,
-        stack: 'errors',
-        borderWidth: 1,
-        borderRadius: 4,
-        borderSkipped: false,
+        borderWidth: 3,
+        pointRadius: 3,
+        pointHoverRadius: 6,
       }]
     };
   }
@@ -719,26 +741,9 @@ const errorsChartData = computed(() => {
 });
 
 const responseTimeChartData = computed(() => {
-  // For live data, show aggregated view
-  if (!selectedRunId.value && chartData.value) {
-    return {
-      labels: chartData.value.labels,
-      datasets: [{
-        label: `Response Time (${percentiles.find(p => p.value === selectedPercentile.value)?.label || 'Mean'})`,
-        data: timeSeriesData.value.map(point => getResponseTimeValue(point, selectedPercentile.value)),
-        ...colorSchemes.responseTime,
-        borderWidth: 3,
-        fill: true,
-        tension: 0.4,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-      }]
-    };
-  }
-
-  // For historical data, show by-request view if available, otherwise aggregated view
+  // For live and historical data, show by-request view if available
   if (chartDataByRequest.value && chartDataByRequest.value.requestNames.length > 0) {
-    const { labels, timeBuckets, requestNames } = chartDataByRequest.value;
+    const { timestamps, timeBuckets, requestNames } = chartDataByRequest.value;
 
     // Create color palette for different request names
     const colors = [
@@ -754,11 +759,10 @@ const responseTimeChartData = computed(() => {
       const colorIndex = index % colors.length;
       const color = colors[colorIndex];
 
-      const data = labels.map((_, labelIndex) => {
-        const timestamp = Object.keys(timeBuckets).sort((a, b) => parseInt(a) - parseInt(b))[labelIndex];
-        const requestData = timeBuckets[parseInt(timestamp)]?.[requestName];
-        return getResponseTimeValue(requestData, selectedPercentile.value);
-      });
+      const data = timestamps.map(timestamp => ({
+        x: getElapsedSeconds(parseInt(timestamp)),
+        y: getResponseTimeValue(timeBuckets[parseInt(timestamp)]?.[requestName], selectedPercentile.value)
+      }));
 
       return {
         label: requestName,
@@ -773,16 +777,19 @@ const responseTimeChartData = computed(() => {
     });
 
     return {
-      labels,
+      labels: [],
       datasets
     };
   } else if (chartData.value) {
     // Fallback to aggregated view for historical data
     return {
-      labels: chartData.value.labels,
+      labels: [],
       datasets: [{
         label: `Response Time (${percentiles.find(p => p.value === selectedPercentile.value)?.label || 'Mean'})`,
-        data: timeSeriesData.value.map(point => getResponseTimeValue(point, selectedPercentile.value)),
+        data: timeSeriesData.value.map(point => ({
+          x: getElapsedSeconds(point.timestamp),
+          y: getResponseTimeValue(point, selectedPercentile.value)
+        })),
         ...colorSchemes.responseTime,
         borderWidth: 3,
         fill: true,
@@ -813,6 +820,7 @@ watch(currentRun, async () => {
   // Watch for rolling window changes (live data updates)
   watch(() => loadTestStore.rollingWindow, async () => {
     if (!selectedRunId.value) {
+      await updateCurrentStats();
       await loadTimeSeriesData();
     }
   }, { deep: true });
@@ -820,6 +828,7 @@ watch(currentRun, async () => {
   // Watch for by-request rolling window changes
   watch(() => loadTestStore.rollingWindowByRequest, async () => {
     if (!selectedRunId.value) {
+      await updateCurrentStats();
       await loadTimeSeriesData();
     }
   }, { deep: true });

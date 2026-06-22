@@ -10,7 +10,7 @@
           <span class="text-2xl leading-none" :style="item.iconStyle">{{ item.icon }}</span>
           <span class="text-xs">{{ item.label }}</span>
         </button>
-        <div class="separator" v-if="item.id !== 'settings'"></div>
+        <div class="separator" v-if="item.id !== 'settings' && item.id !== 'feedback'"></div>
       </div>
     </div>
     
@@ -27,6 +27,9 @@
  </div>
  <div v-else-if="uiStore.activeSidebar === 'docs'" class="main-content flex-1 flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
    <DocsPanel />
+ </div>
+ <div v-else-if="uiStore.activeSidebar === 'feedback'" class="main-content flex-1 flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
+   <FeedbackPanel />
  </div>
 
 <!-- Sidebar + main content layout -->
@@ -56,8 +59,7 @@
           </div>
         </div>
       </div>
-      <div v-if="uiStore.activeSidebar === 'collections'" class="relative group ml-auto">
-        <span class="pointer-events-none absolute bottom-full left-1/2 mb-1 hidden -translate-x-1/2 rounded bg-zinc-900 px-2 py-1 text-xs text-white shadow group-hover:block">Env</span>
+      <div v-if="uiStore.activeSidebar === 'collections'" class="ml-auto">
         <select :value="activeEnvironmentId || ''" @change="handleEnvironmentChange" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 text-sm w-32">
           <option value=""></option>
           <option :value="NEW_ENVIRONMENT_OPTION" class="text-blue-600">New Env</option>
@@ -160,10 +162,13 @@
   <!-- Context Menu -->
   <ContextMenu />
 
-  <!-- Rename Modal -->
-  <RenameModal />
+<!-- Rename Modal -->
+   <RenameModal />
 
-  <!-- Secrets Encryption Modal -->
+   <!-- Feedback Modal -->
+   <FeedbackModal :show="showFeedbackModal" @close="showFeedbackModal = false" />
+
+   <!-- Secrets Encryption Modal -->
   <SecretsEncryptionModal
     :show="secretsStore.showEncryptionModal"
     @submit="handleEncryptionKeySubmit"
@@ -213,6 +218,7 @@ import ShellScriptDetail from '../components/request/ShellScriptDetail.vue';
 import StatsPanel from '../components/stats/StatsPanel.vue';
 import ConsolePanel from '../components/console/ConsolePanel.vue';
 import DocsPanel from '../components/docs/DocsPanel.vue';
+import FeedbackPanel from '../components/feedback/FeedbackPanel.vue';
 import RunConfigsPanel from '../components/runner/RunConfigsPanel.vue';
 import RunnerDetails from '../components/runner/RunnerDetails.vue';
 
@@ -324,6 +330,7 @@ const ribbonItems = computed(() => [
   { id: 'console' as SidebarView, icon: '🖥️', label: 'Console', route: '/console' },
   { id: 'docs' as SidebarView, icon: '📚', label: 'Docs', route: '/docs' },
   { id: 'settings' as SidebarView, icon: '⚙️', label: 'Settings', route: '/settings' },
+   { id: 'feedback' as SidebarView, icon: '💬', label: 'Feedback', route: '/feedback' },
 ]);
 
 const sidebarPanels: SidebarView[] = ['collections', 'history', 'secrets', 'runner'];

@@ -70,6 +70,7 @@ export class RunnerEngine {
       // Check if duration has been exceeded (if duration > 0)
       if (durationMs > 0 && elapsed >= durationMs) {
         console.log(`[RUNNER_ENGINE] Duration of ${durationMs}ms reached after ${iterations} iterations`);
+        this.running = false;
         break;
       }
 
@@ -79,7 +80,9 @@ export class RunnerEngine {
         try {
           const rpsConfig = requestConfigs?.[request.id]?.rps || 0;
           const result = await this.executeSingleRequest(request, config, environments, collections, secrets, isSecretsUnlocked, rpsConfig, activeEnvironmentId);
-          if (onRequestComplete) {
+          
+          // Check duration again before callback in case request took time
+          if (this.running && onRequestComplete) {
             await onRequestComplete(result);
           }
         } catch (error) {

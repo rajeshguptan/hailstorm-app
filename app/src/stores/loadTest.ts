@@ -162,6 +162,7 @@ async initialize() {
       shouldCaptureFullDetail?: boolean;
     }) {
       if (!this.currentRun) return;
+      if (this.isRunDurationElapsed()) return;
 
       const isError = requestData.status >= 500;
 
@@ -195,6 +196,11 @@ async initialize() {
 
       // Add to rolling window for live charts
       this.updateRollingWindow(requestData.timestamp, requestData.latency, isError, requestData.requestName);
+    },
+
+    isRunDurationElapsed(): boolean {
+      if (!this.currentRun?.duration) return false;
+      return Date.now() - this.currentRun.startTime >= this.currentRun.duration * 1000;
     },
 
     updateRollingWindow(timestamp: number, latency: number, isError: boolean, requestName: string) {
@@ -298,6 +304,8 @@ async initialize() {
       window.api.onLoadTestStatsUpdate(({ runId, stats }) => {
         // Only update if this matches the current run
         if (this.currentRun && this.currentRun.id === runId) {
+          if (this.isRunDurationElapsed()) return;
+
           // Update live stats
           this.liveStats = {
             totalRequests: stats.totalRequests,

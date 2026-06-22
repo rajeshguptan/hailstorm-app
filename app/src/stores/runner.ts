@@ -105,6 +105,21 @@ export const useRunnerStore = defineStore('runner', {
       appStore.saveToLocalStorage();
     },
 
+    duplicateRunConfig(id: string, nameOverride?: string) {
+      const sourceConfig = this.runConfigs.find(c => c.id === id);
+      if (!sourceConfig) return;
+
+      const duplicatedConfig: RunConfig = {
+        ...sourceConfig,
+        id: this.generateId('run'),
+        name: nameOverride || `${sourceConfig.name} Copy`,
+        selectedRequests: [...sourceConfig.selectedRequests],
+        requestConfigs: sourceConfig.requestConfigs ? JSON.parse(JSON.stringify(sourceConfig.requestConfigs)) : undefined
+      };
+
+      this.updateRunConfig(duplicatedConfig);
+    },
+
     deleteRunConfig(id: string) {
       this.runConfigs = this.runConfigs.filter(c => c.id !== id);
       if (this.selectedConfigId === id) {
@@ -137,6 +152,7 @@ export const useRunnerStore = defineStore('runner', {
             collectionId: clonedConfig.collectionId,
             collectionName: clonedConfig.collectionName || '',
             selectedRequests: clonedConfig.selectedRequests,
+            duration: clonedConfig.duration,
           });
 
           // Setup listener for live stats updates

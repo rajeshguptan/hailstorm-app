@@ -6,11 +6,6 @@ export class RunnerPanel {
   readonly createConfigBtn: Locator;
   readonly runBtn: Locator;
   readonly stopBtn: Locator;
-  readonly editBtn: Locator;
-  readonly saveBtn: Locator;
-  readonly duplicateBtn: Locator;
-  readonly cancelBtn: Locator;
-  readonly configNameDisplay: Locator;
   readonly configNameInput: Locator;
   readonly collectionSelect: Locator;
   readonly repeatRunCheckbox: Locator;
@@ -18,6 +13,7 @@ export class RunnerPanel {
   readonly requestTable: Locator;
   readonly resultsPanel: Locator;
   readonly emptyState: Locator;
+  readonly configItems: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -25,11 +21,6 @@ export class RunnerPanel {
     this.createConfigBtn = page.locator('button:has-text("Create Run Config")');
     this.runBtn = page.locator('[data-testid="runner-run-btn"]');
     this.stopBtn = page.locator('[data-testid="runner-stop-btn"]');
-    this.editBtn = page.locator('[data-testid="runner-edit-btn"]');
-    this.saveBtn = page.locator('[data-testid="runner-save-btn"]');
-    this.duplicateBtn = page.locator('[data-testid="runner-duplicate-btn"]');
-    this.cancelBtn = page.locator('[data-testid="runner-cancel-btn"]');
-    this.configNameDisplay = page.locator('[data-testid="runner-config-name"]');
     this.configNameInput = page.locator('[data-testid="runner-config-name-input"]');
     this.collectionSelect = page.locator('.runner-panel select').first();
     this.repeatRunCheckbox = page.locator('.runner-panel input[type="checkbox"]');
@@ -37,6 +28,7 @@ export class RunnerPanel {
     this.requestTable = page.locator('.runner-panel table');
     this.resultsPanel = page.locator('.results');
     this.emptyState = page.locator('[data-testid="runner-empty-state"]');
+    this.configItems = page.locator('[data-testid^="run-config-item-"]');
   }
 
   async waitForLoad(): Promise<void> {
@@ -44,17 +36,16 @@ export class RunnerPanel {
   }
 
   async createRunConfig(name: string, collectionName: string): Promise<void> {
-    // Click create button if it exists, otherwise assume config creation is handled elsewhere
+    // Click create button if it exists - config is now always editable
     if (await this.createConfigBtn.isVisible()) {
       await this.createConfigBtn.click();
       await this.configNameInput.fill(name);
       await this.collectionSelect.selectOption({ label: collectionName });
-      await this.saveBtn.click();
     }
   }
 
   async getSelectedConfigName(): Promise<string> {
-    return await this.configNameDisplay.textContent() || '';
+    return await this.configNameInput.inputValue();
   }
 
   async selectRequest(requestName: string): Promise<void> {
@@ -119,28 +110,34 @@ export class RunnerPanel {
     return await this.stopBtn.isVisible();
   }
 
-  async startEdit(): Promise<void> {
-    await this.editBtn.click();
-  }
-
   async setConfigName(name: string): Promise<void> {
     await this.configNameInput.fill(name);
   }
 
-  async saveConfig(): Promise<void> {
-    await this.saveBtn.click();
+  async duplicateConfig(sourceName: string, newName: string): Promise<void> {
+    const dialogPromise = this.page.waitForEvent('dialog');
+    await this.configItems.locator(`[data-run-config-name="${sourceName.replace(/"/g, '\\"')}"]`).locator('[data-testid="run-config-more-btn"]').first().click();
+    const dialog = await dialogPromise;
+    await dialog.accept(newName);
   }
 
-  async duplicateConfig(newName: string): Promise<void> {
-    await this.duplicateBtn.click();
-    // Handle the prompt - in a real implementation this would be mocked
-    await this.page.waitForTimeout(100); // Brief pause for duplicate action
+  async deleteConfig(name: string): Promise<void> {
+    await this.configItems.locator(`[data-run-config-name="${name.replace(/"/g, '\\"')}"]`).locator('[data-testid="run-config-more-btn"]').first().click();
+    await this.page.locator('[data-testid="context-menu-delete"]').click();
   }
 
   async getAvailableConfigs(): Promise<string[]> {
-    // This would need to be implemented based on actual UI
-    // For now return empty array
-    return [];
+    const configs: string[] = [];
+    const count = await this.configItems.count();
+
+    for (let i = 0; i < count; i++) {
+      const name = await this.configItems.nth(i).locator('[data-run-config-name]').getAttribute('data-run-config-name');
+      if (name) {
+        configs.push(name);
+      }
+    }
+
+    return configs;
   }
 
   async mockFileSelection(requestName: string, filePath: string): Promise<void> {
