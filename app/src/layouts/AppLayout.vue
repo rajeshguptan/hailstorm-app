@@ -163,12 +163,9 @@
   <ContextMenu />
 
 <!-- Rename Modal -->
-   <RenameModal />
+    <RenameModal />
 
-   <!-- Feedback Modal -->
-   <FeedbackModal :show="showFeedbackModal" @close="showFeedbackModal = false" />
-
-   <!-- Secrets Encryption Modal -->
+    <!-- Secrets Encryption Modal -->
   <SecretsEncryptionModal
     :show="secretsStore.showEncryptionModal"
     @submit="handleEncryptionKeySubmit"

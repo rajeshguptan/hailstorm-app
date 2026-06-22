@@ -337,6 +337,10 @@ const api = {
     return await ipcRenderer.invoke('set-dev-tools-enabled', enabled);
   },
 
+  openDevTools: async (): Promise<void> => {
+    return await ipcRenderer.invoke('open-dev-tools');
+  },
+
   // ─── OAuth Token Management ───────────────────────────────────────────────────
   saveOAuthToken: async (requestId: string, token: string, expiry?: number): Promise<void> => {
     await ipcRenderer.invoke('save-oauth-token', { requestId, token, expiry });
@@ -379,6 +383,18 @@ const api = {
   // Subscribe to live stats updates during load test
   onLoadTestStatsUpdate: (callback: (data: { runId: string; stats: any }) => void) => {
     ipcRenderer.on('load-test-stats-update', (_event, data) => callback(data));
+  },
+
+  // Feedback
+  submitFeedback: async (feedback: { feedback: string; type: string; email: string }): Promise<{ success: boolean }> => {
+    try {
+      const result = await ipcRenderer.invoke('submit-feedback', feedback);
+      console.log('[PRELOAD] submitFeedback succeeded');
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] submitFeedback failed', error);
+      throw error;
+    }
   }
 };
 

@@ -59,13 +59,13 @@ if (started) {
 initializeExecutionEngine();
 
 let devToolsEnabled = false;
+let mainWindow: BrowserWindow | null = null;
 
 function setDevToolsEnabled(enabled: boolean) {
-  const mainWindow = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
   if (!mainWindow) return;
 
   if (enabled) {
-    mainWindow.webContents.openDevTools();
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
     mainWindow.webContents.closeDevTools();
   }
@@ -98,7 +98,7 @@ function createWindow() {
   const { width, height } = primaryDisplay.workAreaSize;
   const iconPath = path.resolve(app.getAppPath(), 'build/hailstorm.png');
   console.log('[MAIN] Icon path:', iconPath, 'exists:', existsSync(iconPath));
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width,
     height,
     minWidth: 800,
@@ -106,7 +106,6 @@ function createWindow() {
     icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      devTools: false,
     },
   });
   
@@ -128,6 +127,12 @@ ipcMain.handle('set-dev-tools-enabled', (_event, enabled: boolean) => {
   devToolsEnabled = Boolean(enabled);
   setDevToolsEnabled(devToolsEnabled);
   return devToolsEnabled;
+});
+
+ipcMain.handle('open-dev-tools', () => {
+  if (mainWindow) {
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
+  }
 });
 
 // Set up OAuth callback before app is ready

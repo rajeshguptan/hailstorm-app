@@ -489,6 +489,46 @@ export function setupExternalHandlers() {
   });
 }
 
+export function setupFeedbackHandlers() {
+  const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY || 'patE1GcBJhqUz3Rnm.f8cc6c625a1a18afab605613ce49c3d22a0acb0427d8e038139408b2774c39a4';
+  
+  ipcMain.handle('submit-feedback', async (_event, feedback: { feedback: string; type: string; email: string }) => {
+    if (!AIRTABLE_API_KEY) {
+      throw new Error('Airtable API key not configured');
+    }
+    
+    try {
+      const response = await fetch('https://api.airtable.com/v0/app3t7ozk8mGsgmrv/Feedback', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          typecast: true,
+          records: [{
+            fields: {
+              Feedback: feedback.feedback,
+              Type: feedback.type,
+              Status: 'Pending review',
+              Email: feedback.email
+            }
+          }]
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to submit feedback: ${response.status}`);
+      }
+      
+      return { success: true };
+    } catch (error: any) {
+      console.error('[EXECUTION_ENGINE] submitFeedback error:', error.message);
+      throw error;
+    }
+  });
+}
+
 let runnerEngine: RunnerEngine | null = null;
 
 export async function getRunnerEngine(): Promise<RunnerEngine> {
@@ -613,6 +653,7 @@ export function initializeExecutionEngine() {
   setupOAuthHandlers();
   setupExternalHandlers();
   setupLoadTestExecutionHandlers();
+  setupFeedbackHandlers();
   
   console.log('[EXECUTION_ENGINE] All handlers registered');
 }
