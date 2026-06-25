@@ -168,14 +168,15 @@ function applyAuthAndHeaders(
 }
 
 function setContentType(headers: Record<string, string>, bodyType: string, hasBody: boolean): void {
-  if (!hasBody) return;
-  if (bodyType === 'json') headers['Content-Type'] = 'application/json';
-  else if (bodyType === 'xml') headers['Content-Type'] = 'application/xml';
-  else if (bodyType === 'text') headers['Content-Type'] = 'text/plain';
-  else if (bodyType === 'x-www-form-urlencoded') headers['Content-Type'] = 'application/x-www-form-urlencoded';
-  else if (bodyType === 'form-data') headers['Content-Type'] = 'multipart/form-data';
-  else if (bodyType === 'graphql') headers['Content-Type'] = 'application/json';
-}
+   if (!hasBody) return;
+   if (bodyType === 'json') headers['Content-Type'] = 'application/json';
+   else if (bodyType === 'xml') headers['Content-Type'] = 'application/xml';
+   else if (bodyType === 'text') headers['Content-Type'] = 'text/plain';
+   else if (bodyType === 'x-www-form-urlencoded') headers['Content-Type'] = 'application/x-www-form-urlencoded';
+   else if (bodyType === 'form-data') headers['Content-Type'] = 'multipart/form-data';
+   else if (bodyType === 'graphql') headers['Content-Type'] = 'application/json';
+   else if (bodyType === 'grpc') headers['Content-Type'] = 'application/grpc-web+proto';
+ }
 
 function resolveEnvVars(envStore: EnvironmentsStoreData): VariableData[] {
   const active = envStore.environments.find((e) => e.id === envStore.activeEnvironmentId);

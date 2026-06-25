@@ -93,6 +93,7 @@ const displayMethod = computed(() => {
   if (isRequest && props.item.isJsonRpc) return 'RPC';
   if (isRequest && props.item.body?.type === 'graphql') return 'GQL';
   if (isRequest && props.item.isWebSocket) return 'WS';
+  if (isRequest && props.item.isGrpc) return 'gRPC';
   return props.item.method;
 });
 
@@ -223,6 +224,7 @@ function getMethodClass(method: string): string {
   if (m === 'gql') return 'method-gql';
   if (m === 'rpc') return 'method-json-rpc';
   if (m === 'ws') return 'method-ws';
+  if (m === 'grpc') return 'method-grpc';
   return 'method-default';
 }
 
@@ -261,13 +263,17 @@ function sortedItems(items: (Request | Folder)[]) {
   @apply text-pink-600 dark:text-pink-400 font-bold;
  }
 
- .method-ws {
+.method-ws {
    @apply text-blue-600 dark:text-blue-400 font-bold;
- }
+  }
 
- .method-json-rpc {
+  .method-grpc {
+   @apply text-teal-600 dark:text-teal-400 font-bold;
+  }
+
+  .method-json-rpc {
    @apply text-indigo-600 dark:text-indigo-400 font-bold;
- }
+  }
 
  .tree-node.drag-over {
   background-color: rgba(59, 130, 246, 0.1) !important;

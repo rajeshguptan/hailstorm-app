@@ -363,6 +363,57 @@ class LoadTestingService {
     });
   }
 
+  async getTimeSeriesDataByStatus(runId: string, startTime?: number, endTime?: number): Promise<LoadTestTimeSeriesByStatusPoint[]> {
+    if (!this.isInitialized) throw new Error('Load testing service not initialized');
+
+    let runRequests = this.requestIndex.filter(r => r.runId === runId);
+
+    if (startTime) {
+      runRequests = runRequests.filter(r => r.timestamp >= startTime);
+    }
+    if (endTime) {
+      runRequests = runRequests.filter(r => r.timestamp <= endTime);
+    }
+
+    const buckets: { [key: string]: { requests: number; totalLatency: number } } = {};
+
+    runRequests.forEach(req => {
+      const statusCode = req.status;
+      const bucket = Math.floor(req.timestamp / 60000) * 60000;
+      const key = `${statusCode}_${bucket}`;
+
+      if (!buckets[key]) {
+        buckets[key] = { requests: 0, totalLatency: 0 };
+      }
+      buckets[key].requests++;
+      buckets[key].totalLatency += req.latency;
+    });
+
+    const result: LoadTestTimeSeriesByStatusPoint[] = [];
+
+    for (const [key, data] of Object.entries(buckets)) {
+      const [statusStr, timestampStr] = key.split('_');
+      result.push({
+        statusCode: parseInt(statusStr),
+        timestamp: parseInt(timestampStr),
+        requests: data.requests,
+        avgResponseTime: data.requests > 0 ? data.totalLatency / data.requests : 0,
+        p50ResponseTime: 0,
+        p75ResponseTime: 0,
+        p90ResponseTime: 0,
+        p95ResponseTime: 0,
+        p99ResponseTime: 0
+      });
+    }
+
+    return result.sort((a, b) => {
+      if (a.statusCode !== b.statusCode) {
+        return a.statusCode - b.statusCode;
+      }
+      return a.timestamp - b.timestamp;
+    });
+  }
+
   async exportRunData(runId: string, format = 'json') {
     if (!this.isInitialized) throw new Error('Load testing service not initialized');
 

@@ -13,9 +13,10 @@
     <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-graphql-request')">Add GraphQL Request</div>
     <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-folder')">Add Folder</div>
      <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-websocket-request')">Add WebSocket Request</div>
-    <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-shell-command')">Add Shell Command</div>
+<div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-shell-command')">Add Shell Command</div>
+     <div v-if="uiStore.contextMenu.type === 'collection' || uiStore.contextMenu.type === 'folder'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('add-grpc-request')">Add gRPC Request</div>
 
-    <div v-if="uiStore.contextMenu.type === 'flavor'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('run')">Run</div>
+     <div v-if="uiStore.contextMenu.type === 'flavor'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" @click="handleAction('run')">Run</div>
     <div v-if="uiStore.contextMenu.type === 'run-config'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" data-testid="context-menu-run" @click="handleAction('run')">Run</div>
     <div v-if="uiStore.contextMenu.type === 'run-config'" class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700" data-testid="context-menu-duplicate" @click="handleAction('duplicate')">Duplicate</div>
     <div class="p-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 text-red-500" data-testid="context-menu-delete" @click="handleAction('delete')">Delete</div>
@@ -122,11 +123,18 @@ case 'add-folder':
          collectionsStore.addWebsocketRequest(id, 'folder');
        }
        break;
-    case 'add-shell-command':
+case 'add-shell-command':
        if (type === 'collection') {
          collectionsStore.addShellCommand(id, 'collection');
        } else if (type === 'folder') {
          collectionsStore.addShellCommand(id, 'folder');
+       }
+       break;
+    case 'add-grpc-request':
+       if (type === 'collection') {
+         collectionsStore.addGrpcRequest(id, 'collection');
+       } else if (type === 'folder') {
+         collectionsStore.addGrpcRequest(id, 'folder');
        }
        break;
   }

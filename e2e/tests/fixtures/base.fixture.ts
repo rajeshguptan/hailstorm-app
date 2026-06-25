@@ -96,20 +96,20 @@ export const test = base.extend({
             });
           },
 
-          getLoadTestRunStats: (runId) => {
-            console.log('[MOCK API] getLoadTestRunStats:', runId);
-            return Promise.resolve((window as any).__mockLoadTest?.stats || {
-              runId,
-              totalRequests: 10,
-              successfulRequests: 9,
-              failedRequests: 1,
-              errorRate: 10,
-              avgResponseTime: 150,
-              minResponseTime: 50,
-              maxResponseTime: 300,
-              requestsPerSecond: 6.67
-            });
-          },
+getLoadTestRunStats: function(runId) {
+             console.log('[MOCK API] getLoadTestRunStats:', runId);
+             return Promise.resolve((window.__mockLoadTest && window.__mockLoadTest.stats) || {
+               runId: runId,
+               totalRequests: 10,
+               successfulRequests: 9,
+               failedRequests: 1,
+               errorRate: 10,
+               avgResponseTime: 150,
+               minResponseTime: 50,
+               maxResponseTime: 300,
+               requestsPerSecond: 6.67
+             });
+           },
 
           getLoadTestTimeSeriesData: (runId, startTime, endTime) => {
             console.log('[MOCK API] getLoadTestTimeSeriesData:', runId, startTime, endTime);
@@ -120,13 +120,25 @@ export const test = base.extend({
             ]);
           },
 
-          getLoadTestTimeSeriesDataByRequest: (runId, startTime, endTime) => {
+getLoadTestTimeSeriesDataByRequest: function(runId, startTime, endTime) {
             console.log('[MOCK API] getLoadTestTimeSeriesDataByRequest:', runId, startTime, endTime);
             return Promise.resolve([
               { requestName: 'GET Request', timestamp: Date.now() - 60000, requests: 5, errors: 0, avgResponseTime: 120, p50ResponseTime: 100, p75ResponseTime: 110, p90ResponseTime: 120, p95ResponseTime: 130, p99ResponseTime: 150 },
               { requestName: 'POST Request', timestamp: Date.now() - 60000, requests: 3, errors: 0, avgResponseTime: 90, p50ResponseTime: 80, p75ResponseTime: 85, p90ResponseTime: 90, p95ResponseTime: 95, p99ResponseTime: 100 },
               { requestName: 'GET Request', timestamp: Date.now() - 30000, requests: 4, errors: 1, avgResponseTime: 180, p50ResponseTime: 150, p75ResponseTime: 170, p90ResponseTime: 180, p95ResponseTime: 190, p99ResponseTime: 200 },
               { requestName: 'POST Request', timestamp: Date.now() - 30000, requests: 2, errors: 0, avgResponseTime: 85, p50ResponseTime: 80, p75ResponseTime: 82, p90ResponseTime: 85, p95ResponseTime: 88, p99ResponseTime: 90 }
+            ]);
+          },
+
+          getLoadTestTimeSeriesDataByStatus: function(runId, startTime, endTime) {
+            console.log('[MOCK API] getLoadTestTimeSeriesDataByStatus:', runId, startTime, endTime);
+            return Promise.resolve([
+              { statusCode: 200, timestamp: Date.now() - 60000, requests: 5, avgResponseTime: 120, p50ResponseTime: 100, p75ResponseTime: 110, p90ResponseTime: 120, p95ResponseTime: 130, p99ResponseTime: 150 },
+              { statusCode: 200, timestamp: Date.now() - 30000, requests: 4, avgResponseTime: 180, p50ResponseTime: 150, p75ResponseTime: 170, p90ResponseTime: 180, p95ResponseTime: 190, p99ResponseTime: 200 },
+              { statusCode: 500, timestamp: Date.now() - 30000, requests: 1, avgResponseTime: 250, p50ResponseTime: 250, p75ResponseTime: 250, p90ResponseTime: 250, p95ResponseTime: 250, p99ResponseTime: 250 },
+              { statusCode: 200, timestamp: Date.now(), requests: 2, avgResponseTime: 90, p50ResponseTime: 80, p75ResponseTime: 85, p90ResponseTime: 90, p95ResponseTime: 95, p99ResponseTime: 100 },
+              { statusCode: 404, timestamp: Date.now(), requests: 1, avgResponseTime: 50, p50ResponseTime: 50, p75ResponseTime: 50, p90ResponseTime: 50, p95ResponseTime: 50, p99ResponseTime: 50 },
+              { statusCode: 201, timestamp: Date.now(), requests: 1, avgResponseTime: 100, p50ResponseTime: 100, p75ResponseTime: 100, p90ResponseTime: 100, p95ResponseTime: 100, p99ResponseTime: 100 }
             ]);
           },
 
@@ -161,12 +173,12 @@ export const test = base.extend({
             return Promise.resolve();
           },
 
-          runLoadTest: async (params) => {
+runLoadTest: async function(params) {
             console.log('[MOCK API] runLoadTest:', params);
-            const callbacks = (window as any).__mockLoadTest?.callbacks || [];
-            const runId = params.runId || 'mock-run-' + Date.now();
-            const stats = {
-              runId,
+            var callbacks = (window.__mockLoadTest && window.__mockLoadTest.callbacks) || [];
+            var runId = params.runId || 'mock-run-' + Date.now();
+            var stats = {
+              runId: runId,
               totalRequests: 0,
               successfulRequests: 0,
               failedRequests: 0,
@@ -179,25 +191,25 @@ export const test = base.extend({
               lastStatus: 0,
               lastRequestName: ''
             };
-            (window as any).__mockLoadTest = {
-              callbacks,
-              runId,
+            window.__mockLoadTest = {
+              callbacks: callbacks,
+              runId: runId,
               running: true,
               completed: false,
-              stats,
-              release: () => {
-                (window as any).__mockLoadTest.running = false;
+              stats: stats,
+              release: function() {
+                window.__mockLoadTest.running = false;
               },
-              emitStats: (nextStats) => {
-                (window as any).__mockLoadTest.stats = nextStats;
-                callbacks.forEach((callback) => callback({ runId, stats: nextStats }));
+              emitStats: function(nextStats) {
+                window.__mockLoadTest.stats = nextStats;
+                callbacks.forEach(function(callback) { callback({ runId: runId, stats: nextStats }); });
               }
             };
 
-            for (let i = 1; i <= 3 && (window as any).__mockLoadTest.running; i++) {
-              await new Promise((resolve) => setTimeout(resolve, 50));
-              const nextStats = {
-                ...stats,
+            for (var i = 1; i <= 3 && window.__mockLoadTest.running; i++) {
+              await new Promise(function(resolve) { setTimeout(resolve, 50); });
+              var nextStats = {
+                runId: runId,
                 totalRequests: i,
                 successfulRequests: i,
                 failedRequests: 0,
@@ -210,27 +222,27 @@ export const test = base.extend({
                 lastStatus: 200,
                 lastRequestName: 'GET Request'
               };
-              (window as any).__mockLoadTest.emitStats(nextStats);
+              window.__mockLoadTest.emitStats(nextStats);
             }
 
-            (window as any).__mockLoadTest.completed = true;
-            (window as any).__mockLoadTest.running = false;
+            window.__mockLoadTest.completed = true;
+            window.__mockLoadTest.running = false;
             return { run: { id: runId, status: 'completed' }, results: [] };
           },
 
-          stopLoadTest: async () => {
+          stopLoadTest: async function() {
             console.log('[MOCK API] stopLoadTest');
-            if ((window as any).__mockLoadTest) {
-              (window as any).__mockLoadTest.release();
+            if (window.__mockLoadTest) {
+              window.__mockLoadTest.release();
             }
             return Promise.resolve();
           },
 
-          onLoadTestStatsUpdate: (callback) => {
-            if (!(window as any).__mockLoadTest) {
-              (window as any).__mockLoadTest = { callbacks: [], running: false, completed: false };
+          onLoadTestStatsUpdate: function(callback) {
+            if (!window.__mockLoadTest) {
+              window.__mockLoadTest = { callbacks: [], running: false, completed: false };
             }
-            (window as any).__mockLoadTest.callbacks.push(callback);
+            window.__mockLoadTest.callbacks.push(callback);
           },
 
           // File dialog mocks

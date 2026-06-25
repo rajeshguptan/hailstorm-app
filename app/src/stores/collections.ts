@@ -399,14 +399,60 @@ requestsStore.selectRequest(request.id);
          }
        }
 
-       this.saveCollections();
-       
-       // Auto-select the newly created shell command
-       const requestsStore = useRequestsStore();
-       requestsStore.selectRequest(request.id);
-     },
+this.saveCollections();
+        
+        // Auto-select the newly created shell command
+        const requestsStore = useRequestsStore();
+        requestsStore.selectRequest(request.id);
+      },
 
-renameItem(id: string, newName: string) {
+  addGrpcRequest(targetId: string, targetType: 'collection' | 'folder' = 'collection') {
+        const request: Request = {
+          id: this.generateId('req'),
+          name: 'New gRPC Request',
+          method: 'POST',
+          url: '',
+          headers: [],
+          body: { type: 'grpc', content: '' },
+          isGrpc: true
+        };
+
+        if (targetType === 'collection') {
+          const collection = this.collections.find((c: any) => c.id === targetId);
+          if (collection) {
+            collection.items.push(request);
+          }
+        } else if (targetType === 'folder') {
+          const addToItems = (items: any[]): boolean => {
+            for (const item of items) {
+              if (item.id === targetId) {
+                item.items.push(request);
+                return true;
+              }
+              if ('items' in item && item.items) {
+                if (addToItems(item.items)) {
+                  return true;
+                }
+              }
+            }
+            return false;
+          };
+
+          for (const collection of this.collections) {
+            if (addToItems(collection.items)) {
+              break;
+            }
+          }
+        }
+
+        this.saveCollections();
+
+        // Auto-select the newly created gRPC request
+        const requestsStore = useRequestsStore();
+        requestsStore.selectRequest(request.id);
+      },
+
+  renameItem(id: string, newName: string) {
       logger.debug('[COLLECTIONS] renameItem called with id:', id, 'newName:', newName);
       // First check if it's a collection itself
       for (const collection of this.collections) {

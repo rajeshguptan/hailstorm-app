@@ -204,6 +204,16 @@ const api = {
     }
   },
 
+  getLoadTestTimeSeriesDataByStatus: async (runId: string, startTime?: number, endTime?: number): Promise<any[]> => {
+    try {
+      const result = await ipcRenderer.invoke('get-load-test-time-series-data-by-status', runId, startTime, endTime);
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] getLoadTestTimeSeriesDataByStatus failed', error);
+      throw error;
+    }
+  },
+
   exportLoadTestRunData: async (runId: string, format?: string): Promise<string> => {
     console.log('[PRELOAD] exportLoadTestRunData called');
     try {
@@ -384,6 +394,15 @@ const api = {
   onLoadTestStatsUpdate: (callback: (data: { runId: string; stats: any }) => void) => {
     ipcRenderer.on('load-test-stats-update', (_event, data) => callback(data));
   },
+
+// Console log capture
+   onConsoleLog: (callback: (log: { level: number; message: string; line: number; sourceId: string; timestamp: number }) => void) => {
+     ipcRenderer.on('console-log', (_event, log) => callback(log));
+   },
+
+   sendConsoleLog: async (log: { level: number; message: string; line: number; sourceId: string }): Promise<void> => {
+     await ipcRenderer.invoke('send-console-log', log);
+   },
 
   // Feedback
   submitFeedback: async (feedback: { feedback: string; type: string; email: string }): Promise<{ success: boolean }> => {

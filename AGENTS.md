@@ -32,15 +32,6 @@ Hailstorm is a local-first Electron + Vue 3 API client for API development, test
 
 ## Development and validation commands
 
-Run commands from `app/` unless otherwise noted.
-
-```bash
-npm install
-npm run mock-server
-npx vite build
-npm run make
-```
-
 Useful commands:
 
 - `npm run mock-server` starts the local test server on `127.0.0.1:4010`.

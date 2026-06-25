@@ -108,8 +108,19 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
     },
   });
-  
+
   mainWindow.maximize();
+
+  // Capture console messages from renderer
+  mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    mainWindow?.webContents.send('console-log', {
+      level,
+      message,
+      line,
+      sourceId,
+      timestamp: Date.now()
+    });
+  });
 
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
@@ -132,6 +143,15 @@ ipcMain.handle('set-dev-tools-enabled', (_event, enabled: boolean) => {
 ipcMain.handle('open-dev-tools', () => {
   if (mainWindow) {
     mainWindow.webContents.openDevTools({ mode: 'detach' });
+  }
+});
+
+ipcMain.handle('send-console-log', (_event, log: { level: number; message: string; line: number; sourceId: string }) => {
+  if (mainWindow) {
+    mainWindow.webContents.send('console-log', {
+      ...log,
+      timestamp: Date.now()
+    });
   }
 });
 

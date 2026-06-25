@@ -102,11 +102,16 @@
             </div>
           </div>
 
-          <!-- Errors vs Time Chart -->
+          <!-- Errors vs Time Chart (by HTTP Response Code) -->
           <div class="chart-container bg-zinc-100 dark:bg-zinc-800 p-6 rounded shadow-sm">
             <div class="h-64">
+              <Bar
+                v-if="statusChartData"
+                :data="statusChartData"
+                :options="statusChartOptions"
+              />
               <Line
-                v-if="errorsChartData"
+                v-else-if="errorsChartData"
                 :data="errorsChartData"
                 :options="errorsChartOptions"
               />
@@ -192,19 +197,20 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import { useLoadTestStore } from '../../stores/loadTest';
-import type { LoadTestStats, LoadTestTimeSeriesPoint, LoadTestTimeSeriesByRequestPoint, LoadTestRun } from '../../types';
+import type { LoadTestStats, LoadTestTimeSeriesPoint, LoadTestTimeSeriesByRequestPoint, LoadTestTimeSeriesByStatusPoint, LoadTestRun } from '../../types';
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
   Filler
 } from 'chart.js';
-import { Line } from 'vue-chartjs';
+import { Line, Bar } from 'vue-chartjs';
 
 // Register Chart.js components
 ChartJS.register(
@@ -212,6 +218,7 @@ ChartJS.register(
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
@@ -297,6 +304,7 @@ async function updateCurrentStats() {
 // Time series data for charts
 const timeSeriesData = ref<LoadTestTimeSeriesPoint[]>([]);
 const timeSeriesByRequestData = ref<LoadTestTimeSeriesByRequestPoint[]>([]);
+const timeSeriesByStatusData = ref<LoadTestTimeSeriesByStatusPoint[]>([]);
 
   // Load time series data
   async function loadTimeSeriesData() {
@@ -304,6 +312,7 @@ const timeSeriesByRequestData = ref<LoadTestTimeSeriesByRequestPoint[]>([]);
       // Load historical data for selected run
       timeSeriesData.value = await loadTestStore.getTimeSeriesData(selectedRunId.value);
       timeSeriesByRequestData.value = await loadTestStore.getTimeSeriesDataByRequest(selectedRunId.value);
+      timeSeriesByStatusData.value = await loadTestStore.getTimeSeriesDataByStatus(selectedRunId.value);
     } else {
       // Live data from rolling window
       timeSeriesData.value = [...loadTestStore.rollingWindow];
@@ -322,6 +331,22 @@ const timeSeriesByRequestData = ref<LoadTestTimeSeriesByRequestPoint[]>([]);
             p90ResponseTime: point.p90ResponseTime,
             p95ResponseTime: point.p95ResponseTime,
             p99ResponseTime: point.p99ResponseTime
+          }))
+        );
+      // Build by-status data from rolling window
+      timeSeriesByStatusData.value = Object.entries(loadTestStore.rollingWindowByStatus)
+        .filter(([statusCode]) => statusCode)
+        .flatMap(([statusCode, points]) =>
+          points.map(point => ({
+            statusCode: parseInt(statusCode),
+            timestamp: point.timestamp,
+            requests: point.requests,
+            avgResponseTime: 0,
+            p50ResponseTime: 0,
+            p75ResponseTime: 0,
+            p90ResponseTime: 0,
+            p95ResponseTime: 0,
+            p99ResponseTime: 0
           }))
         );
     }
@@ -740,6 +765,154 @@ const errorsChartData = computed((): ChartDataset[] | null => {
   return null;
 });
 
+// Chart data processing for by-status view (stacked bar chart)
+const chartDataByStatus = computed(() => {
+  const data = timeSeriesByStatusData.value;
+  if (data.length === 0) return null;
+
+  // Group data by timestamp for consistent time buckets
+  const timeBuckets: { [key: number]: { [key: number]: { requests: number } } } = {};
+
+  data.forEach(point => {
+    if (!timeBuckets[point.timestamp]) {
+      timeBuckets[point.timestamp] = {};
+    }
+    timeBuckets[point.timestamp][point.statusCode] = {
+      requests: point.requests
+    };
+  });
+
+  // Get all unique status codes
+  const statusCodes = [...new Set(data.map(point => point.statusCode))].sort((a, b) => a - b);
+
+  // Create labels from timestamps
+  const timestamps = Object.keys(timeBuckets).sort((a, b) => parseInt(a) - parseInt(b));
+
+  return {
+    labels: [],
+    timestamps,
+    timeBuckets,
+    statusCodes
+  };
+});
+
+// Status chart data for stacked bar chart
+const statusChartData = computed(() => {
+  if (chartDataByStatus.value && chartDataByStatus.value.statusCodes.length > 0) {
+    const { timestamps, timeBuckets, statusCodes } = chartDataByStatus.value;
+
+    // Define colors for different status categories
+    const getStatusColor = (statusCode: number): { backgroundColor: string; borderColor: string } => {
+      if (statusCode >= 200 && statusCode < 300) {
+        return { backgroundColor: 'rgba(34, 197, 94, 0.8)', borderColor: 'rgb(34, 197, 94)' }; // green - 2xx
+      } else if (statusCode >= 300 && statusCode < 400) {
+        return { backgroundColor: 'rgba(59, 130, 246, 0.8)', borderColor: 'rgb(59, 130, 246)' }; // blue - 3xx
+      } else if (statusCode >= 400 && statusCode < 500) {
+        return { backgroundColor: 'rgba(245, 158, 11, 0.8)', borderColor: 'rgb(245, 158, 11)' }; // amber - 4xx
+      } else if (statusCode >= 500) {
+        return { backgroundColor: 'rgba(239, 68, 68, 0.8)', borderColor: 'rgb(239, 68, 68)' }; // red - 5xx
+      } else {
+        return { backgroundColor: 'rgba(107, 114, 128, 0.8)', borderColor: 'rgb(107, 114, 128)' }; // gray - others
+      }
+    };
+
+    const datasets = statusCodes.map(statusCode => {
+      const color = getStatusColor(statusCode);
+      const label = statusCode === 0 ? 'Network Error' : `${statusCode}`;
+
+      const data = timestamps.map(timestamp => ({
+        x: getElapsedSeconds(parseInt(timestamp)),
+        y: timeBuckets[parseInt(timestamp)]?.[statusCode]?.requests || 0
+      }));
+
+      // Only include datasets that have data
+      if (!data.some(d => d.y > 0)) return null;
+
+      return {
+        label,
+        data,
+        backgroundColor: color.backgroundColor,
+        borderColor: color.borderColor,
+        borderWidth: 1,
+      };
+    }).filter(dataset => dataset !== null) as ChartDataset[];
+
+    if (datasets.length > 0) {
+      return {
+        labels: [],
+        datasets
+      };
+    }
+  }
+
+  return null;
+});
+
+const statusChartOptions = computed(() => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      position: 'left' as const,
+      labels: {
+        usePointStyle: true,
+        padding: 20,
+        generateLabels: (chart: any) => {
+          const datasets = chart.data.datasets;
+          return datasets.map((ds: any, i: number) => ({
+            text: ds.label,
+            fillStyle: ds.backgroundColor,
+            strokeStyle: ds.borderColor,
+            hidden: false,
+            index: i
+          }));
+        }
+      }
+    },
+    title: {
+      display: true,
+      text: 'Responses by HTTP Status Code',
+      font: {
+        size: 16,
+        weight: 'bold'
+      }
+    },
+    tooltip: {
+      callbacks: countTooltipCallbacks
+    }
+  },
+  scales: {
+    x: {
+      stacked: true,
+      type: 'linear' as const,
+      min: 0,
+      max: Math.max(1, runDurationSeconds.value),
+      title: {
+        display: true,
+        text: `Elapsed Time (run duration: ${formatDuration(currentStats.value?.duration || 0)})`
+      },
+      ticks: {
+        callback: (value: number | string) => formatDuration(Number(value) * 1000)
+      },
+      grid: {
+        display: false
+      }
+    },
+    y: {
+      stacked: true,
+      beginAtZero: true,
+      title: {
+        display: true,
+        text: 'Number of Responses'
+      },
+      grid: {
+        color: 'rgba(0, 0, 0, 0.1)'
+      }
+    }
+  },
+  animation: progressiveLineAnimation
+}));
+
 const responseTimeChartData = computed(() => {
   // For live and historical data, show by-request view if available
   if (chartDataByRequest.value && chartDataByRequest.value.requestNames.length > 0) {
@@ -825,13 +998,21 @@ watch(currentRun, async () => {
     }
   }, { deep: true });
 
-  // Watch for by-request rolling window changes
-  watch(() => loadTestStore.rollingWindowByRequest, async () => {
-    if (!selectedRunId.value) {
-      await updateCurrentStats();
-      await loadTimeSeriesData();
-    }
-  }, { deep: true });
+// Watch for by-request rolling window changes
+   watch(() => loadTestStore.rollingWindowByRequest, async () => {
+     if (!selectedRunId.value) {
+       await updateCurrentStats();
+       await loadTimeSeriesData();
+     }
+   }, { deep: true });
+
+   // Watch for by-status rolling window changes
+   watch(() => loadTestStore.rollingWindowByStatus, async () => {
+     if (!selectedRunId.value) {
+       await updateCurrentStats();
+       await loadTimeSeriesData();
+     }
+   }, { deep: true });
 
 // Initial data load
 onMounted(async () => {

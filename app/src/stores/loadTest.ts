@@ -28,6 +28,7 @@ export const useLoadTestStore = defineStore('loadTest', {
     // In-memory rolling window for live charts (last 5 minutes)
     rollingWindowData: [] as { timestamp: number; requests: number; errors: number; responseTimes: number[] }[],
     rollingWindowByRequestData: {} as { [requestName: string]: { timestamp: number; requests: number; errors: number; responseTimes: number[] }[] },
+    rollingWindowByStatusData: {} as { [statusCode: number]: { timestamp: number; requests: number; responseTimes: number[] }[] },
     maxRollingWindowSize: 300, // 5 minutes at 1 second resolution
   }),
 
@@ -62,6 +63,30 @@ export const useLoadTestStore = defineStore('loadTest', {
             timestamp: point.timestamp,
             requests: point.requests,
             errors: point.errors,
+            avgResponseTime: percentiles.mean,
+            p50ResponseTime: percentiles.p50,
+            p75ResponseTime: percentiles.p75,
+            p90ResponseTime: percentiles.p90,
+            p95ResponseTime: percentiles.p95,
+            p99ResponseTime: percentiles.p99
+          };
+        });
+      }
+
+      return result;
+    },
+
+    // Convert by-status rolling window data
+    rollingWindowByStatus(): { [statusCode: number]: LoadTestTimeSeriesPoint[] } {
+      const result: { [statusCode: number]: LoadTestTimeSeriesPoint[] } = {};
+
+      for (const [statusCode, points] of Object.entries(this.rollingWindowByStatusData)) {
+        result[parseInt(statusCode)] = points.map(point => {
+          const percentiles = this.calculatePercentiles(point.responseTimes);
+          return {
+            timestamp: point.timestamp,
+            requests: point.requests,
+            errors: 0,
             avgResponseTime: percentiles.mean,
             p50ResponseTime: percentiles.p50,
             p75ResponseTime: percentiles.p75,
@@ -143,8 +168,9 @@ async initialize() {
         startTime: run.startTime,
         recentRequests: []
       };
-      this.rollingWindowData = [];
-      this.rollingWindowByRequestData = {};
+this.rollingWindowData = [];
+       this.rollingWindowByRequestData = {};
+       this.rollingWindowByStatusData = {};
 
       return run;
     },
@@ -194,8 +220,8 @@ async initialize() {
       const elapsedSeconds = (Date.now() - this.liveStats.startTime) / 1000;
       this.liveStats.requestsPerSecond = elapsedSeconds > 0 ? this.liveStats.totalRequests / elapsedSeconds : 0;
 
-      // Add to rolling window for live charts
-      this.updateRollingWindow(requestData.timestamp, requestData.latency, isError, requestData.requestName);
+// Add to rolling window for live charts
+       this.updateRollingWindow(requestData.timestamp, requestData.latency, isError, requestData.requestName, requestData.status);
     },
 
     isRunDurationElapsed(): boolean {
@@ -203,65 +229,96 @@ async initialize() {
       return Date.now() - this.currentRun.startTime >= this.currentRun.duration * 1000;
     },
 
-    updateRollingWindow(timestamp: number, latency: number, isError: boolean, requestName: string) {
-      const bucketTimestamp = Math.floor(timestamp / 1000) * 1000; // 1-second buckets
+updateRollingWindow(timestamp: number, latency: number, isError: boolean, requestName: string, statusCode?: number) {
+       const bucketTimestamp = Math.floor(timestamp / 1000) * 1000; // 1-second buckets
 
-      // Update aggregated rolling window
-      let existingPoint = this.rollingWindowData.find(p => p.timestamp === bucketTimestamp);
-      if (!existingPoint) {
-        existingPoint = {
-          timestamp: bucketTimestamp,
-          requests: 0,
-          errors: 0,
-          responseTimes: []
-        };
-        this.rollingWindowData.push(existingPoint);
+       // Update aggregated rolling window
+       let existingPoint = this.rollingWindowData.find(p => p.timestamp === bucketTimestamp);
+       if (!existingPoint) {
+         existingPoint = {
+           timestamp: bucketTimestamp,
+           requests: 0,
+           errors: 0,
+           responseTimes: []
+         };
+         this.rollingWindowData.push(existingPoint);
 
-        // Keep only last 5 minutes
-        if (this.rollingWindowData.length > this.maxRollingWindowSize) {
-          this.rollingWindowData.shift();
-        }
-      }
+         // Keep only last 5 minutes
+         if (this.rollingWindowData.length > this.maxRollingWindowSize) {
+           this.rollingWindowData.shift();
+         }
+       }
 
-      existingPoint.requests++;
-      if (isError) existingPoint.errors++;
-      existingPoint.responseTimes.push(latency);
+       existingPoint.requests++;
+       if (isError) existingPoint.errors++;
+       existingPoint.responseTimes.push(latency);
 
-      // Keep only last 100 response times per bucket for memory efficiency
-      if (existingPoint.responseTimes.length > 100) {
-        existingPoint.responseTimes.shift();
-      }
+       // Keep only last 100 response times per bucket for memory efficiency
+       if (existingPoint.responseTimes.length > 100) {
+         existingPoint.responseTimes.shift();
+       }
 
-      // Update per-request rolling window
-      if (!this.rollingWindowByRequestData[requestName]) {
-        this.rollingWindowByRequestData[requestName] = [];
-      }
+       // Update per-request rolling window
+       if (!this.rollingWindowByRequestData[requestName]) {
+         this.rollingWindowByRequestData[requestName] = [];
+       }
 
-      let existingPointByRequest = this.rollingWindowByRequestData[requestName].find(p => p.timestamp === bucketTimestamp);
-      if (!existingPointByRequest) {
-        existingPointByRequest = {
-          timestamp: bucketTimestamp,
-          requests: 0,
-          errors: 0,
-          responseTimes: []
-        };
-        this.rollingWindowByRequestData[requestName].push(existingPointByRequest);
+       let existingPointByRequest = this.rollingWindowByRequestData[requestName].find(p => p.timestamp === bucketTimestamp);
+       if (!existingPointByRequest) {
+         existingPointByRequest = {
+           timestamp: bucketTimestamp,
+           requests: 0,
+           errors: 0,
+           responseTimes: []
+         };
+         this.rollingWindowByRequestData[requestName].push(existingPointByRequest);
 
-        // Keep only last 5 minutes
-        if (this.rollingWindowByRequestData[requestName].length > this.maxRollingWindowSize) {
-          this.rollingWindowByRequestData[requestName].shift();
-        }
-      }
+         // Keep only last 5 minutes
+         if (this.rollingWindowByRequestData[requestName].length > this.maxRollingWindowSize) {
+           this.rollingWindowByRequestData[requestName].shift();
+         }
+       }
 
-      existingPointByRequest.requests++;
-      if (isError) existingPointByRequest.errors++;
-      existingPointByRequest.responseTimes.push(latency);
+       existingPointByRequest.requests++;
+       if (isError) existingPointByRequest.errors++;
+       existingPointByRequest.responseTimes.push(latency);
 
-      // Keep only last 100 response times per bucket for memory efficiency
-      if (existingPointByRequest.responseTimes.length > 100) {
-        existingPointByRequest.responseTimes.shift();
-      }
-    },
+       // Keep only last 100 response times per bucket for memory efficiency
+       if (existingPointByRequest.responseTimes.length > 100) {
+         existingPointByRequest.responseTimes.shift();
+       }
+
+       // Update per-status rolling window
+       if (statusCode !== undefined) {
+         const statusKey = statusCode.toString();
+         if (!this.rollingWindowByStatusData[statusKey]) {
+           this.rollingWindowByStatusData[statusKey] = [];
+         }
+
+         let existingPointByStatus = this.rollingWindowByStatusData[statusKey].find(p => p.timestamp === bucketTimestamp);
+         if (!existingPointByStatus) {
+           existingPointByStatus = {
+             timestamp: bucketTimestamp,
+             requests: 0,
+             responseTimes: []
+           };
+           this.rollingWindowByStatusData[statusKey].push(existingPointByStatus);
+
+           // Keep only last 5 minutes
+           if (this.rollingWindowByStatusData[statusKey].length > this.maxRollingWindowSize) {
+             this.rollingWindowByStatusData[statusKey].shift();
+           }
+         }
+
+         existingPointByStatus.requests++;
+         existingPointByStatus.responseTimes.push(latency);
+
+         // Keep only last 100 response times per bucket for memory efficiency
+         if (existingPointByStatus.responseTimes.length > 100) {
+           existingPointByStatus.responseTimes.shift();
+         }
+       }
+     },
 
     async endRun() {
       if (!this.currentRun) return;
@@ -282,6 +339,10 @@ async initialize() {
 
   async getTimeSeriesDataByRequest(runId: string, startTime?: number, endTime?: number): Promise<LoadTestTimeSeriesByRequestPoint[]> {
     return await window.api.getLoadTestTimeSeriesDataByRequest(runId, startTime, endTime);
+  },
+
+  async getTimeSeriesDataByStatus(runId: string, startTime?: number, endTime?: number): Promise<any[]> {
+    return await window.api.getLoadTestTimeSeriesDataByStatus(runId, startTime, endTime);
   },
 
     async exportRunData(runId: string, format: 'json' | 'csv' = 'json') {

@@ -86,7 +86,7 @@ export interface Request {
    method: string;
    url: string;
    headers: Variable[];
-   body: { type: 'none' | 'form-data' | 'x-www-form-urlencoded' | 'raw' | 'binary' | 'graphql' | 'json' | 'xml' | 'text'; content: string };
+   body: { type: 'none' | 'form-data' | 'x-www-form-urlencoded' | 'raw' | 'binary' | 'graphql' | 'json' | 'xml' | 'text' | 'grpc'; content: string };
    auth?: Auth;
    preRequestScript?: string;
    postRequestScript?: string;
@@ -98,7 +98,11 @@ export interface Request {
    description?: string;
    isWebSocket?: boolean;
    isJsonRpc?: boolean;
-  }
+   isGrpc?: boolean;
+   grpcProtoPath?: string;
+   grpcService?: string;
+   grpcMethod?: string;
+   }
 
 export interface Folder {
   id: string;
@@ -286,6 +290,18 @@ export interface LoadTestTimeSeriesByRequestPoint {
   timestamp: number;
   requests: number;
   errors: number;
+  avgResponseTime: number;
+  p50ResponseTime: number;
+  p75ResponseTime: number;
+  p90ResponseTime: number;
+  p95ResponseTime: number;
+  p99ResponseTime: number;
+}
+
+export interface LoadTestTimeSeriesByStatusPoint {
+  statusCode: number;
+  timestamp: number;
+  requests: number;
   avgResponseTime: number;
   p50ResponseTime: number;
   p75ResponseTime: number;

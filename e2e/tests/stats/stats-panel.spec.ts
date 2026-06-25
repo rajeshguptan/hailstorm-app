@@ -37,4 +37,17 @@ test.describe('Stats Panel', () => {
   test('should show no data state when no load tests exist', async () => {
     await expect(appLayout.page.locator('text=No load test data available')).toBeVisible();
   });
+
+  test('should display stacked bar chart for HTTP status codes when data exists', async () => {
+    // Select a completed run to load historical data
+    const select = appLayout.page.locator('.stats-header select');
+    await select.selectOption({ index: 1 });
+
+    // Wait for charts to load
+    await appLayout.page.waitForSelector('.chart-container', { timeout: 5000 });
+
+    // Should have chart containers for all three charts
+    const chartContainers = appLayout.page.locator('.chart-container');
+    await expect(chartContainers).toHaveCount(3);
+  });
 });

@@ -16,12 +16,40 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue';
+import { ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { useAppStore } from '../../stores';
 
 const store = useAppStore();
 
 const consoleContent = ref<HTMLElement | null>(null);
+
+// Map console message levels to log types
+function getLogType(level: number): 'log' | 'info' | 'warn' | 'error' | 'debug' {
+  if (level >= 3) return 'error';
+  if (level === 2) return 'warn';
+  if (level === 1) return 'info';
+  return 'log';
+}
+
+onMounted(() => {
+  window.api.onConsoleLog((log) => {
+    const type = getLogType(log.level);
+    const time = new Date(log.timestamp).toLocaleTimeString();
+    store.consoleLogs.push({
+      time,
+      message: log.message,
+      type
+    });
+    // Keep only last 1000 logs
+    if (store.consoleLogs.length > 1000) {
+      store.consoleLogs = store.consoleLogs.slice(-1000);
+    }
+  });
+});
+
+onBeforeUnmount(() => {
+  // Clean up listener would go here if needed
+});
 
 function logClass(type: string): string {
   return '';

@@ -239,6 +239,16 @@ export function setupLoadTestHandlers() {
     }
   });
 
+  ipcMain.handle('get-load-test-time-series-data-by-status', async (_event, runId, startTime, endTime) => {
+    try {
+      const data = await loadTestingService.getTimeSeriesDataByStatus(runId, startTime, endTime);
+      return data;
+    } catch (error: any) {
+      console.error('[EXECUTION_ENGINE] getLoadTestTimeSeriesDataByStatus error:', error.message);
+      throw error;
+    }
+  });
+
   ipcMain.handle('export-load-test-run-data', async (_event, runId, format) => {
     console.log('[EXECUTION_ENGINE] exportLoadTestRunData called', runId, format);
     try {

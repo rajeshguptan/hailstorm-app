@@ -192,21 +192,22 @@
       </datalist>
 
 <div v-if="requestsStore.activeRequestTab === 'body'" class="h-full">
-        <div class="mb-2">
-          <select v-model="requestsStore.currentRequest.body.type" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
-            <option v-if="!requestsStore.currentRequest.isWebSocket" value="none">None</option>
-            <option v-if="!requestsStore.currentRequest.isWebSocket" value="json">JSON</option>
-            <option v-if="!requestsStore.currentRequest.isWebSocket" value="form-data">Form Data</option>
-            <option v-if="!requestsStore.currentRequest.isWebSocket" value="x-www-form-urlencoded">URL Encoded</option>
-            <option v-if="!requestsStore.currentRequest.isWebSocket" value="raw">Raw</option>
-            <option v-if="!requestsStore.currentRequest.isWebSocket" value="binary">Binary</option>
-            <option v-if="!requestsStore.currentRequest.isWebSocket" value="graphql">GraphQL</option>
-            <option v-if="requestsStore.currentRequest.isWebSocket" value="json">JSON</option>
-            <option v-if="requestsStore.currentRequest.isWebSocket" value="xml">XML</option>
-            <option v-if="requestsStore.currentRequest.isWebSocket" value="text">Text</option>
-          </select>
-        </div>
-        <div v-if="requestsStore.currentRequest.body.type === 'graphql'" class="graphql-editor mt-2">
+         <div class="mb-2">
+           <select v-if="requestsStore.currentRequest.method !== 'SHELL'" v-model="requestsStore.currentRequest.body.type" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
+             <option v-if="!requestsStore.currentRequest.isWebSocket && !requestsStore.currentRequest.isGrpc" value="none">None</option>
+             <option v-if="!requestsStore.currentRequest.isWebSocket && !requestsStore.currentRequest.isGrpc" value="json">JSON</option>
+             <option v-if="!requestsStore.currentRequest.isWebSocket && !requestsStore.currentRequest.isGrpc" value="form-data">Form Data</option>
+             <option v-if="!requestsStore.currentRequest.isWebSocket && !requestsStore.currentRequest.isGrpc" value="x-www-form-urlencoded">URL Encoded</option>
+             <option v-if="!requestsStore.currentRequest.isWebSocket && !requestsStore.currentRequest.isGrpc" value="raw">Raw</option>
+             <option v-if="!requestsStore.currentRequest.isWebSocket && !requestsStore.currentRequest.isGrpc" value="binary">Binary</option>
+             <option v-if="!requestsStore.currentRequest.isWebSocket && !requestsStore.currentRequest.isGrpc" value="graphql">GraphQL</option>
+             <option v-if="requestsStore.currentRequest.isWebSocket" value="json">JSON</option>
+             <option v-if="requestsStore.currentRequest.isWebSocket" value="xml">XML</option>
+             <option v-if="requestsStore.currentRequest.isWebSocket" value="text">Text</option>
+             <option v-if="requestsStore.currentRequest.isGrpc" value="grpc">gRPC</option>
+           </select>
+         </div>
+         <div v-if="requestsStore.currentRequest.body.type === 'graphql'" class="graphql-editor mt-2">
           <div class="mb-2">
             <label class="block text-sm text-zinc-500 mb-1">Operation Name</label>
             <textarea v-model="graphqlOperationName" class="form-textarea bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded w-full font-mono" rows="1" placeholder='myOperation'></textarea>
@@ -219,9 +220,27 @@
             <label class="block text-sm text-zinc-500 mb-1 h-full">Query</label>
             <textarea v-model="graphqlQuery" class="form-textarea bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded w-full font-mono" rows="5" placeholder='query { users { id name } }'></textarea>
           </div>
-          <div v-if="graphqlError" class="text-red-500 text-sm mb-2">{{ graphqlError }}</div>
-        </div>
-        <div v-else-if="requestsStore.currentRequest.body.type !== 'none'" class="mt-2 h-full">
+<div v-if="graphqlError" class="text-red-500 text-sm mb-2">{{ graphqlError }}</div>
+         </div>
+         <div v-else-if="requestsStore.currentRequest.body.type === 'grpc'" class="grpc-editor mt-2">
+           <div class="mb-2">
+             <label class="block text-sm text-zinc-500 mb-1">Proto File Path (optional)</label>
+             <input v-model="requestsStore.currentRequest.grpcProtoPath" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full font-mono" placeholder='/path/to/service.proto' />
+           </div>
+           <div class="mb-2">
+             <label class="block text-sm text-zinc-500 mb-1">Service</label>
+             <input v-model="requestsStore.currentRequest.grpcService" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full font-mono" placeholder='UserService' />
+           </div>
+           <div class="mb-2">
+             <label class="block text-sm text-zinc-500 mb-1">Method</label>
+             <input v-model="requestsStore.currentRequest.grpcMethod" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full font-mono" placeholder='GetUser' />
+           </div>
+           <div class="mb-2">
+             <label class="block text-sm text-zinc-500 mb-1">Message (JSON)</label>
+             <textarea v-model="requestsStore.currentRequest.body.content" class="form-textarea bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded w-full font-mono" rows="5" placeholder='{"user_id": 123}'></textarea>
+           </div>
+         </div>
+         <div v-else-if="requestsStore.currentRequest.body.type !== 'none'" class="mt-2 h-full">
           <textarea v-model="requestsStore.currentRequest.body.content" class="form-textarea bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded w-full h-full" placeholder='{"key": "value"}'></textarea>
          </div>
        </div>
