@@ -11,34 +11,34 @@ class RunnerScheduler {
     return this._activeRun;
   }
 
-async startLoadTest(
-      config: RunConfig,
-      collections: any[],
-      environments: any[],
-      secrets: any[],
-      isSecretsUnlocked: boolean,
-      runId: string,
-      activeEnvironmentId?: string | null
-    ): Promise<void> {
-      this._activeRun = config;
+  async startLoadTest(
+    config: RunConfig,
+    collections: any[],
+    environments: any[],
+    secrets: any[],
+    isSecretsUnlocked: boolean,
+    runId: string,
+    activeEnvironmentId?: string | null
+  ): Promise<void> {
+    this._activeRun = config;
 
-      try {
-        // Run load test via IPC in main process
-        await window.api.runLoadTest({
-          config,
-          collections,
-          environments,
-          secrets,
-          isSecretsUnlocked,
-          runId,
-          activeEnvironmentId,
-          requestConfigs: config.requestConfigs,
-          runRepeated: config.runRepeated,
-        });
-      } finally {
-        this._activeRun = null;
-      }
+    try {
+      // Run load test via IPC in main process
+      await window.api.runLoadTest({
+        config,
+        collections,
+        environments,
+        secrets,
+        isSecretsUnlocked,
+        runId,
+        activeEnvironmentId,
+        requestConfigs: config.requestConfigs,
+        runRepeated: config.runRepeated,
+      });
+    } finally {
+      this._activeRun = null;
     }
+  }
 
   stop(): void {
     this._activeRun = null;
@@ -76,10 +76,9 @@ export const useRunnerStore = defineStore('runner', {
         collectionId: '',
         collectionName: '',
         selectedRequests: [],
-        runMode: 'sequential',
-        delay: 1000,
         runRepeated: false,
-        iterations: 1
+        iterations: 1,
+        duration: 60
       };
       this.runConfigs.push(config);
       this.selectRunConfig(config.id);
@@ -129,52 +128,52 @@ export const useRunnerStore = defineStore('runner', {
       appStore.saveToLocalStorage();
     },
 
- async runLoadTest(
-       config: RunConfig,
-       collections: any[],
-       environments: any[],
-       activeEnvironmentId?: string | null
-     ): Promise<void> {
-        this.isRunning = true;
-        try {
-          const appStore = useAppStore();
-          const secretsStore = useSecretsStore();
-          const loadTestStore = useLoadTestStore();
-          
-          // Deep clone everything to remove Proxy objects
-          const clonedConfig = JSON.parse(JSON.stringify(config));
-          const clonedCollections = JSON.parse(JSON.stringify(collections));
-          const clonedEnvironments = JSON.parse(JSON.stringify(environments));
-          
-          // Start the run in loadTestStore to establish currentRun for StatsPanel
-          const run = await loadTestStore.startRun({
-            name: clonedConfig.name,
-            collectionId: clonedConfig.collectionId,
-            collectionName: clonedConfig.collectionName || '',
-            selectedRequests: clonedConfig.selectedRequests,
-            duration: clonedConfig.duration,
-          });
+    async runLoadTest(
+      config: RunConfig,
+      collections: any[],
+      environments: any[],
+      activeEnvironmentId?: string | null
+    ): Promise<void> {
+      this.isRunning = true;
+      try {
+        const appStore = useAppStore();
+        const secretsStore = useSecretsStore();
+        const loadTestStore = useLoadTestStore();
+        
+        // Deep clone everything to remove Proxy objects
+        const clonedConfig = JSON.parse(JSON.stringify(config));
+        const clonedCollections = JSON.parse(JSON.stringify(collections));
+        const clonedEnvironments = JSON.parse(JSON.stringify(environments));
+        
+        // Start the run in loadTestStore to establish currentRun for StatsPanel
+        const run = await loadTestStore.startRun({
+          name: clonedConfig.name,
+          collectionId: clonedConfig.collectionId,
+          collectionName: clonedConfig.collectionName || '',
+          selectedRequests: clonedConfig.selectedRequests,
+          duration: clonedConfig.duration,
+        });
 
-          // Setup listener for live stats updates
-          loadTestStore.setupStatsListener();
+        // Setup listener for live stats updates
+        loadTestStore.setupStatsListener();
 
-          const secrets = JSON.parse(JSON.stringify(appStore.secrets || []));
-          const isSecretsUnlocked = secretsStore.isUnlocked || false;
+        const secrets = JSON.parse(JSON.stringify(appStore.secrets || []));
+        const isSecretsUnlocked = secretsStore.isUnlocked || false;
 
-          // Run the load test with the existing runId and requestConfigs for RPS
-           await scheduler.startLoadTest(clonedConfig, clonedCollections, clonedEnvironments, secrets, isSecretsUnlocked, run.id, activeEnvironmentId);
-          
-          // End the run
-          await loadTestStore.endRun(run.id);
-        } finally {
-          this.isRunning = false;
-        }
-      },
+        // Run the load test with the existing runId and requestConfigs for RPS
+        await scheduler.startLoadTest(clonedConfig, clonedCollections, clonedEnvironments, secrets, isSecretsUnlocked, run.id, activeEnvironmentId);
+        
+        // End the run
+        await loadTestStore.endRun(run.id);
+      } finally {
+        this.isRunning = false;
+      }
+    },
 
-     stopRun(): void {
-       window.api.stopLoadTest();
-       scheduler.stop();
-       this.isRunning = false;
-     },
-  }
+    stopRun(): void {
+      window.api.stopLoadTest();
+      scheduler.stop();
+      this.isRunning = false;
+    },
+  },
 });

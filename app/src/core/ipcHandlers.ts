@@ -557,7 +557,7 @@ export function setupLoadTestExecutionHandlers() {
     }
   });
 
-  ipcMain.handle('run-load-test', async (_event, params: {
+ipcMain.handle('run-load-test', async (_event, params: {
     config: any;
     collections: any[];
     environments: any[];
@@ -586,7 +586,8 @@ export function setupLoadTestExecutionHandlers() {
         runMode: 'parallel',
         delay: 0,
         runRepeated: config.runRepeated || false,
-        iterations: 1
+        iterations: config.iterations || 1,
+        duration: config.duration || 0
       });
       runId = newRun.id;
       runStartTime = newRun.startTime;

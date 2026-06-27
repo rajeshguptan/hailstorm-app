@@ -8,25 +8,22 @@
     </div>
     <div v-else class="flex-1 flex flex-col overflow-hidden">
       <div class="p-4 border-b border-zinc-200 dark:border-zinc-700">
-        <div class="mb-4">
-          <h3 class="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2" data-testid="runner-config-name">
-            <input v-model="editedName" class="bg-transparent border-b border-zinc-400 dark:border-zinc-600 focus:outline-none text-zinc-900 dark:text-white flex-1" data-testid="runner-config-name-input" />
-          </h3>
-          <div class="flex gap-2 mt-4">
-            <button class="btn bg-green-500 text-white" :disabled="isRunning || selectedRequests.length === 0" @click="runCollection" data-testid="runner-run-btn">Run</button>
-            <button class="btn bg-red-500 text-white" :disabled="!isRunning" @click="stopRun" data-testid="runner-stop-btn">Stop</button>
-            <button class="btn bg-blue-500 text-white" @click="saveConfig" data-testid="runner-save-btn">Save</button>
+        <div class="mb-4 flex items-center justify-between">
+          <input v-model="editedName" class="flex-1 text-lg font-semibold bg-transparent border-none text-zinc-900 dark:text-white focus:outline-none mr-4" placeholder="Run Config name" data-testid="runner-config-name-input" />
+          <div class="flex gap-2">
+            <button class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded text-sm" :disabled="isRunning || selectedRequests.length === 0" @click="runCollection" data-testid="runner-run-btn">Run</button>
+            <button class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded text-sm" :disabled="!isRunning" @click="stopRun" data-testid="runner-stop-btn">Stop</button>
+            <button class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm" @click="saveConfig" data-testid="runner-save-btn">Save</button>
           </div>
         </div>
-
         <div class="flex gap-4 mb-4">
-           <div class="flex-1">
-              <label class="block text-sm text-zinc-600 dark:text-gray-400 mb-1">Collection</label>
-              <select v-model="currentCollectionId" class="form-select bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
-                <option v-for="coll in collections || []" :key="coll.id" :value="coll.id">{{ coll.name }}</option>
-              </select>
-            </div>
+          <div class="flex-1">
+            <label class="block text-sm text-zinc-600 dark:text-gray-400 mb-1">Collection</label>
+            <select v-model="currentCollectionId" class="form-select bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 w-full">
+              <option v-for="coll in collections || []" :key="coll.id" :value="coll.id">{{ coll.name }}</option>
+            </select>
           </div>
+        </div>
 
         <div class="flex gap-4 mb-4">
           <label class="flex items-center gap-2 cursor-pointer">
@@ -36,6 +33,10 @@
           <div v-if="currentRunRepeated" class="flex items-center gap-2">
             <label class="text-sm text-zinc-600 dark:text-gray-400">Duration (sec):</label>
             <input v-model.number="currentDuration" type="number" class="form-input bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1" style="width: 80px;" />
+          </div>
+          <div v-if="!currentRunRepeated" class="flex items-center gap-2">
+            <label class="text-sm text-zinc-600 dark:text-gray-400">Iterations:</label>
+            <input v-model.number="currentIterations" type="number" class="form-input bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1" style="width: 80px;" min="1" />
           </div>
         </div>
       </div>
@@ -218,22 +219,34 @@ const currentCollectionId = computed({
 });
 
 const currentRunRepeated = computed({
-  get: () => selectedConfig.value?.runRepeated || false,
-  set: (value: boolean) => {
-    if (selectedConfig.value) {
-      selectedConfig.value.runRepeated = value;
-    }
-  }
-});
+   get: () => selectedConfig.value?.runRepeated || false,
+   set: (value: boolean) => {
+     if (selectedConfig.value) {
+       selectedConfig.value.runRepeated = value;
+       if (!value) {
+         selectedConfig.value.iterations = 1;
+       }
+     }
+   }
+ });
 
-const currentDuration = computed({
-  get: () => selectedConfig.value?.duration || 60,
-  set: (value: number) => {
-    if (selectedConfig.value) {
-      selectedConfig.value.duration = value;
-    }
-  }
-});
+ const currentDuration = computed({
+   get: () => selectedConfig.value?.duration || 60,
+   set: (value: number) => {
+     if (selectedConfig.value) {
+       selectedConfig.value.duration = value;
+     }
+   }
+ });
+
+ const currentIterations = computed({
+   get: () => selectedConfig.value?.iterations || 1,
+   set: (value: number) => {
+     if (selectedConfig.value) {
+       selectedConfig.value.iterations = value;
+     }
+   }
+ });
 
 function collectRequests(items: (Request | Folder)[], requests: Request[]) {
   for (const item of items) {

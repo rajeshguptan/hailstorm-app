@@ -28,6 +28,7 @@ interface RunConfig {
   delay: number;
   runRepeated: boolean;
   iterations: number;
+  duration: number;
 }
 
 const emit = defineEmits<{

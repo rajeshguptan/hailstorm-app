@@ -27,75 +27,76 @@ export class RunnerEngine {
     return sendRequest(context, rps, requestId);
   }
 
-  /**
-   * Execute a load test with the given configuration.
-   * Integrates with loadTestStore for request recording.
-   */
-  async executeLoadTest(
-    config: RunConfig,
-    collections: any[],
-    environments: any[],
-    secrets: Array<{ id: string; name: string; env: string; value: string }> = [],
-    isSecretsUnlocked: boolean = false,
-    requestConfigs?: Record<string, { rps: number; datafile?: string }>,
-    onRequestComplete?: (result: any) => Promise<void> | void,
-    activeEnvironmentId?: string | null
-  ): Promise<void> {
-    this.running = true;
+/**
+    * Execute a load test with the given configuration.
+    * Integrates with loadTestStore for request recording.
+    */
+   async executeLoadTest(
+     config: RunConfig,
+     collections: any[],
+     environments: any[],
+     secrets: Array<{ id: string; name: string; env: string; value: string }> = [],
+     isSecretsUnlocked: boolean = false,
+     requestConfigs?: Record<string, { rps: number; datafile?: string }>,
+     onRequestComplete?: (result: any) => Promise<void> | void,
+     activeEnvironmentId?: string | null
+   ): Promise<void> {
+     this.running = true;
 
-    const collection = collections.find((c: any) => c.id === config.collectionId);
-    if (!collection) {
-      throw new Error(`Collection ${config.collectionId} not found`);
-    }
+     const collection = collections.find((c: any) => c.id === config.collectionId);
+     if (!collection) {
+       throw new Error(`Collection ${config.collectionId} not found`);
+     }
 
-    const requestMap = flatRequests(collection.items);
-    const requests = config.selectedRequests
-      .map((id: string) => requestMap.get(id))
-      .filter((req: any) => req && req.method);
+     const requestMap = flatRequests(collection.items);
+     const requests = config.selectedRequests
+       .map((id: string) => requestMap.get(id))
+       .filter((req: any) => req && req.method);
 
-    if (requests.length === 0) {
-      this.running = false;
-      return;
-    }
+     if (requests.length === 0) {
+       this.running = false;
+       return;
+     }
 
-    console.log('[RUNNER_ENGINE] Starting load test with', requests.length, 'requests');
+     console.log('[RUNNER_ENGINE] Starting load test with', requests.length, 'requests');
 
-    const startTime = Date.now();
-    const durationMs = (config.duration || 0) * 1000; // Duration is in seconds, convert to ms
-    let iterations = 0;
+     const startTime = Date.now();
+     const durationMs = config.runRepeated && config.duration && config.duration > 0 ? (config.duration || 0) * 1000 : 0;
+     const maxIterations = config.runRepeated ? Infinity : (config.iterations || 1);
+     let iterations = 0;
 
-    while (this.running) {
-      const elapsed = Date.now() - startTime;
-      
-      // Check if duration has been exceeded (if duration > 0)
-      if (durationMs > 0 && elapsed >= durationMs) {
-        console.log(`[RUNNER_ENGINE] Duration of ${durationMs}ms reached after ${iterations} iterations`);
-        this.running = false;
-        break;
-      }
+     while (this.running && iterations < maxIterations) {
+       const elapsed = Date.now() - startTime;
+       
+       // Check if duration has been exceeded (if duration > 0)
+       if (durationMs > 0 && elapsed >= durationMs) {
+         console.log(`[RUNNER_ENGINE] Duration of ${durationMs}ms reached after ${iterations} iterations`);
+         this.running = false;
+         break;
+       }
 
-      for (const request of requests) {
-        if (!this.running) break;
+       for (const request of requests) {
+         if (!this.running) break;
 
-        try {
-          const rpsConfig = requestConfigs?.[request.id]?.rps || 0;
-          const result = await this.executeSingleRequest(request, config, environments, collections, secrets, isSecretsUnlocked, rpsConfig, activeEnvironmentId);
-          
-          // Check duration again before callback in case request took time
-          if (this.running && onRequestComplete) {
-            await onRequestComplete(result);
-          }
-        } catch (error) {
-          console.error('[RUNNER_ENGINE] Request failed:', error);
-        }
-      }
-      
-      iterations++;
-    }
+         try {
+           const rpsConfig = requestConfigs?.[request.id]?.rps || 0;
+           const result = await this.executeSingleRequest(request, config, environments, collections, secrets, isSecretsUnlocked, rpsConfig, activeEnvironmentId);
+           
+           // Check duration again before callback in case request took time
+           if (this.running && onRequestComplete) {
+             await onRequestComplete(result);
+           }
+         } catch (error) {
+           console.error('[RUNNER_ENGINE] Request failed:', error);
+         }
+       }
+       
+       iterations++;
+     }
 
-    this.running = false;
-    console.log(`[RUNNER_ENGINE] Load test completed after ${iterations} iterations`);
-  }
+     this.running = false;
+     console.log(`[RUNNER_ENGINE] Load test completed after ${iterations} iterations`);
+   }
 
   /**
    * Execute a single request with full context including secrets.

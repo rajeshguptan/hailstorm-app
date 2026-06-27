@@ -323,6 +323,7 @@ export interface RunConfig {
   collectionName: string;
   selectedRequests: string[];
   runRepeated: boolean;
+  iterations: number;
   duration: number;
   requestConfigs?: Record<string, RequestConfig>;
 }
