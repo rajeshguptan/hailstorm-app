@@ -12,7 +12,7 @@ This guide is for agents working on Hailstorm's Playwright integration tests. Th
 | `e2e/tests/fixtures/base.fixture.ts` | Shared app-loading fixture and mock `window.api` |
 | `e2e/tests/fixtures/page-objects` | Page object models |
 | `e2e/playwright.config.ts` | Playwright project configuration |
-| `app/scripts/mock-server.js` | Optional local backend for request-type tests |
+| `mock-server/server.js` | Local mock server for HTTP/WebSocket/GraphQL/JSON-RPC tests |
 
 ## Supported coverage areas
 
@@ -31,7 +31,7 @@ The suite is organized around these product areas:
 
 ## Mock server for tests
 
-Start the local mock server from `app/` when a test needs real HTTP/WebSocket/GraphQL/JSON-RPC endpoints:
+Start the local mock server from `mock-server/` when a test needs real HTTP/WebSocket/GraphQL/JSON-RPC endpoints:
 
 ```bash
 npm run mock-server

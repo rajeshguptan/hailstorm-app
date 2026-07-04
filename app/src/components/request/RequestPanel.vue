@@ -10,25 +10,20 @@
       <button class="px-3 py-1.5 border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-sm" @click="copyToClipboard">
         📋 Copy
       </button>
-      <div class="relative">
-        <button class="px-3 py-1.5 border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-sm" @click="toggleSaveMenu">Save ▾</button>
-        <div v-if="showSaveMenu" class="absolute right-0 mt-1 w-32 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded shadow-lg z-10">
-          <button class="block w-full text-left px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700" @click="saveRequest">Save</button>
-        </div>
-      </div>
+      <button class="px-3 py-1.5 border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-sm" @click="saveRequest">Save</button>
+    </div>
+
+    <!-- Second row: Method and URL -->
+    <div class="flex gap-2 mb-2">
+      <select v-if="requestsStore.currentRequest.body?.type !== 'graphql'" v-model="method" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1" style="width: 100px;">
+        <option v-for="m in methods" :key="m" :value="m">{{ m }}</option>
+      </select>
+      <input v-if="method !== 'SHELL'" v-model="url" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-3 py-1 flex-1" placeholder="Enter request URL" @keyup.enter="sendRequest" />
+      <input v-else v-model="url" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-3 py-1 flex-1" placeholder="Enter shell command" @keyup.enter="sendRequest" />
       <button class="px-3 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm" :disabled="responseStore.isLoading" @click="sendRequest">
         {{ responseStore.isLoading ? 'Sending...' : 'Send' }}
       </button>
     </div>
-
-    <!-- Second row: Method and URL -->
-<div class="flex gap-2 mb-2">
-        <select v-if="requestsStore.currentRequest.body?.type !== 'graphql'" v-model="method" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1" style="width: 100px;">
-          <option v-for="m in methods" :key="m" :value="m">{{ m }}</option>
-        </select>
-        <input v-if="method !== 'SHELL'" v-model="url" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-3 py-1 flex-1" placeholder="Enter request URL" @keyup.enter="sendRequest" />
-        <input v-else v-model="url" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-3 py-1 flex-1" placeholder="Enter shell command" @keyup.enter="sendRequest" />
-      </div>
     
     <ul class="flex border-b border-zinc-200 dark:border-zinc-700" role="tablist">
       <li>
@@ -304,8 +299,7 @@ const uiStore = useUIStore();
 const collectionsStore = useCollectionsStore();
 const secretsStore = useSecretsStore();
 const appStore = useAppStore();
-const showSaveMenu = ref<boolean>(false);
-const clientCertFormat = ref<string>('pfx');
+ const clientCertFormat = ref<string>('pfx');
 const graphqlQuery = ref<string>('');
 const graphqlVariables = ref<string>('{}');
 const graphqlOperationName = ref<string>('');
@@ -479,10 +473,6 @@ function addVariable() {
   requestsStore.currentRequest.variables.push({ key: '', value: '', enabled: true, env: '' });
 }
 
-function toggleSaveMenu() {
-  showSaveMenu.value = !showSaveMenu.value;
-}
-
 async function copyToClipboard() {
   try {
     const markdown = generateMarkdown();
@@ -624,13 +614,12 @@ function removeVariable(index: number) {
 }
 
 function saveRequest() {
-  showSaveMenu.value = false;
-  if (requestsStore.currentRequest.id) {
-    requestsStore.updateCurrentRequest();
-  } else {
-    requestsStore.saveRequest();
-  }
-}
+   if (requestsStore.currentRequest.id) {
+     requestsStore.updateCurrentRequest();
+   } else {
+     requestsStore.saveRequest();
+   }
+ }
 
 function onHeaderKeyChange(header: { key: string; value: string }) {
   const matched = commonHeaders.find(h => h.key === header.key && h.value);

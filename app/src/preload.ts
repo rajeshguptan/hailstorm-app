@@ -174,15 +174,25 @@ const api = {
     }
   },
 
-  getLoadTestRunStats: async (runId: string): Promise<any> => {
-    try {
-      const result = await ipcRenderer.invoke('get-load-test-run-stats', runId);
-      return result;
-    } catch (error) {
-      console.error('[PRELOAD] getLoadTestRunStats failed', error);
-      throw error;
-    }
-  },
+getLoadTestRunStats: async (runId: string): Promise<any> => {
+     try {
+       const result = await ipcRenderer.invoke('get-load-test-run-stats', runId);
+       return result;
+     } catch (error) {
+       console.error('[PRELOAD] getLoadTestRunStats failed', error);
+       throw error;
+     }
+   },
+
+   getLoadTestRunStatsByRequest: async (runId: string): Promise<any[]> => {
+     try {
+       const result = await ipcRenderer.invoke('get-load-test-run-stats-by-request', runId);
+       return result;
+     } catch (error) {
+       console.error('[PRELOAD] getLoadTestRunStatsByRequest failed', error);
+       throw error;
+     }
+   },
 
   getLoadTestTimeSeriesData: async (runId: string, startTime?: number, endTime?: number): Promise<any[]> => {
     try {
@@ -339,13 +349,21 @@ const api = {
     await ipcRenderer.invoke('open-external-url', url);
   },
 
-  getDevToolsEnabled: async (): Promise<boolean> => {
-    return await ipcRenderer.invoke('get-dev-tools-enabled');
-  },
-
-  setDevToolsEnabled: async (enabled: boolean): Promise<boolean> => {
-    return await ipcRenderer.invoke('set-dev-tools-enabled', enabled);
-  },
+getDevToolsEnabled: async (): Promise<boolean> => {
+     return await ipcRenderer.invoke('get-dev-tools-enabled');
+   },
+ 
+   setDevToolsEnabled: async (enabled: boolean): Promise<boolean> => {
+     return await ipcRenderer.invoke('set-dev-tools-enabled', enabled);
+   },
+ 
+   getLogLevel: async (): Promise<import('./types').LogLevel> => {
+     return await ipcRenderer.invoke('get-log-level');
+   },
+ 
+   setLogLevel: async (level: import('./types').LogLevel): Promise<void> => {
+     return await ipcRenderer.invoke('set-log-level', level);
+   },
 
   openDevTools: async (): Promise<void> => {
     return await ipcRenderer.invoke('open-dev-tools');

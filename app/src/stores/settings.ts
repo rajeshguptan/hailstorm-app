@@ -116,23 +116,23 @@ export const useSettingsStore = defineStore('settings', {
           name: 'Advanced',
           icon: '🔧',
           settings: [
-            {
-              id: 'shortcuts',
-              name: 'Keyboard Shortcuts',
-              description: 'View and customize keyboard shortcuts',
-              subSettings: [
-                { id: 'shortcuts-view', name: 'View Shortcuts', icon: '⌨️' }
-              ]
-            },
-            {
-              id: 'about',
-              name: 'About',
-              description: 'Application information',
-              subSettings: [
-                { id: 'about-info', name: 'About Hailstorm', icon: 'ℹ️' }
-              ]
-            }
+{
+          id: 'shortcuts',
+          name: 'Keyboard Shortcuts',
+          description: 'View and customize keyboard shortcuts',
+          subSettings: [
+            { id: 'shortcuts-view', name: 'View Shortcuts', icon: '⌨️' }
           ]
+        },
+        {
+          id: 'logging',
+          name: 'Logging',
+          description: 'Configure application logging level',
+          subSettings: [
+            { id: 'logging-level', name: 'Log Level', icon: '📝' }
+          ]
+        }
+            ]
         }
       ];
       const appStore = useAppStore();

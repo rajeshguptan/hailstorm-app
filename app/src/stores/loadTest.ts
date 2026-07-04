@@ -7,37 +7,66 @@ import type {
   LoadTestDetailChunk,
   LoadTestRequestDetail,
   LoadTestStats,
+  LoadTestStatsByRequest,
   LoadTestTimeSeriesPoint,
   LoadTestTimeSeriesByRequestPoint
 } from '../types';
 
+function calculatePercentiles(responseTimes: number[]): { p50: number; p75: number; p90: number; p95: number; p99: number; mean: number } {
+  if (responseTimes.length === 0) {
+    return { p50: 0, p75: 0, p90: 0, p95: 0, p99: 0, mean: 0 };
+  }
+
+  const sorted = [...responseTimes].sort((a, b) => a - b);
+  const len = sorted.length;
+
+  const percentile = (p: number) => {
+    const index = (p / 100) * (len - 1);
+    const lower = Math.floor(index);
+    const upper = Math.ceil(index);
+    const weight = index % 1;
+
+    if (upper >= len) return sorted[len - 1];
+    return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+  };
+
+  const mean = responseTimes.reduce((a, b) => a + b, 0) / len;
+
+  return {
+    mean,
+    p50: percentile(50),
+    p75: percentile(75),
+    p90: percentile(90),
+    p95: percentile(95),
+    p99: percentile(99)
+  };
+}
+
 export const useLoadTestStore = defineStore('loadTest', {
-  state: () => ({
-    currentRun: null as LoadTestRun | null,
-    isInitialized: false,
-    statsListenerInitialized: false,
-    liveStats: {
-      totalRequests: 0,
-      successfulRequests: 0,
-      failedRequests: 0,
-      avgResponseTime: 0,
-      requestsPerSecond: 0,
-      startTime: 0,
-      recentRequests: [] as LoadTestTimeSeriesPoint[]
-    },
-    // In-memory rolling window for live charts (last 5 minutes)
-    rollingWindowData: [] as { timestamp: number; requests: number; errors: number; responseTimes: number[] }[],
-    rollingWindowByRequestData: {} as { [requestName: string]: { timestamp: number; requests: number; errors: number; responseTimes: number[] }[] },
-    rollingWindowByStatusData: {} as { [statusCode: number]: { timestamp: number; requests: number; responseTimes: number[] }[] },
-    maxRollingWindowSize: 300, // 5 minutes at 1 second resolution
-  }),
+   state: () => ({
+     currentRun: null as LoadTestRun | null,
+     isInitialized: false,
+     statsListenerInitialized: false,
+     liveStats: {
+       totalRequests: 0,
+       successfulRequests: 0,
+       failedRequests: 0,
+       avgResponseTime: 0,
+       requestsPerSecond: 0,
+       startTime: 0,
+       recentRequests: [] as LoadTestTimeSeriesPoint[]
+     },
+liveStatsByRequest: {} as { [requestName: string]: { totalRequests: number; successfulRequests: number; failedRequests: number; p50ResponseTime: number; p75ResponseTime: number; p90ResponseTime: number; p95ResponseTime: number; p99ResponseTime: number } },
+      rollingWindowData: [] as { timestamp: number; requests: number; errors: number; responseTimes: number[] }[],
+      rollingWindowByRequestData: {} as { [requestName: string]: { timestamp: number; requests: number; errors: number; responseTimes: number[] }[] },
+      rollingWindowByStatusData: {} as { [statusCode: number]: { timestamp: number; requests: number; responseTimes: number[] }[] },
+      maxRollingWindowSize: 300, // 5 minutes at 1 second resolution
+    }),
 
-  getters: {
-
-    // Convert rolling window data to LoadTestTimeSeriesPoint format
+getters: {
     rollingWindow(): LoadTestTimeSeriesPoint[] {
       return this.rollingWindowData.map(point => {
-        const percentiles = this.calculatePercentiles(point.responseTimes);
+        const percentiles = calculatePercentiles(point.responseTimes);
         return {
           timestamp: point.timestamp,
           requests: point.requests,
@@ -52,13 +81,12 @@ export const useLoadTestStore = defineStore('loadTest', {
       });
     },
 
-    // Convert by-request rolling window data
     rollingWindowByRequest(): { [requestName: string]: LoadTestTimeSeriesPoint[] } {
       const result: { [requestName: string]: LoadTestTimeSeriesPoint[] } = {};
 
       for (const [requestName, points] of Object.entries(this.rollingWindowByRequestData)) {
         result[requestName] = points.map(point => {
-          const percentiles = this.calculatePercentiles(point.responseTimes);
+          const percentiles = calculatePercentiles(point.responseTimes);
           return {
             timestamp: point.timestamp,
             requests: point.requests,
@@ -76,13 +104,12 @@ export const useLoadTestStore = defineStore('loadTest', {
       return result;
     },
 
-    // Convert by-status rolling window data
     rollingWindowByStatus(): { [statusCode: number]: LoadTestTimeSeriesPoint[] } {
       const result: { [statusCode: number]: LoadTestTimeSeriesPoint[] } = {};
 
       for (const [statusCode, points] of Object.entries(this.rollingWindowByStatusData)) {
         result[parseInt(statusCode)] = points.map(point => {
-          const percentiles = this.calculatePercentiles(point.responseTimes);
+          const percentiles = calculatePercentiles(point.responseTimes);
           return {
             timestamp: point.timestamp,
             requests: point.requests,
@@ -102,49 +129,16 @@ export const useLoadTestStore = defineStore('loadTest', {
   },
 
   actions: {
-async initialize() {
+    async initialize() {
       if (this.isInitialized) return;
 
       try {
-        // Initialize load testing system in main process
         await window.api.initializeLoadTesting();
         this.isInitialized = true;
       } catch (error) {
         logger.error('Failed to initialize load testing:', error);
-        // Don't set isInitialized to true if it failed
         throw error;
       }
-    },
-
-    // Calculate percentiles from response times
-    calculatePercentiles(responseTimes: number[]): { p50: number; p75: number; p90: number; p95: number; p99: number; mean: number } {
-      if (responseTimes.length === 0) {
-        return { p50: 0, p75: 0, p90: 0, p95: 0, p99: 0, mean: 0 };
-      }
-
-      const sorted = [...responseTimes].sort((a, b) => a - b);
-      const len = sorted.length;
-
-      const percentile = (p: number) => {
-        const index = (p / 100) * (len - 1);
-        const lower = Math.floor(index);
-        const upper = Math.ceil(index);
-        const weight = index % 1;
-
-        if (upper >= len) return sorted[len - 1];
-        return sorted[lower] * (1 - weight) + sorted[upper] * weight;
-      };
-
-      const mean = responseTimes.reduce((a, b) => a + b, 0) / len;
-
-      return {
-        mean,
-        p50: percentile(50),
-        p75: percentile(75),
-        p90: percentile(90),
-        p95: percentile(95),
-        p99: percentile(99)
-      };
     },
 
     async startRun(runConfig: Omit<LoadTestRun, 'id' | 'startTime' | 'status' | 'totalRequests' | 'completedRequests' | 'failedRequests'>) {
@@ -329,8 +323,17 @@ updateRollingWindow(timestamp: number, latency: number, isError: boolean, reques
       return completedRun;
     },
 
-    async getRunStats(runId: string): Promise<LoadTestStats | null> {
+async getRunStats(runId: string): Promise<LoadTestStats | null> {
       return await window.api.getLoadTestRunStats(runId);
+    },
+
+    async getRunStatsByRequest(runId: string): Promise<LoadTestStatsByRequest[]> {
+      return await window.api.getLoadTestRunStatsByRequest(runId);
+    },
+
+    // Expose calculatePercentiles for use in components
+    calculatePercentiles(responseTimes: number[]): { p50: number; p75: number; p90: number; p95: number; p99: number; mean: number } {
+      return calculatePercentiles(responseTimes);
     },
 
   async getTimeSeriesData(runId: string, startTime?: number, endTime?: number): Promise<LoadTestTimeSeriesPoint[]> {

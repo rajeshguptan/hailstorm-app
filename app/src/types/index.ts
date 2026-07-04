@@ -262,6 +262,8 @@ export interface LoadTestStats {
   minResponseTime: number;
   maxResponseTime: number;
   p50ResponseTime: number;
+  p75ResponseTime: number;
+  p90ResponseTime: number;
   p95ResponseTime: number;
   p99ResponseTime: number;
   requestsPerSecond: number;
@@ -271,6 +273,18 @@ export interface LoadTestStats {
   lastLatency?: number;
   lastStatus?: number;
   lastRequestName?: string;
+}
+
+export interface LoadTestStatsByRequest {
+  requestName: string;
+  totalRequests: number;
+  successfulRequests: number;
+  failedRequests: number;
+  p50ResponseTime: number;
+  p75ResponseTime: number;
+  p90ResponseTime: number;
+  p95ResponseTime: number;
+  p99ResponseTime: number;
 }
 
 export interface LoadTestTimeSeriesPoint {
@@ -347,6 +361,8 @@ export interface SubSetting {
   name: string;
   icon: string;
 }
+
+export type LogLevel = 'error' | 'warn' | 'info' | 'verbose' | 'debug' | 'silly';
 
 export type SidebarView = 'collections' | 'history' | 'secrets' | 'stats' | 'runner' | 'console' | 'docs' | 'settings';
 

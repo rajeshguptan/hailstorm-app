@@ -209,15 +209,25 @@ export function setupLoadTestHandlers() {
     }
   });
 
-  ipcMain.handle('get-load-test-run-stats', async (_event, runId) => {
-    try {
-      const stats = await loadTestingService.getRunStats(runId);
-      return stats;
-    } catch (error: any) {
-      console.error('[EXECUTION_ENGINE] getLoadTestRunStats error:', error.message);
-      throw error;
-    }
-  });
+ipcMain.handle('get-load-test-run-stats', async (_event, runId) => {
+     try {
+       const stats = await loadTestingService.getRunStats(runId);
+       return stats;
+     } catch (error: any) {
+       console.error('[EXECUTION_ENGINE] getLoadTestRunStats error:', error.message);
+       throw error;
+     }
+   });
+
+   ipcMain.handle('get-load-test-run-stats-by-request', async (_event, runId) => {
+     try {
+       const stats = await loadTestingService.getRunStatsByRequest(runId);
+       return stats;
+     } catch (error: any) {
+       console.error('[EXECUTION_ENGINE] getLoadTestRunStatsByRequest error:', error.message);
+       throw error;
+     }
+   });
 
   ipcMain.handle('get-load-test-time-series-data', async (_event, runId, startTime, endTime) => {
     try {

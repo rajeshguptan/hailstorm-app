@@ -16,7 +16,7 @@ This guide is for agents working in the Hailstorm Electron + Vue 3 application. 
 | `app/src/types` | Shared TypeScript interfaces |
 | `app/src/preload.ts` | Secure `contextBridge` IPC API |
 | `app/src/main.ts` | Electron main process entry point |
-| `app/scripts/mock-server.js` | Local mock server for integration tests |
+| `mock-server/server.js` | Local mock server for integration tests (port 4010) |
 
 ## Request support
 
@@ -32,16 +32,6 @@ This guide is for agents working in the Hailstorm Electron + Vue 3 application. 
 - Request creation actions live in `stores/collections.ts`.
 - Collection tree rendering and badges live in `components/TreeNode.vue`.
 - When adding a new request type or badge, update both the collection action and the tree badge renderer.
-
-## Mock server
-
-Start the local mock server from `app/` with:
-
-```bash
-npm run mock-server
-```
-
-The server listens on `http://127.0.0.1:4010` by default and includes endpoints for HTTP methods/status/delay/auth/body types, GraphQL, JSON-RPC, WebSocket echo/chat, OAuth token retrieval, and shell command examples.
 
 ## Settings and Electron
 

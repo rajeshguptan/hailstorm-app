@@ -2,7 +2,7 @@ import path from 'node:path';
 import fs from 'fs';
 import os from 'node:os';
 import * as zlib from 'zlib';
-import type { LoadTestRun, LoadTestStats, LoadTestTimeSeriesPoint, LoadTestTimeSeriesByRequestPoint } from '../types';
+import type { LoadTestRun, LoadTestStats, LoadTestStatsByRequest, LoadTestTimeSeriesPoint, LoadTestTimeSeriesByRequestPoint } from '../types';
 
 export interface LoadTestRequestIndex {
   id: string;
@@ -261,12 +261,82 @@ class LoadTestingService {
       minResponseTime,
       maxResponseTime,
       p50ResponseTime: 0,
+      p75ResponseTime: 0,
+      p90ResponseTime: 0,
       p95ResponseTime: 0,
       p99ResponseTime: 0,
       requestsPerSecond: duration > 0 ? (totalRequests / duration) * 1000 : 0,
       startTime: run.startTime,
       endTime: run.endTime || Date.now(),
       duration
+    };
+  }
+
+  async getRunStatsByRequest(runId: string): Promise<LoadTestStatsByRequest[]> {
+    if (!this.isInitialized) throw new Error('Load testing service not initialized');
+
+    const runRequests = this.requestIndex.filter(r => r.runId === runId);
+    if (runRequests.length === 0) return [];
+
+    // Group requests by requestName
+    const requestsByName: { [key: string]: LoadTestRequestIndex[] } = {};
+    runRequests.forEach(req => {
+      if (!requestsByName[req.requestName]) {
+        requestsByName[req.requestName] = [];
+      }
+      requestsByName[req.requestName].push(req);
+    });
+
+    const result: LoadTestStatsByRequest[] = [];
+
+    for (const [requestName, requests] of Object.entries(requestsByName)) {
+      const totalRequests = requests.length;
+      const successfulRequests = requests.filter(r => !r.error).length;
+      const failedRequests = requests.filter(r => r.error).length;
+      const latencies = requests.map(r => r.latency);
+
+      const percentiles = this.calculatePercentiles(latencies);
+
+      result.push({
+        requestName,
+        totalRequests,
+        successfulRequests,
+        failedRequests,
+        p50ResponseTime: percentiles.p50,
+        p75ResponseTime: percentiles.p75,
+        p90ResponseTime: percentiles.p90,
+        p95ResponseTime: percentiles.p95,
+        p99ResponseTime: percentiles.p99
+      });
+    }
+
+    return result.sort((a, b) => a.requestName.localeCompare(b.requestName));
+  }
+
+  private calculatePercentiles(latencies: number[]): { p50: number; p75: number; p90: number; p95: number; p99: number } {
+    if (latencies.length === 0) {
+      return { p50: 0, p75: 0, p90: 0, p95: 0, p99: 0 };
+    }
+
+    const sorted = [...latencies].sort((a, b) => a - b);
+    const len = sorted.length;
+
+    const percentile = (p: number) => {
+      const index = (p / 100) * (len - 1);
+      const lower = Math.floor(index);
+      const upper = Math.ceil(index);
+      const weight = index % 1;
+
+      if (upper >= len) return sorted[len - 1];
+      return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+    };
+
+    return {
+      p50: percentile(50),
+      p75: percentile(75),
+      p90: percentile(90),
+      p95: percentile(95),
+      p99: percentile(99)
     };
   }
 

@@ -15,7 +15,7 @@ Hailstorm is a local-first Electron + Vue 3 API client for API development, test
 | Core execution | `app/src/core` | Request execution, IPC handlers, runner engine, load-test persistence |
 | Types | `app/src/types` | Shared TypeScript interfaces |
 | Integration tests | `e2e/tests` | Playwright tests and page objects |
-| Mock server | `app/scripts/mock-server.js` | Local HTTP, WebSocket, GraphQL, JSON-RPC, auth, and shell endpoints |
+| Mock server | `mock-server/server.js` | Local HTTP, WebSocket, GraphQL, JSON-RPC, auth, users, rate-limiting, and file-upload endpoints |
 
 ## Current feature notes
 
@@ -41,10 +41,7 @@ Useful commands:
 - `npm run lint` is currently unreliable because `.eslintrc.js` is loaded as an ES module under the package `"type": "module"` setting.
 
 ## Agent guidance
-
+- Refer to the AGENTS.md file in each subfolder. 
 - Prefer small, targeted changes that preserve the existing Electron/Vue architecture.
-- Keep privileged Node/Electron APIs in the main process and expose only safe methods through `app/src/preload.ts`.
-- Keep UI logic in Vue components/stores and core execution logic in `app/src/core`.
-- Follow existing Pinia store patterns: actions should be async when they call IPC.
 - Add or update tests when changing request execution, collection behavior, runner behavior, secrets, environments, or stats.
-- For integration tests, run the app dev server and use the Playwright configuration in `e2e/playwright.config.ts`.
+- After every change, check if AGENTS.md needs updating.

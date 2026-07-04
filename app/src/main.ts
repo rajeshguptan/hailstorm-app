@@ -60,6 +60,12 @@ initializeExecutionEngine();
 
 let devToolsEnabled = false;
 let mainWindow: BrowserWindow | null = null;
+let logLevel: import('./types').LogLevel = 'info';
+
+function setLogLevel(level: import('./types').LogLevel) {
+  logLevel = level;
+  log.level = level;
+}
 
 function setDevToolsEnabled(enabled: boolean) {
   if (!mainWindow) return;
@@ -134,26 +140,33 @@ function createWindow() {
 
 ipcMain.handle('get-dev-tools-enabled', () => devToolsEnabled);
 
-ipcMain.handle('set-dev-tools-enabled', (_event, enabled: boolean) => {
-  devToolsEnabled = Boolean(enabled);
-  setDevToolsEnabled(devToolsEnabled);
-  return devToolsEnabled;
-});
+  ipcMain.handle('set-dev-tools-enabled', (_event, enabled: boolean) => {
+    devToolsEnabled = Boolean(enabled);
+    setDevToolsEnabled(devToolsEnabled);
+    return devToolsEnabled;
+  });
 
-ipcMain.handle('open-dev-tools', () => {
-  if (mainWindow) {
-    mainWindow.webContents.openDevTools({ mode: 'detach' });
-  }
-});
+  ipcMain.handle('get-log-level', () => logLevel);
 
-ipcMain.handle('send-console-log', (_event, log: { level: number; message: string; line: number; sourceId: string }) => {
-  if (mainWindow) {
-    mainWindow.webContents.send('console-log', {
-      ...log,
-      timestamp: Date.now()
-    });
-  }
-});
+  ipcMain.handle('set-log-level', (_event, level: import('./types').LogLevel) => {
+    setLogLevel(level);
+    return logLevel;
+  });
+
+  ipcMain.handle('open-dev-tools', () => {
+    if (mainWindow) {
+      mainWindow.webContents.openDevTools({ mode: 'detach' });
+    }
+  });
+
+  ipcMain.handle('send-console-log', (_event, log: { level: number; message: string; line: number; sourceId: string }) => {
+    if (mainWindow) {
+      mainWindow.webContents.send('console-log', {
+        ...log,
+        timestamp: Date.now()
+      });
+    }
+  });
 
 // Set up OAuth callback before app is ready
 setupOAuthCallback();

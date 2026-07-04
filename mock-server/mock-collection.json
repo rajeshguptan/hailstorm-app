@@ -5,68 +5,147 @@
   },
   "item": [
     {
-      "name": "Get Users",
+      "name": "Root",
       "request": {
         "method": "GET",
-        "url": "http://localhost:3001/users",
-        "headers": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ]
+        "url": "http://127.0.0.1:4010/",
+        "headers": [{ "key": "Content-Type", "value": "application/json" }]
       }
     },
     {
-      "name": "Create User",
+      "name": "HTTP",
+      "item": [
+        {
+          "name": "HTTP Test",
+          "request": { "method": "GET", "url": "http://127.0.0.1:4010/http/test" }
+        },
+        {
+          "name": "Status 201",
+          "request": { "method": "GET", "url": "http://127.0.0.1:4010/http/status/201" }
+        },
+        {
+          "name": "Delay 500ms",
+          "request": { "method": "GET", "url": "http://127.0.0.1:4010/http/delay/500" }
+        },
+        {
+          "name": "Error Endpoint",
+          "request": { "method": "GET", "url": "http://127.0.0.1:4010/http/error" }
+        },
+        {
+          "name": "Form Data",
+          "request": {
+            "method": "POST",
+            "url": "http://127.0.0.1:4010/http/form-data",
+            "body": { "mode": "formdata", "formdata": [{ "key": "field1", "value": "test" }] }
+          }
+        },
+        {
+          "name": "Raw Body",
+          "request": {
+            "method": "POST",
+            "url": "http://127.0.0.1:4010/http/raw",
+            "body": { "mode": "raw", "raw": "raw text content" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Basic Auth",
+          "request": {
+            "method": "GET",
+            "url": "http://127.0.0.1:4010/http/auth/basic",
+            "auth": { "type": "basic", "basic": { "username": "hailstorm", "password": "mock" } }
+          }
+        },
+        {
+          "name": "Bearer Auth",
+          "request": {
+            "method": "GET",
+            "url": "http://127.0.0.1:4010/http/auth/bearer",
+            "headers": [{ "key": "Authorization", "value": "Bearer hailstorm-token" }]
+          }
+        },
+        {
+          "name": "API Key Auth",
+          "request": {
+            "method": "GET",
+            "url": "http://127.0.0.1:4010/http/auth/apikey",
+            "headers": [{ "key": "x-api-key", "value": "hailstorm-api-key" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GraphQL",
       "request": {
         "method": "POST",
-        "url": "http://localhost:3001/users",
-        "headers": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
+        "url": "http://127.0.0.1:4010/graphql",
+        "headers": [{ "key": "Content-Type", "value": "application/json" }],
         "body": {
           "mode": "raw",
-          "raw": "{\"name\": \"John Doe\", \"email\": \"john@example.com\"}"
+          "raw": "{\"query\": \"{ users { id name } }\", \"variables\": {}}"
         }
       }
     },
     {
-      "name": "Upload File",
+      "name": "JSON-RPC",
       "request": {
         "method": "POST",
-        "url": "http://localhost:3001/upload",
+        "url": "http://127.0.0.1:4010/json-rpc",
+        "headers": [{ "key": "Content-Type", "value": "application/json" }],
         "body": {
-          "mode": "formdata",
-          "formdata": [
-            {
-              "key": "file",
-              "type": "file",
-              "src": []
-            },
-            {
-              "key": "description",
-              "value": "Test file upload"
-            }
-          ]
+          "mode": "raw",
+          "raw": "{\"jsonrpc\": \"2.0\", \"method\": \"echo\", \"params\": {\"test\": true}, \"id\": 1}"
         }
       }
+    },
+    {
+      "name": "OAuth Token",
+      "request": {
+        "method": "POST",
+        "url": "http://127.0.0.1:4010/oauth/token",
+        "headers": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"grant_type\": \"client_credentials\"}" }
+      }
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get Users",
+          "request": { "method": "GET", "url": "http://127.0.0.1:4010/users" }
+        },
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "url": "http://127.0.0.1:4010/users",
+            "headers": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"name\": \"John Doe\", \"email\": \"john@example.com\"}" }
+          }
+        },
+        {
+          "name": "Upload File",
+          "request": {
+            "method": "POST",
+            "url": "http://127.0.0.1:4010/upload",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file" },
+                { "key": "description", "value": "Test file upload" }
+              ]
+            }
+          }
+        }
+      ]
     },
     {
       "name": "Health Check",
-      "request": {
-        "method": "GET",
-        "url": "http://localhost:3001/health",
-        "headers": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ]
-      }
+      "request": { "method": "GET", "url": "http://127.0.0.1:4010/health" }
     }
   ]
 }

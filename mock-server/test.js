@@ -1,8 +1,36 @@
 const http = require('http');
 
-// Simple test script to verify mock server endpoints
+function makeRequest(url, method = 'GET', data = null, customHeaders = {}) {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const options = {
+      hostname: urlObj.hostname,
+      port: urlObj.port,
+      path: urlObj.pathname,
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...customHeaders
+      }
+    };
+
+    const req = http.request(options, (res) => {
+      let responseData = '';
+      res.on('data', (chunk) => { responseData += chunk; });
+      res.on('end', () => {
+        resolve({ status: res.statusCode, data: responseData });
+      });
+    });
+
+    req.on('error', (error) => reject(error));
+
+    if (data) req.write(JSON.stringify(data));
+    req.end();
+  });
+}
+
 const testEndpoints = async () => {
-  const baseUrl = 'http://localhost:3001';
+  const baseUrl = 'http://localhost:4010';
 
   console.log('Testing mock server endpoints...\n');
 
@@ -14,36 +42,125 @@ const testEndpoints = async () => {
     console.log('❌ GET /health failed:', error.message);
   }
 
-  // Test 2: Get users
+  // Test 2: Root endpoint
+  try {
+    const rootResponse = await makeRequest(`${baseUrl}/`);
+    console.log('✅ GET /:', rootResponse.status);
+  } catch (error) {
+    console.log('❌ GET / failed:', error.message);
+  }
+
+  // Test 3: HTTP echo
+  try {
+    const httpResponse = await makeRequest(`${baseUrl}/http/test`);
+    console.log('✅ GET /http/test:', httpResponse.status);
+  } catch (error) {
+    console.log('❌ GET /http/test failed:', error.message);
+  }
+
+  // Test 4: Status endpoint
+  try {
+    const statusResponse = await makeRequest(`${baseUrl}/http/status/201`);
+    console.log('✅ GET /http/status/201:', statusResponse.status);
+  } catch (error) {
+    console.log('❌ GET /http/status/201 failed:', error.message);
+  }
+
+  // Test 5: Delay endpoint
+  try {
+    const delayResponse = await makeRequest(`${baseUrl}/http/delay/100`);
+    console.log('✅ GET /http/delay/100:', delayResponse.status);
+  } catch (error) {
+    console.log('❌ GET /http/delay/100 failed:', error.message);
+  }
+
+  // Test 6: Error endpoint
+  try {
+    const errorResponse = await makeRequest(`${baseUrl}/http/error`);
+    console.log('✅ GET /http/error (expects 500):', errorResponse.status);
+  } catch (error) {
+    console.log('❌ GET /http/error failed:', error.message);
+  }
+
+  // Test 7: Basic Auth
+  try {
+    const basicAuthResponse = await makeRequest(`${baseUrl}/http/auth/basic`, 'GET', null, {
+      'Authorization': 'Basic ' + Buffer.from('hailstorm:mock').toString('base64')
+    });
+    console.log('✅ GET /http/auth/basic (with auth):', basicAuthResponse.status);
+  } catch (error) {
+    console.log('❌ GET /http/auth/basic failed:', error.message);
+  }
+
+  // Test 8: Bearer Auth
+  try {
+    const bearerAuthResponse = await makeRequest(`${baseUrl}/http/auth/bearer`, 'GET', null, {
+      'Authorization': 'Bearer hailstorm-token'
+    });
+    console.log('✅ GET /http/auth/bearer (with token):', bearerAuthResponse.status);
+  } catch (error) {
+    console.log('❌ GET /http/auth/bearer failed:', error.message);
+  }
+
+  // Test 9: GraphQL
+  try {
+    const graphqlResponse = await makeRequest(`${baseUrl}/graphql`, 'POST', {
+      query: '{ users { id name } }'
+    });
+    console.log('✅ POST /graphql:', graphqlResponse.status);
+  } catch (error) {
+    console.log('❌ POST /graphql failed:', error.message);
+  }
+
+  // Test 10: JSON-RPC
+  try {
+    const rpcResponse = await makeRequest(`${baseUrl}/json-rpc`, 'POST', {
+      jsonrpc: '2.0',
+      method: 'echo',
+      params: { test: true },
+      id: 1
+    });
+    console.log('✅ POST /json-rpc:', rpcResponse.status);
+  } catch (error) {
+    console.log('❌ POST /json-rpc failed:', error.message);
+  }
+
+  // Test 11: OAuth
+  try {
+    const oauthResponse = await makeRequest(`${baseUrl}/oauth/token`, 'POST', {
+      grant_type: 'client_credentials'
+    });
+    console.log('✅ POST /oauth/token:', oauthResponse.status);
+  } catch (error) {
+    console.log('❌ POST /oauth/token failed:', error.message);
+  }
+
+  // Test 12: Users endpoints
   try {
     const usersResponse = await makeRequest(`${baseUrl}/users`);
     console.log('✅ GET /users:', usersResponse.status);
-    const users = JSON.parse(usersResponse.data);
-    console.log(`   Found ${users.length} users`);
   } catch (error) {
     console.log('❌ GET /users failed:', error.message);
   }
 
-  // Test 3: Create user
+  // Test 13: Create user
   try {
     const createUserResponse = await makeRequest(`${baseUrl}/users`, 'POST', {
       name: 'Test User',
       email: 'test@example.com'
     });
     console.log('✅ POST /users:', createUserResponse.status);
-    const newUser = JSON.parse(createUserResponse.data);
-    console.log(`   Created user: ${newUser.name} (${newUser.email})`);
   } catch (error) {
     console.log('❌ POST /users failed:', error.message);
   }
 
-  // Test 4: Rate limiting
+  // Test 14: Rate limiting
   console.log('\nTesting rate limiting...');
 
   // Set RPS for user creation to 2
   try {
-    const setRpsResponse = await makeRequest(`${baseUrl}/rps/user-creation`, 'POST', { rps: 2 });
-    console.log('✅ POST /rps/user-creation:', setRpsResponse.status);
+    await makeRequest(`${baseUrl}/rps/user-creation`, 'POST', { rps: 2 });
+    console.log('✅ POST /rps/user-creation');
   } catch (error) {
     console.log('❌ POST /rps/user-creation failed:', error.message);
   }
@@ -86,44 +203,4 @@ const testEndpoints = async () => {
   console.log('\nTest completed!');
 };
 
-const makeRequest = (url, method = 'GET', data = null, customHeaders = {}) => {
-  return new Promise((resolve, reject) => {
-    const urlObj = new URL(url);
-    const options = {
-      hostname: urlObj.hostname,
-      port: urlObj.port,
-      path: urlObj.pathname,
-      method: method,
-      headers: {
-        'Content-Type': 'application/json',
-        ...customHeaders
-      }
-    };
-
-    const req = http.request(options, (res) => {
-      let data = '';
-      res.on('data', (chunk) => {
-        data += chunk;
-      });
-      res.on('end', () => {
-        resolve({
-          status: res.statusCode,
-          data: data
-        });
-      });
-    });
-
-    req.on('error', (error) => {
-      reject(error);
-    });
-
-    if (data) {
-      req.write(JSON.stringify(data));
-    }
-
-    req.end();
-  });
-};
-
-// Run tests
 testEndpoints().catch(console.error);

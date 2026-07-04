@@ -10,40 +10,37 @@ export const test = base.extend({
     await page.goto('http://localhost:5173/');
 
     // Enhanced Electron API mocking for comprehensive testing
-    await page.addScriptTag({
-      content: `
-        window.api = {
-          // HTTP Request functionality
-          makeRequest: ({ method, url, headers, body, rps, requestId }) => {
-            console.log('[MOCK API] makeRequest:', { method, url, headers, body, rps, requestId });
-            return new Promise((resolve) => {
-              setTimeout(() => {
-                // Simulate different responses based on URL
-                if (url.includes('status/404')) {
-                  resolve({ status: 404, statusText: 'Not Found', headers: {}, data: '{"error": "Not Found"}', time: 150 });
-                } else if (url.includes('delay/')) {
-                  const delay = parseInt(url.split('delay/')[1]) || 1;
-                  resolve({ status: 200, statusText: 'OK', headers: {}, data: '{"delayed": true}', time: delay * 1000 });
-                } else if (url.includes('bearer') && (!headers || !headers.Authorization || !headers.Authorization.includes('Bearer'))) {
-                  resolve({ status: 401, statusText: 'Unauthorized', headers: {}, data: '{"error": "Unauthorized"}', time: 100 });
-                } else {
-                  resolve({
-                    status: 200,
-                    statusText: 'OK',
-                    headers: { 'content-type': 'application/json' },
-                    data: JSON.stringify({
-                      method,
-                      url,
-                      headers,
-                      body: body ? JSON.parse(body) : null,
-                      timestamp: Date.now()
-                    }),
-                    time: Math.random() * 200 + 50
-                  });
-                }
-              }, Math.random() * 100 + 50); // Random delay 50-150ms
-            });
-          },
+await page.addScriptTag({
+       content: `
+         window.api = {
+           // HTTP Request functionality
+           makeRequest: ({ method, url, headers, body, rps, requestId }) => {
+             console.log('[MOCK API] makeRequest:', { method, url, headers, body, rps, requestId });
+             return new Promise((resolve) => {
+               setTimeout(() => {
+                 // Simulate different responses based on URL
+                 if (url.includes('status/404')) {
+                   resolve({ status: 404, statusText: 'Not Found', headers: {}, data: '{"error": "Not Found"}', time: 150 });
+                 } else if (url.includes('bearer') && (!headers || !headers.Authorization || !headers.Authorization.includes('Bearer'))) {
+                   resolve({ status: 401, statusText: 'Unauthorized', headers: {}, data: '{"error": "Unauthorized"}', time: 100 });
+                 } else {
+                   resolve({
+                     status: 200,
+                     statusText: 'OK',
+                     headers: { 'content-type': 'application/json' },
+                     data: JSON.stringify({
+                       method,
+                       url,
+                       headers,
+                       body: body ? JSON.parse(body) : null,
+                       timestamp: Date.now()
+                     }),
+                     time: Math.random() * 200 + 50
+                   });
+                 }
+               }, Math.random() * 100 + 50); // Random delay 50-150ms
+             });
+           },
 
           // Shell command execution
           runShell: (command) => {
@@ -268,14 +265,25 @@ runLoadTest: async function(params) {
             });
           },
 
-          selectDatafileDialog: (filters) => {
-            console.log('[MOCK API] selectDatafileDialog:', filters);
-            return Promise.resolve({
-              canceled: false,
-              filePaths: ['/mock/path/data.csv']
-            });
-          }
-        };
+selectDatafileDialog: (filters) => {
+             console.log('[MOCK API] selectDatafileDialog:', filters);
+             return Promise.resolve({
+               canceled: false,
+               filePaths: ['/mock/path/data.csv']
+             });
+           },
+ 
+           // Logging APIs
+           getLogLevel: () => {
+             console.log('[MOCK API] getLogLevel');
+             return Promise.resolve('info');
+           },
+ 
+           setLogLevel: (level) => {
+             console.log('[MOCK API] setLogLevel:', level);
+             return Promise.resolve();
+           }
+         };
 
         // Mock Electron dialog
         window.electron = {

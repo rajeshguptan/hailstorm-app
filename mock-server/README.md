@@ -1,8 +1,13 @@
-# Hailstorm Mock API Server
+# Hailstorm Mock Server
 
-A standalone Express-based mock API server for testing API client behavior outside the Electron app. It provides deterministic HTTP endpoints, upload handling, health checks, and optional rate-limit metadata.
+Standalone mock server for testing API client behavior. Run from `mock-server/`:
 
-This server is separate from `app/scripts/mock-server.js`, which is the local test server bundled with the Hailstorm app.
+```bash
+npm install
+npm start
+```
+
+The server listens on `http://127.0.0.1:4010` by default and includes endpoints for HTTP methods/status/delay/auth, GraphQL, JSON-RPC, OAuth, WebSocket, and rate limiting.
 
 ## Setup
 
@@ -18,83 +23,108 @@ Start the server:
 npm start
 ```
 
-The server listens on `http://localhost:3001` by default.
-
-## Available scripts
-
-```bash
-npm start   # Start the mock server
-npm dev     # Start the mock server in development mode
-npm test    # Run endpoint smoke tests
-```
-
-## Files
-
-| File | Purpose |
-| --- | --- |
-| `server.js` | Express server implementation |
-| `mock-collection.json` | Postman collection for exercising the mock API |
-| `openapi-spec.json` | OpenAPI 3.0 specification |
-| `test.js` | Smoke test script |
-| `README.md` | This documentation |
-
-## Rate limiting
-
-The server includes token-bucket rate limiting metadata for request scenarios.
-
-- Each request identifier maintains its own bucket.
-- Tokens refill at the configured RPS rate.
-- Burst capacity equals the configured RPS.
-- Responses include rate-limit headers when applicable.
-
-### Configure RPS
-
-```bash
-curl -X POST http://localhost:3001/rps/my-request \
-  -H "Content-Type: application/json" \
-  -d '{"rps": 10}'
-```
-
-### Inspect RPS settings
-
-```bash
-curl http://localhost:3001/rps
-```
-
-### Rate-limit response shape
-
-```json
-{
-  "error": "Rate limit exceeded",
-  "retryAfter": 1,
-  "currentRps": 5
-}
-```
-
-### Response headers
-
-Successful responses include:
-
-- `X-RateLimit-Limit`
-- `X-RateLimit-Remaining`
-- `X-RateLimit-Reset`
-
-## Testing
-
-Run the included smoke tests:
+Or run tests:
 
 ```bash
 npm test
 ```
 
-## API documentation
+## Available scripts
 
-The API is documented in `openapi-spec.json` using OpenAPI 3.0. Import this file into Swagger UI, Postman, Insomnia, or another OpenAPI-compatible tool.
+| Command | Description |
+| --- | --- |
+| `npm start` | Start the mock server |
+| `npm test` | Run smoke tests |
 
-## Data storage
+## Endpoints
 
-The server uses in-memory storage. Data is available only while the process is running and is reset on restart.
+### HTTP
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| GET/POST | `/http/*` | Generic HTTP echo endpoint |
+| GET/POST | `/http/auth/basic` | Basic auth (use `hailstorm:mock`) |
+| GET/POST | `/http/auth/bearer` | Bearer auth (use `Bearer hailstorm-token`) |
+| GET/POST | `/http/auth/apikey` | API key auth (use `x-api-key: hailstorm-api-key`) |
+| GET/POST | `/http/auth/ntlm` | NTLM challenge endpoint |
+| GET | `/http/auth/client-certificate` | Client certificate endpoint |
+| POST | `/http/form-data` | Form data handling |
+| POST | `/http/raw` | Raw body handling |
+| POST | `/http/binary` | Binary body handling |
+| GET | `/http/status/:code` | Returns specified status code |
+| GET | `/http/delay/:ms` | Delayed response |
+| GET | `/http/error` | Returns 500 error |
+
+### GraphQL
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| POST | `/graphql` | GraphQL query handler |
+| POST | `/graphql/errors` | Returns GraphQL errors |
+
+### JSON-RPC
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| POST | `/json-rpc` | JSON-RPC 2.0 handler (methods: echo, add, getUser, introspect, error) |
+
+### OAuth
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| POST | `/oauth/token` | OAuth token endpoint |
+| POST | `/oauth2/token` | OAuth2 token endpoint |
+
+### Users API
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| GET | `/users` | List all users |
+| POST | `/users` | Create user (requires `name` and `email`) |
+
+### File Upload
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| POST | `/upload` | File upload (multipart/form-data) |
+
+### Rate Limiting
+
+Configure per-request rate limiting:
+
+```bash
+curl -X POST http://127.0.0.1:4010/rps/my-request \
+  -H "Content-Type: application/json" \
+  -d '{"rps": 10}'
+```
+
+Check rate limit status:
+
+```bash
+curl http://127.0.0.1:4010/rps
+```
+
+Send rate-limited requests:
+
+```bash
+curl -H "X-Request-ID: my-request" \
+     -H "X-RPS: 5" \
+     http://127.0.0.1:4010/users
+```
+
+### WebSocket
+
+| Endpoint | Description |
+| --- | --- |
+| `ws://127.0.0.1:4010/ws` | Echo server - echoes back received messages |
+| `ws://127.0.0.1:4010/ws/chat` | Chat server - broadcasts messages to all clients |
+
+### Health Check
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| GET | `/health` | Server health status |
 
 ## Usage with Hailstorm
 
-Use this server when you want to test Hailstorm against a stable local backend without relying on external services. Replace remote endpoint URLs with `http://localhost:3001` for local API client tests.
+Use the mock endpoints when testing Hailstorm against a stable local backend. The mock server is also run automatically for integration tests via `npm run mock-server` from the `app/` directory.

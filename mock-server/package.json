@@ -6,7 +6,6 @@
   "scripts": {
     "start": "node start.js",
     "dev": "node start.js",
-    "websocket": "node websocket-server.js",
     "test": "node test.js"
   },
   "dependencies": {

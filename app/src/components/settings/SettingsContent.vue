@@ -324,32 +324,67 @@
               <li>• The encryption key is required to access secrets</li>
               <li>• If you forget the key, secrets cannot be recovered</li>
               <li>• Store your encryption key securely</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <div v-else-if="activeSection === 'developer-tools'" class="max-w-xl">
-        <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Developer Tools</h3>
-        <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">Enable Electron DevTools for debugging the renderer process.</p>
-
-        <div class="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
-          <div>
-            <div class="font-medium text-zinc-900 dark:text-white">Enable DevTools</div>
-            <div class="text-sm text-zinc-500 dark:text-zinc-400">Open the browser developer tools panel. Disabled by default.</div>
-          </div>
-          <button 
-            class="w-12 h-6 rounded-full transition-colors"
-            :class="devToolsEnabled ? 'bg-blue-500' : 'bg-zinc-300 dark:bg-zinc-600'"
-            @click="toggleDevTools"
-          >
-            <div 
-              class="w-5 h-5 bg-white rounded-full shadow transform transition-transform"
-              :class="devToolsEnabled ? 'translate-x-6' : 'translate-x-0.5'"
-            ></div>
-          </button>
-        </div>
-      </div>
+</ul>
+           </div>
+         </div>
+       </div>
+ 
+       <div v-else-if="activeSection === 'developer-tools'" class="max-w-xl">
+         <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Developer Tools</h3>
+         <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">Enable Electron DevTools for debugging the renderer process.</p>
+ 
+         <div class="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
+           <div>
+             <div class="font-medium text-zinc-900 dark:text-white">Enable DevTools</div>
+             <div class="text-sm text-zinc-500 dark:text-zinc-400">Open the browser developer tools panel. Disabled by default.</div>
+           </div>
+           <button 
+             class="w-12 h-6 rounded-full transition-colors"
+             :class="devToolsEnabled ? 'bg-blue-500' : 'bg-zinc-300 dark:bg-zinc-600'"
+             @click="toggleDevTools"
+           >
+             <div 
+               class="w-5 h-5 bg-white rounded-full shadow transform transition-transform"
+               :class="devToolsEnabled ? 'translate-x-6' : 'translate-x-0.5'"
+             ></div>
+           </button>
+         </div>
+       </div>
+       
+       <div v-else-if="activeSection === 'logging'" class="max-w-xl">
+         <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Logging</h3>
+         <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">Configure application logging level</p>
+         
+         <div class="space-y-6">
+           <div>
+             <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Log Level</label>
+             <select 
+               v-model="logLevel"
+               @change="updateLogLevel(logLevel)"
+               class="w-full px-3 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white"
+             >
+               <option value="error">Error</option>
+               <option value="warn">Warn</option>
+               <option value="info">Info</option>
+               <option value="verbose">Verbose</option>
+               <option value="debug">Debug</option>
+               <option value="silly">Silly</option>
+             </select>
+           </div>
+           
+           <div class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+             <h4 class="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Log Level Descriptions</h4>
+             <ul class="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+               <li>• <strong>Error</strong>: Only error messages</li>
+               <li>• <strong>Warn</strong>: Warnings and errors</li>
+               <li>• <strong>Info</strong>: General information, warnings, and errors</li>
+               <li>• <strong>Verbose</strong>: Detailed operational information</li>
+               <li>• <strong>Debug</strong>: Debug information for troubleshooting</li>
+               <li>• <strong>Silly</strong>: All log messages including debug details</li>
+             </ul>
+           </div>
+         </div>
+       </div>
       
       <div v-else-if="activeSection === 'shortcuts'" class="max-w-xl">
         <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Keyboard Shortcuts</h3>
@@ -493,10 +528,11 @@ const appItems = [
 ];
 
 const advancedItems = [
-  { id: 'secrets', label: 'Secrets' },
-  { id: 'developer-tools', label: 'Developer Tools' },
-  { id: 'shortcuts', label: 'Shortcuts' },
-  { id: 'about', label: 'About' },
+   { id: 'secrets', label: 'Secrets' },
+   { id: 'developer-tools', label: 'Developer Tools' },
+   { id: 'logging', label: 'Logging' },
+   { id: 'shortcuts', label: 'Shortcuts' },
+   { id: 'about', label: 'About' },
 ];
 
 const { theme, setTheme } = useTheme();
@@ -519,16 +555,39 @@ const proxy = ref({ url: '', username: '', password: '' });
 const variables = ref([{ key: '', value: '' }]);
 
 const shortcuts = [
-  { action: 'Send Request', keys: 'Ctrl + Enter' },
-  { action: 'New Tab', keys: 'Ctrl + T' },
-  { action: 'Close Tab', keys: 'Ctrl + W' },
-  { action: 'Save Request', keys: 'Ctrl + S' },
-  { action: 'Toggle Sidebar', keys: 'Ctrl + B' },
-  { action: 'Search', keys: 'Ctrl + F' },
-];
-
-const DEVTOOLS_STORAGE_KEY = 'hailstorm:devToolsEnabled';
-const devToolsEnabled = ref(false);
+    { action: 'Send Request', keys: 'Ctrl + Enter' },
+    { action: 'New Tab', keys: 'Ctrl + T' },
+    { action: 'Close Tab', keys: 'Ctrl + W' },
+    { action: 'Save Request', keys: 'Ctrl + S' },
+    { action: 'Toggle Sidebar', keys: 'Ctrl + B' },
+    { action: 'Search', keys: 'Ctrl + F' },
+  ];
+ 
+  const LOG_LEVEL_STORAGE_KEY = 'hailstorm:logLevel';
+  const logLevel = ref<import('../../types').LogLevel>('info');
+ 
+  async function loadLogLevel() {
+    const stored = localStorage.getItem(LOG_LEVEL_STORAGE_KEY);
+    if (stored) {
+      logLevel.value = stored;
+      await window.api.setLogLevel(logLevel.value);
+      return;
+    }
+    logLevel.value = await window.api.getLogLevel();
+    localStorage.setItem(LOG_LEVEL_STORAGE_KEY, logLevel.value);
+  }
+ 
+  watch(logLevel, async (level) => {
+    localStorage.setItem(LOG_LEVEL_STORAGE_KEY, level);
+    await window.api.setLogLevel(level);
+  });
+ 
+  function updateLogLevel(level: string) {
+    logLevel.value = level;
+  }
+ 
+  const DEVTOOLS_STORAGE_KEY = 'hailstorm:devToolsEnabled';
+  const devToolsEnabled = ref(false);
 
 async function loadDevToolsSetting() {
   const stored = localStorage.getItem(DEVTOOLS_STORAGE_KEY);
@@ -548,8 +607,9 @@ watch(devToolsEnabled, async (enabled) => {
 });
 
 onMounted(() => {
-  loadDevToolsSetting();
-});
+   loadDevToolsSetting();
+   loadLogLevel();
+ });
 
 function toggleDevTools() {
   devToolsEnabled.value = !devToolsEnabled.value;

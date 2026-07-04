@@ -45,41 +45,65 @@
     </div>
 
     <div class="stats-content flex-1 overflow-auto">
-      <!-- Stats Overview -->
+      <!-- Stats Overview Table -->
       <div v-if="currentStats" class="px-6 py-4">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div class="stat-card bg-zinc-100 dark:bg-zinc-800 p-4 rounded">
-            <div class="text-xs text-zinc-500">Total Requests</div>
-            <div class="text-xl font-bold text-zinc-900 dark:text-white">{{ currentStats?.totalRequests?.toLocaleString() || 0 }}</div>
-          </div>
-          <div class="stat-card bg-zinc-100 dark:bg-zinc-800 p-4 rounded">
-            <div class="text-xs text-zinc-500">Successful</div>
-            <div class="text-xl font-bold text-green-600 dark:text-green-400">{{ currentStats?.successfulRequests?.toLocaleString() || 0 }}</div>
-          </div>
-          <div class="stat-card bg-zinc-100 dark:bg-zinc-800 p-4 rounded">
-            <div class="text-xs text-zinc-500">Failed</div>
-            <div class="text-xl font-bold text-red-600 dark:text-red-400">{{ currentStats?.failedRequests?.toLocaleString() || 0 }}</div>
-          </div>
-          <div class="stat-card bg-zinc-100 dark:bg-zinc-800 p-4 rounded">
-            <div class="text-xs text-zinc-500">Total Requests</div>
-            <div class="text-xl font-bold text-zinc-900 dark:text-white">{{ currentStats?.totalRequests?.toLocaleString() || 0 }}</div>
-          </div>
-          <div class="stat-card bg-zinc-100 dark:bg-zinc-800 p-4 rounded">
-            <div class="text-xs text-zinc-500">Successful</div>
-            <div class="text-xl font-bold text-green-600 dark:text-green-400">{{ currentStats?.successfulRequests?.toLocaleString() || 0 }}</div>
-          </div>
-          <div class="stat-card bg-zinc-100 dark:bg-zinc-800 p-4 rounded">
-            <div class="text-xs text-zinc-500">Failed</div>
-            <div class="text-xl font-bold text-red-600 dark:text-red-400">{{ currentStats?.failedRequests?.toLocaleString() || 0 }}</div>
-          </div>
-          <div class="stat-card bg-zinc-100 dark:bg-zinc-800 p-4 rounded">
-            <div class="text-xs text-zinc-500">Error Rate</div>
-            <div class="text-xl font-bold text-zinc-900 dark:text-white">{{ currentStats?.errorRate?.toFixed(2) || '0.00' }}%</div>
-          </div>
-          <div class="stat-card bg-zinc-100 dark:bg-zinc-800 p-4 rounded">
-            <div class="text-xs text-zinc-500">Duration</div>
-            <div class="text-xl font-bold text-zinc-900 dark:text-white">{{ formatDuration(currentStats?.duration || 0) }}</div>
-          </div>
+        <h3 class="text-lg font-bold mb-4 text-zinc-900 dark:text-white">Overall Summary</h3>
+        <div class="overflow-x-auto mb-8">
+          <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+            <thead class="bg-zinc-50 dark:bg-zinc-800">
+              <tr>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Requests</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Success</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Failures</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Median (p50)</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p75</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p90</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p99</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white dark:bg-zinc-900 divide-y divide-zinc-200 dark:divide-zinc-700">
+              <tr>
+                <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-zinc-900 dark:text-white">{{ currentStats.totalRequests.toLocaleString() }}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-green-600 dark:text-green-400">{{ currentStats.successfulRequests.toLocaleString() }}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-red-600 dark:text-red-400">{{ currentStats.failedRequests.toLocaleString() }}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">{{ formatPercentile(overallPercentiles.p50) }}ms</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">{{ formatPercentile(overallPercentiles.p75) }}ms</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">{{ formatPercentile(overallPercentiles.p90) }}ms</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">{{ formatPercentile(overallPercentiles.p99) }}ms</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Per-Request Stats Table -->
+        <h3 v-if="statsByRequest.length > 0 || liveStatsByRequestTable.length > 0" class="text-lg font-bold mb-4 text-zinc-900 dark:text-white">By Request</h3>
+        <div v-if="statsByRequest.length > 0 || liveStatsByRequestTable.length > 0" class="overflow-x-auto mb-8">
+          <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+            <thead class="bg-zinc-50 dark:bg-zinc-800">
+              <tr>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Request</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Requests</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Success</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Failures</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Median (p50)</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p75</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p90</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p99</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white dark:bg-zinc-900 divide-y divide-zinc-200 dark:divide-zinc-700">
+              <tr v-for="stat in statsByRequest.length > 0 ? statsByRequest : liveStatsByRequestTable" :key="stat.requestName">
+                <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-zinc-900 dark:text-white">{{ stat.requestName }}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">{{ stat.totalRequests.toLocaleString() }}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-green-600 dark:text-green-400">{{ stat.successfulRequests.toLocaleString() }}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-red-600 dark:text-red-400">{{ stat.failedRequests.toLocaleString() }}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">{{ formatPercentile(stat.p50ResponseTime) }}ms</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">{{ formatPercentile(stat.p75ResponseTime) }}ms</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">{{ formatPercentile(stat.p90ResponseTime) }}ms</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">{{ formatPercentile(stat.p99ResponseTime) }}ms</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
         <!-- Charts -->
@@ -162,26 +186,62 @@
 
       <!-- Live Stats for Current Run -->
       <div v-else-if="loadTestStore?.currentRun" class="px-6 py-4">
-        <div class="text-center text-zinc-500">
-          <p class="text-lg mb-2">Load test in progress...</p>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
-            <div class="stat-card bg-zinc-100 dark:bg-zinc-800 p-4 rounded">
-              <div class="text-xs text-zinc-500">Total Requests</div>
-              <div class="text-xl font-bold text-zinc-900 dark:text-white">{{ loadTestStore.liveStats.totalRequests.toLocaleString() }}</div>
-            </div>
-            <div class="stat-card bg-zinc-100 dark:bg-zinc-800 p-4 rounded">
-              <div class="text-xs text-zinc-500">Successful</div>
-              <div class="text-xl font-bold text-green-600 dark:text-green-400">{{ loadTestStore.liveStats.successfulRequests.toLocaleString() }}</div>
-            </div>
-            <div class="stat-card bg-zinc-100 dark:bg-zinc-800 p-4 rounded">
-              <div class="text-xs text-zinc-500">Failed</div>
-              <div class="text-xl font-bold text-red-600 dark:text-red-400">{{ loadTestStore.liveStats.failedRequests.toLocaleString() }}</div>
-            </div>
-            <div class="stat-card bg-zinc-100 dark:bg-zinc-800 p-4 rounded">
-              <div class="text-xs text-zinc-500">Requests/sec</div>
-              <div class="text-xl font-bold text-zinc-900 dark:text-white">{{ loadTestStore.liveStats.requestsPerSecond.toFixed(1) }}</div>
-            </div>
-          </div>
+        <h3 class="text-lg font-bold mb-4 text-zinc-900 dark:text-white">Overall Summary (Live)</h3>
+        <div class="overflow-x-auto mb-8">
+          <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+            <thead class="bg-zinc-50 dark:bg-zinc-800">
+              <tr>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Requests</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Success</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Failures</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Median (p50)</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p75</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p90</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p99</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white dark:bg-zinc-900 divide-y divide-zinc-200 dark:divide-zinc-700">
+              <tr>
+                <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-zinc-900 dark:text-white">{{ loadTestStore.liveStats.totalRequests.toLocaleString() }}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-green-600 dark:text-green-400">{{ loadTestStore.liveStats.successfulRequests.toLocaleString() }}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-red-600 dark:text-red-400">{{ loadTestStore.liveStats.failedRequests.toLocaleString() }}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">{{ formatPercentile(overallPercentiles.p50) }}ms</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">{{ formatPercentile(overallPercentiles.p75) }}ms</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">{{ formatPercentile(overallPercentiles.p90) }}ms</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">{{ formatPercentile(overallPercentiles.p99) }}ms</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 v-if="liveStatsByRequestTable.length > 0" class="text-lg font-bold mb-4 text-zinc-900 dark:text-white">By Request (Live)</h3>
+        <div v-if="liveStatsByRequestTable.length > 0" class="overflow-x-auto mb-8">
+          <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+            <thead class="bg-zinc-50 dark:bg-zinc-800">
+              <tr>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Request</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Requests</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Success</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Failures</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Median (p50)</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p75</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p90</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p99</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white dark:bg-zinc-900 divide-y divide-zinc-200 dark:divide-zinc-700">
+              <tr v-for="stat in liveStatsByRequestTable" :key="stat.requestName">
+                <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-zinc-900 dark:text-white">{{ stat.requestName }}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">{{ stat.totalRequests.toLocaleString() }}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-green-600 dark:text-green-400">{{ stat.successfulRequests.toLocaleString() }}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-red-600 dark:text-red-400">{{ stat.failedRequests.toLocaleString() }}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">{{ formatPercentile(stat.p50ResponseTime) }}ms</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">{{ formatPercentile(stat.p75ResponseTime) }}ms</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">{{ formatPercentile(stat.p90ResponseTime) }}ms</td>
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-300">{{ formatPercentile(stat.p99ResponseTime) }}ms</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -197,7 +257,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import { useLoadTestStore } from '../../stores/loadTest';
-import type { LoadTestStats, LoadTestTimeSeriesPoint, LoadTestTimeSeriesByRequestPoint, LoadTestTimeSeriesByStatusPoint, LoadTestRun } from '../../types';
+import type { LoadTestStats, LoadTestStatsByRequest, LoadTestTimeSeriesPoint, LoadTestTimeSeriesByRequestPoint, LoadTestTimeSeriesByStatusPoint, LoadTestRun } from '../../types';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -212,7 +272,6 @@ import {
 } from 'chart.js';
 import { Line, Bar } from 'vue-chartjs';
 
-// Register Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -228,8 +287,8 @@ ChartJS.register(
 const loadTestStore = useLoadTestStore();
 const selectedRunId = ref('');
 const currentStats = ref<LoadTestStats | null>(null);
+const statsByRequest = ref<LoadTestStatsByRequest[]>([]);
 
-// Percentile selection for response time charts
 const selectedPercentile = ref('p50');
 const percentiles = [
   { value: 'mean', label: 'Mean' },
@@ -239,13 +298,63 @@ const percentiles = [
   { value: 'p99', label: '99th' }
 ];
 
-// Get completed runs
 const completedRuns = ref<LoadTestRun[]>([]);
-
-
-
-// Make sure store is reactive to changes
 const currentRun = computed(() => loadTestStore.currentRun);
+
+const liveStatsByRequestTable = computed(() => {
+  const result: LoadTestStatsByRequest[] = [];
+  const rollingWindow = loadTestStore.rollingWindowByRequest;
+  
+  for (const [requestName, points] of Object.entries(rollingWindow)) {
+    const totalRequests = points.reduce((sum, p) => sum + p.requests, 0);
+    const errors = points.reduce((sum, p) => sum + p.errors, 0);
+    const latencies: number[] = [];
+    
+    for (const point of points) {
+      for (let i = 0; i < point.requests; i++) {
+        latencies.push(point.avgResponseTime);
+      }
+    }
+    
+    const percentiles = loadTestStore.calculatePercentiles(latencies);
+    
+    result.push({
+      requestName,
+      totalRequests,
+      successfulRequests: totalRequests - errors,
+      failedRequests: errors,
+      p50ResponseTime: percentiles.p50,
+      p75ResponseTime: percentiles.p75,
+      p90ResponseTime: percentiles.p90,
+      p95ResponseTime: percentiles.p95,
+      p99ResponseTime: percentiles.p99
+    });
+  }
+  
+  return result.sort((a, b) => a.requestName.localeCompare(b.requestName));
+});
+
+const overallPercentiles = computed(() => {
+  if (!currentStats.value || currentStats.value.p50ResponseTime === 0) {
+    const rollingWindow = loadTestStore.rollingWindow;
+    if (rollingWindow.length > 0) {
+      const allResponseTimes: number[] = [];
+      rollingWindow.forEach(p => {
+        for (let i = 0; i < p.requests; i++) {
+          allResponseTimes.push(p.avgResponseTime);
+        }
+      });
+      return loadTestStore.calculatePercentiles(allResponseTimes);
+    }
+  }
+  return {
+    p50: currentStats.value?.p50ResponseTime || 0,
+    p75: currentStats.value?.p75ResponseTime || 0,
+    p90: currentStats.value?.p90ResponseTime || 0,
+    p95: currentStats.value?.p95ResponseTime || 0,
+    p99: currentStats.value?.p99ResponseTime || 0
+  };
+});
 
 type ChartPoint = { x: number; y: number };
 type ChartDataset = { label: string; data: ChartPoint[]; [key: string]: any };
@@ -265,41 +374,42 @@ function getElapsedSeconds(timestamp: number): number {
   return Math.max(0, (timestamp - start) / 1000);
 }
 
-// Function to update current stats
 async function updateCurrentStats() {
-  try {
-    if (selectedRunId.value) {
-      currentStats.value = await loadTestStore.getRunStats(selectedRunId.value);
-    } else if (currentRun.value) {
-      // Return live stats for current run
-      const liveStats = loadTestStore.liveStats;
-      const elapsedMs = Date.now() - liveStats.startTime;
-      const durationMs = currentRun.value.duration ? Math.min(elapsedMs, currentRun.value.duration * 1000) : elapsedMs;
-      currentStats.value = {
-        runId: currentRun.value.id,
-        totalRequests: liveStats.totalRequests,
-        successfulRequests: liveStats.successfulRequests,
-        failedRequests: liveStats.failedRequests,
-        errorRate: liveStats.totalRequests > 0 ? (liveStats.failedRequests / liveStats.totalRequests) * 100 : 0,
-        avgResponseTime: liveStats.avgResponseTime,
-        minResponseTime: 0,
-        maxResponseTime: 0,
-        p50ResponseTime: 0,
-        p95ResponseTime: 0,
-        p99ResponseTime: 0,
-        requestsPerSecond: liveStats.requestsPerSecond,
-        startTime: liveStats.startTime,
-        endTime: currentRun.value.duration ? liveStats.startTime + durationMs : Date.now(),
-        duration: durationMs
-      };
-    } else {
-      currentStats.value = null;
-    }
-  } catch (error) {
-    console.error('Failed to update current stats:', error);
-    currentStats.value = null;
-  }
-}
+   try {
+     if (selectedRunId.value) {
+       currentStats.value = await loadTestStore.getRunStats(selectedRunId.value);
+       statsByRequest.value = await loadTestStore.getRunStatsByRequest(selectedRunId.value);
+     } else if (currentRun.value) {
+       const liveStats = loadTestStore.liveStats;
+       const elapsedMs = Date.now() - liveStats.startTime;
+       const durationMs = currentRun.value.duration ? Math.min(elapsedMs, currentRun.value.duration * 1000) : elapsedMs;
+       currentStats.value = {
+         runId: currentRun.value.id,
+         totalRequests: liveStats.totalRequests,
+         successfulRequests: liveStats.successfulRequests,
+         failedRequests: liveStats.failedRequests,
+         errorRate: liveStats.totalRequests > 0 ? (liveStats.failedRequests / liveStats.totalRequests) * 100 : 0,
+         avgResponseTime: liveStats.avgResponseTime,
+         minResponseTime: 0,
+         maxResponseTime: 0,
+         p50ResponseTime: 0,
+         p75ResponseTime: 0,
+         p90ResponseTime: 0,
+         p95ResponseTime: 0,
+         p99ResponseTime: 0,
+         requestsPerSecond: liveStats.requestsPerSecond,
+         startTime: liveStats.startTime,
+         endTime: currentRun.value.duration ? liveStats.startTime + durationMs : Date.now(),
+         duration: durationMs
+       };
+     } else {
+       currentStats.value = null;
+     }
+   } catch (error) {
+     console.error('Failed to update current stats:', error);
+     currentStats.value = null;
+   }
+ }
 
 // Time series data for charts
 const timeSeriesData = ref<LoadTestTimeSeriesPoint[]>([]);
@@ -1029,7 +1139,14 @@ onMounted(async () => {
   }
 });
 
-function formatDuration(ms: number): string {
+function formatPercentile(ms: number): string {
+   if (ms === 0) return '0';
+   if (ms < 10) return ms.toFixed(1);
+   if (ms < 100) return Math.round(ms).toString();
+   return Math.round(ms).toLocaleString();
+ }
+
+ function formatDuration(ms: number): string {
   const seconds = Math.floor(ms / 1000);
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
