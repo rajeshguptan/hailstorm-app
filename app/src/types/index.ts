@@ -102,6 +102,7 @@ export interface Request {
    grpcProtoPath?: string;
    grpcService?: string;
    grpcMethod?: string;
+   isPrivate?: boolean;
    }
 
 export interface Folder {

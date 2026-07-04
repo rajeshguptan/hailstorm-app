@@ -146,7 +146,8 @@ export const useCollectionsStore = defineStore('collections', {
         method: 'GET',
         url: '',
         headers: [],
-        body: { type: 'none', content: '' }
+        body: { type: 'none', content: '' },
+        isPrivate: true
       };
 
       if (targetType === 'collection') {
@@ -187,7 +188,8 @@ export const useCollectionsStore = defineStore('collections', {
         method: 'GET',
         url: '',
         headers: [{ key: 'Content-Type', value: 'application/json', enabled: true }],
-        body: { type: 'none', content: '' }
+        body: { type: 'none', content: '' },
+        isPrivate: true
       };
 
       if (targetType === 'collection') {
@@ -231,7 +233,8 @@ addGraphqlRequest(targetId: string, targetType: 'collection' | 'folder' = 'colle
            { key: 'Content-Type', value: 'application/json', enabled: true }
          ],
          body: { type: 'graphql', content: '{ "query": "", "variables": {} }' },
-         isWebSocket: false
+         isWebSocket: false,
+         isPrivate: true
        };
 
       if (targetType === 'collection') {
@@ -279,7 +282,8 @@ addJsonRpcRequest(targetId: string, targetType: 'collection' | 'folder' = 'colle
            content: '{\n  "jsonrpc": "2.0",\n  "method": "example_method",\n  "params": {},\n  "id": 1\n}'
          },
          isJsonRpc: true,
-         isWebSocket: false
+         isWebSocket: false,
+         isPrivate: true
        };
 
       if (targetType === 'collection') {
@@ -315,7 +319,7 @@ const requestsStore = useRequestsStore();
 requestsStore.selectRequest(request.id);
      },
 
- addWebsocketRequest(targetId: string, targetType: 'collection' | 'folder' = 'collection') {
+addWebsocketRequest(targetId: string, targetType: 'collection' | 'folder' = 'collection') {
        const request: Request = {
          id: this.generateId('req'),
          name: 'New WebSocket Request',
@@ -323,7 +327,8 @@ requestsStore.selectRequest(request.id);
          url: '',
          headers: [],
          body: { type: 'none', content: '' },
-         isWebSocket: true
+         isWebSocket: true,
+         isPrivate: true
        };
 
        if (targetType === 'collection') {
@@ -357,19 +362,20 @@ requestsStore.selectRequest(request.id);
        this.saveCollections();
      },
 
-     addShellCommand(targetId: string, targetType: 'collection' | 'folder' = 'collection') {
-       const request: Request = {
-         id: this.generateId('req'),
-         name: 'New Shell Command',
-         method: 'SHELL',
-         url: '',
-         headers: [],
-         body: { type: 'raw', content: '' },
-         isWebSocket: false,
-         preRequestScript: '',
-         postRequestScript: '',
-         testScript: ''
-       };
+addShellCommand(targetId: string, targetType: 'collection' | 'folder' = 'collection') {
+        const request: Request = {
+          id: this.generateId('req'),
+          name: 'New Shell Command',
+          method: 'SHELL',
+          url: '',
+          headers: [],
+          body: { type: 'raw', content: '' },
+          isWebSocket: false,
+          preRequestScript: '',
+          postRequestScript: '',
+          testScript: '',
+          isPrivate: true
+        };
 
        if (targetType === 'collection') {
          const collection = this.collections.find(c => c.id === targetId);
@@ -414,7 +420,8 @@ this.saveCollections();
           url: '',
           headers: [],
           body: { type: 'grpc', content: '' },
-          isGrpc: true
+          isGrpc: true,
+          isPrivate: true
         };
 
         if (targetType === 'collection') {

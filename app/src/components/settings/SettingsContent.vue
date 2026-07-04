@@ -71,115 +71,6 @@
         </div>
       </div>
       
-      <div v-else-if="activeSection === 'font'" class="max-w-xl">
-        <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Font Size</h3>
-        <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">Adjust the font size for better readability</p>
-        
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-              UI Font Size: {{ fontSize.ui }}px
-            </label>
-            <input type="range" min="12" max="18" v-model="fontSize.ui" class="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-              Code Font Size: {{ fontSize.code }}px
-            </label>
-            <input type="range" min="10" max="20" v-model="fontSize.code" class="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-              Editor Font Size: {{ fontSize.editor }}px
-            </label>
-            <input type="range" min="10" max="24" v-model="fontSize.editor" class="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer">
-          </div>
-        </div>
-      </div>
-      
-      <div v-else-if="activeSection === 'layout'" class="max-w-xl">
-        <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Layout</h3>
-        <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">Customize the application layout</p>
-        
-        <div class="space-y-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <div class="font-medium text-zinc-900 dark:text-white">Show Sidebar</div>
-              <div class="text-sm text-zinc-500 dark:text-zinc-400">Display the left sidebar panel</div>
-            </div>
-            <button 
-              class="w-12 h-6 rounded-full transition-colors"
-              :class="layout.showSidebar ? 'bg-blue-500' : 'bg-zinc-300 dark:bg-zinc-600'"
-              @click="layout.showSidebar = !layout.showSidebar"
-            >
-              <div 
-                class="w-5 h-5 bg-white rounded-full shadow transform transition-transform"
-                :class="layout.showSidebar ? 'translate-x-6' : 'translate-x-0.5'"
-              ></div>
-            </button>
-          </div>
-          
-          <div class="flex items-center justify-between">
-            <div>
-              <div class="font-medium text-zinc-900 dark:text-white">Compact Mode</div>
-              <div class="text-sm text-zinc-500 dark:text-zinc-400">Reduce spacing for more content</div>
-            </div>
-            <button 
-              class="w-12 h-6 rounded-full transition-colors"
-              :class="layout.compactMode ? 'bg-blue-500' : 'bg-zinc-300 dark:bg-zinc-600'"
-              @click="layout.compactMode = !layout.compactMode"
-            >
-              <div 
-                class="w-5 h-5 bg-white rounded-full shadow transform transition-transform"
-                :class="layout.compactMode ? 'translate-x-6' : 'translate-x-0.5'"
-              ></div>
-            </button>
-          </div>
-          
-          <div class="flex items-center justify-between">
-            <div>
-              <div class="font-medium text-zinc-900 dark:text-white">Auto_save Requests</div>
-              <div class="text-sm text-zinc-500 dark:text-zinc-400">Automatically save request changes</div>
-            </div>
-            <button 
-              class="w-12 h-6 rounded-full transition-colors"
-              :class="layout.autoSave ? 'bg-blue-500' : 'bg-zinc-300 dark:bg-zinc-600'"
-              @click="layout.autoSave = !layout.autoSave"
-            >
-              <div 
-                class="w-5 h-5 bg-white rounded-full shadow transform transition-transform"
-                :class="layout.autoSave ? 'translate-x-6' : 'translate-x-0.5'"
-              ></div>
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      <div v-else-if="activeSection === 'recent-requests'" class="max-w-xl">
-        <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Recent Requests</h3>
-        <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">Configure recent requests display</p>
-        
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-              Max Recent Requests: {{ uiStore.recentRequestCount }}
-            </label>
-            <input 
-              type="range" 
-              min="1" 
-              max="20" 
-              v-model.number="uiStore.recentRequestCount" 
-              @input="uiStore.setRecentRequestCount(uiStore.recentRequestCount)"
-              class="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer"
-            >
-            <div class="flex justify-between text-xs text-zinc-400 mt-1">
-              <span>1</span>
-              <span>20</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      
       <div v-else-if="activeSection === 'network'" class="max-w-xl">
         <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Network</h3>
         <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">Configure network settings</p>
@@ -204,11 +95,11 @@
             >
           </div>
           <div class="flex items-center gap-3">
-            <input type="checkbox" v-model="network.followRedirects" id="followRedirects" class="w-4 h-4 rounded">
+            <input type="checkbox" v-model="network.followRedirects" id="followRedirects" class="w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800">
             <label for="followRedirects" class="text-sm text-zinc-700 dark:text-zinc-300">Follow HTTP redirects</label>
           </div>
           <div class="flex items-center gap-3">
-            <input type="checkbox" v-model="network.sslVerification" id="sslVerification" class="w-4 h-4 rounded">
+            <input type="checkbox" v-model="network.sslVerification" id="sslVerification" class="w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800">
             <label for="sslVerification" class="text-sm text-zinc-700 dark:text-zinc-300">Enable SSL certificate verification</label>
           </div>
         </div>
@@ -256,28 +147,6 @@
             >
           </div>
         </div>
-      </div>
-      
-      <div v-else-if="activeSection === 'variables'" class="max-w-xl">
-        <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Variables</h3>
-        <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">Configure global variables</p>
-        
-        <div class="space-y-3 mb-4">
-          <div v-for="(v, i) in variables" :key="i" class="flex gap-2">
-            <input 
-              v-model="v.key" 
-              placeholder="Key"
-              class="flex-1 px-3 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white text-sm"
-            >
-            <input 
-              v-model="v.value" 
-              placeholder="Value"
-              class="flex-1 px-3 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white text-sm"
-            >
-            <button @click="variables.splice(i, 1)" class="text-red-500 hover:text-red-600 p-2">×</button>
-          </div>
-        </div>
-        <button @click="variables.push({ key: '', value: '' })" class="text-blue-500 hover:text-blue-600 text-sm font-medium">+ Add Variable</button>
       </div>
       
       <div v-else-if="activeSection === 'secrets'" class="max-w-xl">
@@ -515,16 +384,12 @@ const activeSection = ref('theme');
 
 const uiItems = [
   { id: 'theme', label: 'Theme' },
-  { id: 'font', label: 'Font Size' },
-  { id: 'layout', label: 'Layout' },
-  { id: 'recent-requests', label: 'Recent Requests' },
 ];
 
 const appItems = [
   { id: 'network', label: 'Network' },
   { id: 'certificate', label: 'Certificates' },
   { id: 'proxy', label: 'Proxy' },
-  { id: 'variables', label: 'Variables' },
 ];
 
 const advancedItems = [
@@ -544,23 +409,25 @@ const themeOptions = [
   { value: 'system', label: 'System', description: 'Follow OS setting', icon: '💻' },
 ];
 
-const fontSize = ref({ ui: 14, code: 13, editor: 14 });
-
-const layout = ref({ showSidebar: true, compactMode: false, autoSave: true });
-
 const network = ref({ timeout: 30000, maxResponseSize: 50, followRedirects: true, sslVerification: true });
 
 const proxy = ref({ url: '', username: '', password: '' });
 
-const variables = ref([{ key: '', value: '' }]);
-
 const shortcuts = [
     { action: 'Send Request', keys: 'Ctrl + Enter' },
+    { action: 'New Request', keys: 'Ctrl + N' },
     { action: 'New Tab', keys: 'Ctrl + T' },
     { action: 'Close Tab', keys: 'Ctrl + W' },
     { action: 'Save Request', keys: 'Ctrl + S' },
     { action: 'Toggle Sidebar', keys: 'Ctrl + B' },
     { action: 'Search', keys: 'Ctrl + F' },
+    { action: 'Navigate Collections', keys: 'Ctrl + Shift + C' },
+    { action: 'Navigate History', keys: 'Ctrl + Shift + H' },
+    { action: 'Navigate Secrets', keys: 'Ctrl + Shift + S' },
+    { action: 'Navigate Runner', keys: 'Ctrl + Shift + R' },
+    { action: 'Navigate Stats', keys: 'Ctrl + Shift + A' },
+    { action: 'Navigate Console', keys: 'Ctrl + Shift + O' },
+    { action: 'Navigate Settings', keys: 'Ctrl + ,' },
   ];
  
   const LOG_LEVEL_STORAGE_KEY = 'hailstorm:logLevel';
@@ -577,16 +444,16 @@ const shortcuts = [
     localStorage.setItem(LOG_LEVEL_STORAGE_KEY, logLevel.value);
   }
  
-  watch(logLevel, async (level) => {
-    localStorage.setItem(LOG_LEVEL_STORAGE_KEY, level);
-    await window.api.setLogLevel(level);
-  });
+watch(logLevel, async (level) => {
+   localStorage.setItem(LOG_LEVEL_STORAGE_KEY, level);
+   await window.api.setLogLevel(level);
+ });
  
-  function updateLogLevel(level: string) {
-    logLevel.value = level;
-  }
+ function updateLogLevel(level: string) {
+   logLevel.value = level;
+ }
  
-  const DEVTOOLS_STORAGE_KEY = 'hailstorm:devToolsEnabled';
+ const DEVTOOLS_STORAGE_KEY = 'hailstorm:devToolsEnabled';
   const devToolsEnabled = ref(false);
 
 async function loadDevToolsSetting() {

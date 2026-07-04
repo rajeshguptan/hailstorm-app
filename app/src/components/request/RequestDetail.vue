@@ -68,7 +68,7 @@
               <tbody>
                 <tr v-for="(param, index) in urlParams" :key="index" class="border-b border-zinc-100 dark:border-zinc-800">
                   <td class="p-2">
-                    <input type="checkbox" v-model="param.enabled" class="rounded border-zinc-300 dark:border-zinc-600">
+                    <input type="checkbox" v-model="param.enabled" class="rounded border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800">
                   </td>
                   <td class="p-2">
                     <input v-model="param.key" placeholder="Key" class="w-full px-2 py-1 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm">
@@ -156,7 +156,7 @@
               <tbody>
                 <tr v-for="(header, index) in requestHeaders" :key="index" class="border-b border-zinc-100 dark:border-zinc-800">
                   <td class="p-2">
-                    <input type="checkbox" v-model="header.enabled" class="rounded border-zinc-300 dark:border-zinc-600">
+                    <input type="checkbox" v-model="header.enabled" class="rounded border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800">
                   </td>
                   <td class="p-2">
                     <input v-model="header.key" placeholder="Header Name" class="w-full px-2 py-1 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm">
@@ -221,7 +221,7 @@
               <tbody>
 <tr v-for="(variable, index) in requestVariables" :key="index" class="border-b border-zinc-100 dark:border-zinc-800">
                   <td class="p-2">
-                    <input type="checkbox" v-model="variable.enabled" class="rounded border-zinc-300 dark:border-zinc-600">
+                    <input type="checkbox" v-model="variable.enabled" class="rounded border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800">
                   </td>
                   <td class="p-2">
                     <input v-model="variable.key" placeholder="Key" class="w-full px-2 py-1 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm">

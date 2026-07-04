@@ -101,11 +101,11 @@
               <tbody>
                 <tr v-for="(variable, index) in editingCollection.variables" :key="index" class="border-b border-zinc-100 dark:border-zinc-800 last:border-b-0">
                   <td class="p-2">
-                    <input
-                      type="checkbox"
-                      v-model="variable.enabled"
-                      class="rounded border-zinc-300 dark:border-zinc-600"
-                    >
+<input
+                       type="checkbox"
+                       v-model="variable.enabled"
+                       class="rounded border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800"
+                     >
                   </td>
                   <td class="p-2">
                     <input

@@ -1,12 +1,16 @@
 <template>
   <div class="request-panel bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white p-3 border-b border-zinc-200 dark:border-zinc-700 flex flex-col h-full">
     <!-- First row: Request name and action buttons -->
-    <div class="flex gap-2 mb-2 items-center">
-      <input v-model="name" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-3 py-1 flex-1" placeholder="Request Name" />
-      <select v-model="dependsOn" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1" style="width: 150px;">
-        <option value="">No dependency</option>
-        <option v-for="req in validDependencyOptions" :key="req.id" :value="req.id">{{ req.name }}</option>
-      </select>
+<div class="flex gap-2 mb-2 items-center">
+       <input v-model="name" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-3 py-1 flex-1" placeholder="Request Name" />
+       <label class="flex items-center gap-1 text-sm text-zinc-700 dark:text-zinc-300">
+         <input v-model="isPrivate" type="checkbox" class="rounded border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800" />
+         Private
+       </label>
+       <select v-model="dependsOn" class="form-select bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1" style="width: 150px;">
+         <option value="">No dependency</option>
+         <option v-for="req in validDependencyOptions" :key="req.id" :value="req.id">{{ req.name }}</option>
+       </select>
       <button class="px-3 py-1.5 border border-zinc-500 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-sm" @click="copyToClipboard">
         📋 Copy
       </button>
@@ -249,7 +253,7 @@
           <span style="width: 30px;"></span>
         </div>
         <div v-for="(variable, index) in requestsStore.currentRequest.variables || []" :key="index" class="flex gap-2 mb-1">
-          <input type="checkbox" v-model="variable.enabled" class="rounded border-zinc-300 dark:border-zinc-600">
+          <input type="checkbox" v-model="variable.enabled" class="rounded border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800">
           <input v-model="variable.key" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="Key" />
           <input v-model="variable.value" type="text" class="form-input bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 flex-1" placeholder="Value" />
           <select
@@ -409,6 +413,11 @@ const url = computed({
 const name = computed({
   get: () => requestsStore.currentRequest.name,
   set: (val) => { requestsStore.currentRequest.name = val; }
+});
+
+const isPrivate = computed({
+  get: () => requestsStore.currentRequest.isPrivate ?? true,
+  set: (val) => { requestsStore.currentRequest.isPrivate = val; }
 });
 
 const dependsOn = computed({

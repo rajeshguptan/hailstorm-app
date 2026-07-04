@@ -128,7 +128,8 @@ resetCurrentRequest() {
          postRequestScript: '',
          testScript: '',
          variables: [],
-         description: ''
+         description: '',
+         isPrivate: true
        };
        this.urlParams = [];
        this.requestHeaders = [];
@@ -195,25 +196,26 @@ openRequest(item: Request | Folder) {
             this.switchTab(existingTab.id);
           } else {
             logger.debug('[REQUESTS] Creating new tab for request:', requestItem.name, 'URL:', requestItem.url);
-            const requestCopy = {
-                 id: requestItem.id || this.generateId('req'),
-                 name: requestItem.name || 'Untitled',
-                 method: requestItem.method || 'GET',
-                 url: requestItem.url || '',
-                 headers: requestItem.headers || [],
-                 body: requestItem.body || { type: 'none', content: '' },
-                 auth: normalizeRequestAuth(requestItem.auth),
-                 preRequestScript: requestItem.preRequestScript || '',
-                 postRequestScript: requestItem.postRequestScript || '',
-                 testScript: requestItem.testScript || '',
-                 flavors: requestItem.flavors || [],
-                  variables: requestItem.variables || [],
-                  dependsOn: requestItem.dependsOn || undefined,
-                  response: requestItem.response,
-                  description: requestItem.description || '',
-                  isJsonRpc: requestItem.isJsonRpc,
-                  isWebSocket: requestItem.isWebSocket
-                };
+const requestCopy = {
+               id: requestItem.id || this.generateId('req'),
+               name: requestItem.name || 'Untitled',
+               method: requestItem.method || 'GET',
+               url: requestItem.url || '',
+               headers: requestItem.headers || [],
+               body: requestItem.body || { type: 'none', content: '' },
+               auth: normalizeRequestAuth(requestItem.auth),
+               preRequestScript: requestItem.preRequestScript || '',
+               postRequestScript: requestItem.postRequestScript || '',
+               testScript: requestItem.testScript || '',
+               flavors: requestItem.flavors || [],
+               variables: requestItem.variables || [],
+               dependsOn: requestItem.dependsOn || undefined,
+               response: requestItem.response,
+               description: requestItem.description || '',
+               isJsonRpc: requestItem.isJsonRpc,
+               isWebSocket: requestItem.isWebSocket,
+               isPrivate: requestItem.isPrivate
+             };
             const tab: Tab = { id: this.generateId('tab'), request: requestCopy };
             this.tabs.push(tab);
             this.activeTabId = tab.id;
@@ -312,25 +314,26 @@ updateCurrentRequest() {
         this.selectedRequestId = id;
         const request = 'request' in item ? item.request : item;
         logger.debug('[REQUESTS] Using request data:', request);
-        this.currentRequest = {
-          id: request.id || '',
-          name: item.name || request.name || '',
-          method: request.method || 'GET',
-          url: request.url || '',
-          headers: request.headers || [],
-          body: request.body || { type: 'none', content: '' },
-          auth: normalizeRequestAuth(request.auth),
-          preRequestScript: request.preRequestScript || '',
-          postRequestScript: request.postRequestScript || '',
-          testScript: request.testScript || '',
-          flavors: request.flavors || [],
-          variables: request.variables || [],
-          dependsOn: request.dependsOn || undefined,
-          response: request.response,
-          description: request.description || '',
-          isJsonRpc: request.isJsonRpc,
-          isWebSocket: request.isWebSocket
-        };
+this.currentRequest = {
+           id: request.id || '',
+           name: item.name || request.name || '',
+           method: request.method || 'GET',
+           url: request.url || '',
+           headers: request.headers || [],
+           body: request.body || { type: 'none', content: '' },
+           auth: normalizeRequestAuth(request.auth),
+           preRequestScript: request.preRequestScript || '',
+           postRequestScript: request.postRequestScript || '',
+           testScript: request.testScript || '',
+           flavors: request.flavors || [],
+           variables: request.variables || [],
+           dependsOn: request.dependsOn || undefined,
+           response: request.response,
+           description: request.description || '',
+           isJsonRpc: request.isJsonRpc,
+           isWebSocket: request.isWebSocket,
+           isPrivate: request.isPrivate ?? true
+         };
         const responseStore = useResponseStore();
         responseStore.setResponse(request.response || null);
         this.requestHeaders = request.headers ? request.headers.map(h => ({ ...h, enabled: h.enabled !== false })) : [];

@@ -1,17 +1,20 @@
 <template>
   <div class="stats-panel h-full flex flex-col bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300">
     <div class="stats-header px-4 py-2 bg-zinc-100 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700">
-      <div class="flex items-center justify-between gap-3">
-        <select
-          v-model="selectedRunId"
-          class="form-select bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 min-w-[220px] flex-1"
-        >
-          <option value="">Current Run (Live)</option>
-          <option v-for="run in completedRuns" :key="run.id" :value="run.id">
-            {{ run.name }} ({{ new Date(run.startTime).toLocaleString() }})
-          </option>
-        </select>
-        <div class="flex gap-2">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="flex items-center gap-2 min-w-0 flex-1">
+          <label class="text-sm font-medium text-zinc-700 dark:text-zinc-300 whitespace-nowrap">Executions</label>
+          <select
+            v-model="selectedRunId"
+            class="form-select bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 min-w-[180px] flex-1"
+          >
+            <option value="">Current Run (Live)</option>
+            <option v-for="run in completedRuns" :key="run.id" :value="run.id">
+              {{ run.name }} ({{ new Date(run.startTime).toLocaleString() }})
+            </option>
+          </select>
+        </div>
+        <div class="flex flex-wrap gap-2">
           <button
             @click="printStats"
             class="px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
@@ -154,7 +157,7 @@
             <!-- Percentile Selector -->
             <div class="flex items-center gap-4 mb-4 pb-4 border-b border-zinc-200 dark:border-zinc-600">
               <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Percentile:</span>
-              <div class="flex gap-2">
+              <div class="flex flex-wrap gap-2">
                 <label v-for="percentile in percentiles" :key="percentile.value" class="flex items-center gap-1 cursor-pointer">
                   <input
                     type="radio"
