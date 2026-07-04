@@ -1,30 +1,30 @@
 <template>
-  <div class="request-tree w-full">
+  <div class="request-tree w-full" role="tree" aria-label="Collections">
     <div v-for="collection in collections" :key="collection.id" class="collection-node mb-2" :data-collection-id="collection.id" :data-testid="`collection-${collection.id}`">
-      <div class="collection-header flex items-center p-2 rounded bg-zinc-200 dark:bg-zinc-800 cursor-pointer hover:bg-zinc-300 dark:hover:bg-zinc-700" @click="toggleCollection(collection.id)" :data-collection-id="collection.id" @mouseenter="onCollectionMouseEnter(collection.id)" @mouseleave="onCollectionMouseLeave" @dragover.prevent @dragenter="onDragEnter" @dragleave="onDragLeave" @drop="onDrop($event, collection.id, 'collection')">
-        <span class="chevron mr-1 text-zinc-500">{{ expandedCollections.includes(collection.id) ? '▼' : '▶' }}</span>
+      <div class="collection-header flex items-center p-2 rounded bg-zinc-200 dark:bg-zinc-800 cursor-pointer hover:bg-zinc-300 dark:hover:bg-zinc-700" @click="toggleCollection(collection.id)" :data-collection-id="collection.id" @mouseenter="onCollectionMouseEnter(collection.id)" @mouseleave="onCollectionMouseLeave" @dragover.prevent @dragenter="onDragEnter" @dragleave="onDragLeave" @drop="onDrop($event, collection.id, 'collection')" role="treeitem" tabindex="0" :aria-expanded="expandedCollections.includes(collection.id)" @keydown.enter="toggleCollection(collection.id)" @keydown.space="toggleCollection(collection.id)">
+        <span class="chevron mr-1 text-zinc-500" aria-hidden="true">{{ expandedCollections.includes(collection.id) ? '▼' : '▶' }}</span>
         <span class="collection-name flex-1 text-zinc-900 dark:text-white font-medium">{{ collection.name }}</span>
-        <span class="ellipsis-menu text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300" @click.stop="showCollectionMenu(collection.id, $event)" :style="{ visibility: isCollectionHovered(collection.id) ? 'visible' : 'hidden' }">•••</span>
+        <span class="ellipsis-menu text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300" @click.stop="showCollectionMenu(collection.id, $event)" :style="{ visibility: isCollectionHovered(collection.id) ? 'visible' : 'hidden' }" role="button" tabindex="0" aria-label="Collection options" @keydown.enter="showCollectionMenu(collection.id, $event)" @keydown.space="showCollectionMenu(collection.id, $event)">•••</span>
       </div>
       
-<div v-if="expandedCollections.includes(collection.id)" class="collection-children ml-3 pl-2 border-l border-zinc-300 dark:border-zinc-600">
-         <div v-if="collection.items.length === 0" class="text-center text-zinc-400 dark:text-zinc-500 py-2 text-sm">
-           Drop requests here
-         </div>
-         <TreeNode
-           v-for="item in sortedCollectionItems(collection.items)"
-           :key="item.id"
-          :item="item"
-          :level="0"
-          :expanded-folders="expandedFolders"
-          :selected-request-id="selectedRequestId"
-          :collection-id="collection.id"
-          :parent-container-id="collection.id"
-          :parent-container-type="'collection'"
-          @toggle-folder="toggleFolder"
-          @select-request="selectRequest"
-          @move-item="handleMoveItem"
-        />
+      <div v-if="expandedCollections.includes(collection.id)" class="collection-children ml-3 pl-2 border-l border-zinc-300 dark:border-zinc-600" role="group">
+        <div v-if="collection.items.length === 0" class="text-center text-zinc-400 dark:text-zinc-500 py-2 text-sm">
+          Drop requests here
+        </div>
+        <TreeNode
+          v-for="item in sortedCollectionItems(collection.items)"
+          :key="item.id"
+         :item="item"
+         :level="0"
+         :expanded-folders="expandedFolders"
+         :selected-request-id="selectedRequestId"
+         :collection-id="collection.id"
+         :parent-container-id="collection.id"
+         :parent-container-type="'collection'"
+         @toggle-folder="toggleFolder"
+         @select-request="selectRequest"
+         @move-item="handleMoveItem"
+       />
       </div>
     </div>
   </div>

@@ -45,3 +45,32 @@ Useful commands:
 - Prefer small, targeted changes that preserve the existing Electron/Vue architecture.
 - Add or update tests when changing request execution, collection behavior, runner behavior, secrets, environments, or stats.
 - After every change, check if AGENTS.md needs updating.
+
+## Accessibility (ADA/WCAG Compliance)
+
+The application follows these accessibility standards:
+
+### Implemented Features
+- **Skip links**: Main layout includes a "Skip to main content" link for keyboard users
+- **ARIA landmarks**: Navigation, main content, and regions properly labeled
+- **Screen reader utilities**: `.sr-only` class for visually hidden content
+- **Focus management**: Visible focus indicators on all interactive elements
+- **Keyboard navigation**: Collection tree supports arrow keys and Enter/Space for interaction
+- **Modal dialogs**: Rename modal has proper `aria-modal` and focus management
+- **Context menus**: `role="menu"` with `menuitem` roles and keyboard support
+- **Tables**: Proper `scope="col"` attributes for stat and runner tables
+- **Tabs**: Request and Response panels have proper `role="tablist"` and `role="tab"` attributes
+- **Reduced motion**: Respects `prefers-reduced-motion` media query
+- **High contrast**: Supports `prefers-contrast: high` mode
+
+### Files Modified
+- `index.html`: Added `lang="en"` and viewport meta tag
+- `src/index.css`: Added skip link, focus styles, reduced motion, high contrast support
+- `src/layouts/AppLayout.vue`: Skip link, navigation ARIA roles
+- `src/components/collection/RequestTree.vue`: Tree role, keyboard navigation
+- `src/components/collection/TreeNode.vue`: Treeitem roles, keyboard handlers
+- `src/components/base/ContextMenu.vue`: Menu roles, keyboard support
+- `src/components/base/RenameModal.vue`: Modal ARIA attributes, focus management
+- `src/components/request/RequestPanel.vue`: Tablist roles, ARIA labels
+- `src/components/request/ResponsePanel.vue`: Tablist roles, ARIA labels
+- `src/composables/useAccessibility.ts`: Focus trap and announcer utilities

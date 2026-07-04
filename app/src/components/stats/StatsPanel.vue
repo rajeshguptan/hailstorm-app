@@ -17,14 +17,14 @@
         <div class="flex flex-wrap gap-2">
           <button
             @click="printStats"
-            class="px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+            class="px-2 sm:px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
             :disabled="!currentRun && completedRuns.length === 0"
           >
             Print
           </button>
           <button
             @click="exportStats"
-            class="px-4 py-2 text-sm bg-green-500 text-white rounded hover:bg-green-600"
+            class="px-2 sm:px-4 py-2 text-sm bg-green-500 text-white rounded hover:bg-green-600"
             :disabled="!selectedRunId && !currentRun"
           >
             Export JSON
@@ -32,14 +32,14 @@
           <button
             @click="deleteRun(selectedRunId)"
             :disabled="!selectedRunId"
-            class="px-4 py-2 text-sm bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-2 sm:px-4 py-2 text-sm bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Delete
           </button>
           <button
             @click="deleteAllRuns"
             :disabled="completedRuns.length === 0"
-            class="px-4 py-2 text-sm bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-2 sm:px-4 py-2 text-sm bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Delete all
           </button>
@@ -49,19 +49,19 @@
 
     <div class="stats-content flex-1 overflow-auto">
       <!-- Stats Overview Table -->
-      <div v-if="currentStats" class="px-6 py-4">
+      <div v-if="currentStats" class="px-4 sm:px-6 py-4">
         <h3 class="text-lg font-bold mb-4 text-zinc-900 dark:text-white">Overall Summary</h3>
         <div class="overflow-x-auto mb-8">
-          <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+          <table role="table" aria-label="Overall statistics" class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
             <thead class="bg-zinc-50 dark:bg-zinc-800">
               <tr>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Requests</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Success</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Failures</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Median (p50)</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p75</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p90</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p99</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Requests</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Success</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Failures</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Median (p50)</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p75</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p90</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p99</th>
               </tr>
             </thead>
             <tbody class="bg-white dark:bg-zinc-900 divide-y divide-zinc-200 dark:divide-zinc-700">
@@ -81,17 +81,17 @@
         <!-- Per-Request Stats Table -->
         <h3 v-if="statsByRequest.length > 0 || liveStatsByRequestTable.length > 0" class="text-lg font-bold mb-4 text-zinc-900 dark:text-white">By Request</h3>
         <div v-if="statsByRequest.length > 0 || liveStatsByRequestTable.length > 0" class="overflow-x-auto mb-8">
-          <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+          <table role="table" aria-label="Overall statistics" class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
             <thead class="bg-zinc-50 dark:bg-zinc-800">
               <tr>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Request</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Requests</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Success</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Failures</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Median (p50)</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p75</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p90</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p99</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Request</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Requests</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Success</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Failures</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Median (p50)</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p75</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p90</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p99</th>
               </tr>
             </thead>
             <tbody class="bg-white dark:bg-zinc-900 divide-y divide-zinc-200 dark:divide-zinc-700">
@@ -110,10 +110,10 @@
         </div>
 
         <!-- Charts -->
-        <div class="px-6 pb-4 space-y-6">
+        <div class="px-4 sm:px-6 pb-4 space-y-6">
           <!-- Requests vs Time Chart -->
-          <div class="chart-container bg-zinc-100 dark:bg-zinc-800 p-6 rounded shadow-sm">
-            <div class="h-64">
+          <div class="chart-container bg-zinc-100 dark:bg-zinc-800 p-4 sm:p-6 rounded shadow-sm">
+            <div class="h-48 sm:h-64">
               <Line
                 v-if="requestsChartData"
                 :data="requestsChartData"
@@ -130,8 +130,8 @@
           </div>
 
           <!-- Errors vs Time Chart (by HTTP Response Code) -->
-          <div class="chart-container bg-zinc-100 dark:bg-zinc-800 p-6 rounded shadow-sm">
-            <div class="h-64">
+          <div class="chart-container bg-zinc-100 dark:bg-zinc-800 p-4 sm:p-6 rounded shadow-sm">
+            <div class="h-48 sm:h-64">
               <Bar
                 v-if="statusChartData"
                 :data="statusChartData"
@@ -153,7 +153,7 @@
           </div>
 
           <!-- Median Response Time vs Time Chart -->
-          <div class="chart-container bg-zinc-100 dark:bg-zinc-800 p-6 rounded shadow-sm">
+          <div class="chart-container bg-zinc-100 dark:bg-zinc-800 p-4 sm:p-6 rounded shadow-sm">
             <!-- Percentile Selector -->
             <div class="flex items-center gap-4 mb-4 pb-4 border-b border-zinc-200 dark:border-zinc-600">
               <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Percentile:</span>
@@ -169,7 +169,7 @@
                 </label>
               </div>
             </div>
-            <div class="h-64">
+            <div class="h-48 sm:h-64">
               <Line
                 v-if="responseTimeChartData"
                 :data="responseTimeChartData"
@@ -188,19 +188,19 @@
       </div>
 
       <!-- Live Stats for Current Run -->
-      <div v-else-if="loadTestStore?.currentRun" class="px-6 py-4">
+      <div v-else-if="loadTestStore?.currentRun" class="px-4 sm:px-6 py-4">
         <h3 class="text-lg font-bold mb-4 text-zinc-900 dark:text-white">Overall Summary (Live)</h3>
         <div class="overflow-x-auto mb-8">
-          <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+          <table role="table" aria-label="Overall statistics" class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
             <thead class="bg-zinc-50 dark:bg-zinc-800">
               <tr>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Requests</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Success</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Failures</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Median (p50)</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p75</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p90</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p99</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Requests</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Success</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Failures</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Median (p50)</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p75</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p90</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p99</th>
               </tr>
             </thead>
             <tbody class="bg-white dark:bg-zinc-900 divide-y divide-zinc-200 dark:divide-zinc-700">
@@ -219,17 +219,17 @@
 
         <h3 v-if="liveStatsByRequestTable.length > 0" class="text-lg font-bold mb-4 text-zinc-900 dark:text-white">By Request (Live)</h3>
         <div v-if="liveStatsByRequestTable.length > 0" class="overflow-x-auto mb-8">
-          <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+          <table role="table" aria-label="Overall statistics" class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
             <thead class="bg-zinc-50 dark:bg-zinc-800">
               <tr>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Request</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Requests</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Success</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Failures</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Median (p50)</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p75</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p90</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p99</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Request</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Requests</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Success</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Failures</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Median (p50)</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p75</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p90</th>
+                <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">p99</th>
               </tr>
             </thead>
             <tbody class="bg-white dark:bg-zinc-900 divide-y divide-zinc-200 dark:divide-zinc-700">
@@ -249,7 +249,7 @@
       </div>
 
       <!-- No Data State -->
-      <div v-else class="px-6 py-4 text-center text-zinc-500">
+      <div v-else class="px-4 sm:px-6 py-4 text-center text-zinc-500">
         <p class="text-lg mb-2">No load test data available</p>
         <p class="text-sm">Run a load test from the Runner panel to see statistics</p>
       </div>

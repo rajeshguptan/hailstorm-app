@@ -1,11 +1,14 @@
 <template>
   <div class="hailstorm-app flex h-screen w-screen" @click="sideListMenuOpen = false">
-    <div class="ribbon-bar bg-zinc-200 dark:bg-zinc-800 flex flex-col py-1 flex-shrink-0" style="width: 80px;">
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <div class="ribbon-bar bg-zinc-200 dark:bg-zinc-800 flex flex-col py-1 flex-shrink-0" style="width: 80px;" role="navigation" aria-label="Main navigation">
       <div class="ribbon-item relative" v-for="item in ribbonItems" :key="item.id">
         <button 
           class="ribbon-btn py-2 px-2 text-zinc-800 dark:text-white flex flex-col items-center justify-center w-full gap-1" 
           :class="{ 'bg-zinc-300 dark:bg-zinc-700': isActive(item.id) }" 
           @click="navigate(item.id)"
+          :aria-current="isActive(item.id) ? 'page' : null"
+          :aria-label="item.label"
         >
           <span class="text-2xl leading-none" :style="item.iconStyle">{{ item.icon }}</span>
           <span class="text-xs">{{ item.label }}</span>
@@ -1219,6 +1222,46 @@ function navigate(id: SidebarView) {
 </script>
 
 <style scoped>
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: #1e40af;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: 500;
+  z-index: 100;
+  transition: top 0.2s;
+}
+
+.skip-link:focus {
+  top: 6px;
+}
+
+.skip-link:not(:focus) {
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  width: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .ribbon-btn {
   background: transparent;
   border: none;

@@ -1,48 +1,101 @@
 const http = require('http');
 const express = require('express');
-const multer = require('multer');
 const cors = require('cors');
+const multer = require('multer');
 const { WebSocketServer } = require('ws');
 
 const PORT = process.env.PORT || 4010;
 const HOST = process.env.HOST || '127.0.0.1';
 
 const app = express();
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }
-});
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+const tokenBuckets = new Map();
 
+// === Base Middleware ===
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
   res.setHeader('X-Mock-Server', 'Hailstorm');
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(204);
-    return;
-  }
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
-
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 app.use(cors());
 
-const server = http.createServer(app);
-const wss = new WebSocketServer({ noServer: true, perMessageDeflate: false });
+// === Helpers ===
+const now = () => new Date().toISOString();
 
-const usersStore = new Map();
-let userIdCounter = 1;
-usersStore.set(userIdCounter, {
-  id: userIdCounter,
-  name: 'Jane Doe',
-  email: 'jane@example.com',
-  createdAt: new Date().toISOString()
-});
+const getHeader = (req, name) => req.headers[name.toLowerCase()] || '';
 
-const tokenBuckets = new Map();
+const getRequestBody = (req) => {
+  if (req.is('multipart/form-data')) {
+    return {
+      fields: req.body || {},
+      files: (req.files || []).map((f) => ({
+        fieldname: f.fieldname,
+        originalname: f.originalname,
+        encoding: f.encoding,
+        mimetype: f.mimetype,
+        size: f.size
+      }))
+    };
+  }
+  if (Buffer.isBuffer(req.body)) {
+    return {
+      encoding: 'base64',
+      size: req.body.length,
+      content: req.body.toString('base64')
+    };
+  }
+  return req.body ?? null;
+};
 
+function respondHttp(req, res, statusCode = 200) {
+  const h = (n) => req.headers[n.toLowerCase()] || '';
+  res.status(statusCode).json({
+    ok: statusCode >= 200 && statusCode < 400,
+    status: statusCode,
+    method: req.method,
+    path: req.path,
+    originalUrl: req.originalUrl,
+    query: req.query,
+    params: req.params,
+    headers: { authorization: h('authorization'), contentType: h('content-type'), xApiKey: h('x-api-key'), userAgent: h('user-agent') },
+    body: getRequestBody(req),
+    receivedAt: now()
+  });
+}
+
+// === Auth Middleware ===
+const parseBasicAuth = (value) => {
+  if (!value?.startsWith('Basic ')) return null;
+  const decoded = Buffer.from(value.slice(6), 'base64').toString('utf8');
+  const sep = decoded.indexOf(':');
+  return sep === -1 ? null : { username: decoded.slice(0, sep), password: decoded.slice(sep + 1) };
+};
+
+const requireBasicAuth = (req, res, next) => {
+  const c = parseBasicAuth(getHeader(req, 'authorization'));
+  if (!c || c.username !== 'hailstorm' || c.password !== 'mock') {
+    return res.status(401).set('WWW-Authenticate', 'Basic realm="Hailstorm Mock"').json({ error: 'Missing or invalid basic auth. Use hailstorm:mock' });
+  }
+  next();
+};
+
+const requireBearerAuth = (req, res, next) => {
+  if (getHeader(req, 'authorization') === 'Bearer hailstorm-token') return next();
+  res.status(401).json({ error: 'Missing or invalid bearer token. Use Bearer hailstorm-token' });
+};
+
+const requireApiKey = (req, res, next) => {
+  const apiKey = getHeader(req, 'x-api-key') || req.query.api_key || req.query.apiKey;
+  if (apiKey === 'hailstorm-api-key') return next();
+  res.status(401).json({ error: 'Missing or invalid API key. Use x-api-key: hailstorm-api-key or ?api_key=hailstorm-api-key' });
+};
+
+// === Rate Limiting ===
 class TokenBucket {
   constructor(rps) {
     this.capacity = rps;
@@ -52,589 +105,226 @@ class TokenBucket {
   }
 
   refill() {
-    const now = Date.now();
-    const elapsed = (now - this.lastRefill) / 1000;
-    const tokensToAdd = elapsed * this.rps;
-    this.tokens = Math.min(this.capacity, this.tokens + tokensToAdd);
-    this.lastRefill = now;
+    const t = Date.now();
+    const e = (t - this.lastRefill) / 1000;
+    this.tokens = Math.min(this.capacity, this.tokens + e * this.rps);
+    this.lastRefill = t;
   }
 
   consume() {
     this.refill();
-    if (this.tokens >= 1) {
-      this.tokens -= 1;
-      return true;
-    }
-    return false;
+    return this.tokens >= 1 ? (this.tokens -= 1, true) : false;
   }
 
-  setRps(newRps) {
-    this.rps = newRps;
-    this.capacity = newRps;
+  setRps(r) {
+    this.rps = r;
+    this.capacity = r;
     this.tokens = Math.min(this.tokens, this.capacity);
   }
 }
 
-function rateLimit(req, res, next) {
-  const requestId = req.headers['x-request-id'] || req.path;
+const rateLimit = (req, res, next) => {
+  const id = req.headers['x-request-id'] || req.path;
   const rps = parseFloat(req.headers['x-rps']) || 0;
-
-  if (!rps || rps <= 0) {
+  if (!rps || rps <= 0) return next();
+  if (!tokenBuckets.has(id)) tokenBuckets.set(id, new TokenBucket(rps));
+  const b = tokenBuckets.get(id);
+  if (b.rps !== rps) b.setRps(rps);
+  if (b.consume()) {
+    res.set({ 'X-RateLimit-Limit': b.capacity.toString(), 'X-RateLimit-Remaining': Math.floor(b.tokens).toString(), 'X-RateLimit-Reset': Math.ceil((b.lastRefill + 1000) / 1000).toString() });
     return next();
   }
+  res.status(429).json({ error: 'Rate limit exceeded', retryAfter: Math.ceil(1 / rps), currentRps: rps });
+};
 
-  if (!tokenBuckets.has(requestId)) {
-    tokenBuckets.set(requestId, new TokenBucket(rps));
-  }
+// === GraphQL ===
+const runGraphqlQuery = (query = '', variables = {}, operationName = '') => {
+  const q = query.replace(/\s+/g, ' ');
+  if (q.includes('__schema')) return { data: { __schema: { queryType: { name: 'Query' }, types: [{ name: 'Query', fields: [{ name: 'ping' }, { name: 'user' }, { name: 'users' }] }, { name: 'User', fields: [{ name: 'id' }, { name: 'name' }, { name: 'email' }] }] } } };
+  if (q.includes('users')) return { data: { users: [{ id: '1', name: 'Ada Lovelace', email: 'ada@example.test' }, { id: '2', name: 'Grace Hopper', email: 'grace@example.test' }] } };
+  if (q.includes('user')) return { data: { user: { id: String(variables?.id || 1), name: 'Ada Lovelace', email: 'ada@example.test' } } };
+  if (q.includes('ping')) return { data: { ping: 'pong' } };
+  return { data: { ok: true, operationName: operationName || null, variables } };
+};
 
-  const bucket = tokenBuckets.get(requestId);
-
-  if (bucket.rps !== rps) {
-    bucket.setRps(rps);
-  }
-
-  if (bucket.consume()) {
-    res.set({
-      'X-RateLimit-Limit': bucket.capacity.toString(),
-      'X-RateLimit-Remaining': Math.floor(bucket.tokens).toString(),
-      'X-RateLimit-Reset': Math.ceil((bucket.lastRefill + 1000) / 1000).toString()
-    });
-    next();
-  } else {
-    res.status(429).json({
-      error: 'Rate limit exceeded',
-      retryAfter: Math.ceil(1 / rps),
-      currentRps: rps
-    });
-  }
-}
-
-function now() {
-  return new Date().toISOString();
-}
-
-function getHeader(req, name) {
-  const value = req.headers[name.toLowerCase()];
-  if (Array.isArray(value)) return value[0];
-  return value || '';
-}
-
-function getRequestBody(req) {
-  if (req.is('multipart/form-data')) {
-    return {
-      fields: req.body || {},
-      files: (req.files || []).map(file => ({
-        fieldname: file.fieldname,
-        originalname: file.originalname,
-        encoding: file.encoding,
-        mimetype: file.mimetype,
-        size: file.size
-      }))
-    };
-  }
-
-  if (Buffer.isBuffer(req.body)) {
-    return {
-      encoding: 'base64',
-      size: req.body.length,
-      content: req.body.toString('base64')
-    };
-  }
-
-  return req.body ?? null;
-}
-
-function respondHttp(req, res, statusCode = 200) {
-  res.status(statusCode).json({
-    ok: statusCode >= 200 && statusCode < 400,
-    status: statusCode,
-    method: req.method,
-    path: req.path,
-    originalUrl: req.originalUrl,
-    query: req.query,
-    params: req.params,
-    headers: {
-      authorization: getHeader(req, 'authorization'),
-      contentType: getHeader(req, 'content-type'),
-      xApiKey: getHeader(req, 'x-api-key'),
-      userAgent: getHeader(req, 'user-agent')
-    },
-    body: getRequestBody(req),
-    receivedAt: now()
-  });
-}
-
-function parseBasicAuth(value) {
-  if (!value || !value.startsWith('Basic ')) return null;
-  const decoded = Buffer.from(value.slice(6), 'base64').toString('utf8');
-  const separator = decoded.indexOf(':');
-  if (separator === -1) return null;
-  return {
-    username: decoded.slice(0, separator),
-    password: decoded.slice(separator + 1)
-  };
-}
-
-function requireBasicAuth(req, res, next) {
-  const credentials = parseBasicAuth(getHeader(req, 'authorization'));
-  if (!credentials || credentials.username !== 'hailstorm' || credentials.password !== 'mock') {
-    res.set('WWW-Authenticate', 'Basic realm="Hailstorm Mock"');
-    res.status(401).json({ error: 'Missing or invalid basic auth. Use hailstorm:mock' });
-    return;
-  }
-  next();
-}
-
-function requireBearerAuth(req, res, next) {
-  const authorization = getHeader(req, 'authorization');
-  if (authorization !== 'Bearer hailstorm-token') {
-    res.status(401).json({ error: 'Missing or invalid bearer token. Use Bearer hailstorm-token' });
-    return;
-  }
-  next();
-}
-
-function requireApiKey(req, res, next) {
-  const apiKey = getHeader(req, 'x-api-key') || req.query.api_key || req.query.apiKey;
-  if (apiKey !== 'hailstorm-api-key') {
-    res.status(401).json({ error: 'Missing or invalid API key. Use x-api-key: hailstorm-api-key or ?api_key=hailstorm-api-key' });
-    return;
-  }
-  next();
-}
-
-function createTokenResponse(req) {
-  const body = req.body || {};
-  const grantType = body.grant_type || body.grantType || 'client_credentials';
-  return {
-    access_token: 'hailstorm-oauth-token',
-    token_type: 'Bearer',
-    expires_in: 3600,
-    scope: body.scope || 'read write',
-    grant_type: grantType,
-    issued_at: now()
-  };
-}
-
-function runGraphqlQuery(query = '', variables = {}, operationName = '') {
-  const normalizedQuery = query.replace(/\s+/g, ' ');
-
-  if (normalizedQuery.includes('__schema')) {
-    return {
-      data: {
-        __schema: {
-          queryType: { name: 'Query' },
-          types: [
-            { name: 'Query', fields: [{ name: 'ping' }, { name: 'user' }, { name: 'users' }] },
-            { name: 'User', fields: [{ name: 'id' }, { name: 'name' }, { name: 'email' }] }
-          ]
-        }
-      }
-    };
-  }
-
-  if (normalizedQuery.includes('users')) {
-    return {
-      data: {
-        users: [
-          { id: '1', name: 'Ada Lovelace', email: 'ada@example.test' },
-          { id: '2', name: 'Grace Hopper', email: 'grace@example.test' }
-        ]
-      }
-    };
-  }
-
-  if (normalizedQuery.includes('user')) {
-    return {
-      data: {
-        user: {
-          id: String(variables?.id || 1),
-          name: 'Ada Lovelace',
-          email: 'ada@example.test'
-        }
-      }
-    };
-  }
-
-  if (normalizedQuery.includes('ping')) {
-    return { data: { ping: 'pong' } };
-  }
-
-  return {
-    data: {
-      ok: true,
-      operationName: operationName || null,
-      variables
-    }
-  };
-}
-
-function handleJsonRpcRequest(payload) {
+// === JSON-RPC ===
+const handleJsonRpcRequest = (payload) => {
   const calls = Array.isArray(payload) ? payload : [payload];
-
-  const responses = calls.map(request => {
-    if (!request || request.jsonrpc !== '2.0' || !request.method) {
-      return {
-        jsonrpc: '2.0',
-        id: Object.prototype.hasOwnProperty.call(request || {}, 'id') ? request.id : null,
-        error: { code: -32600, message: 'Invalid JSON-RPC 2.0 request' }
-      };
+  const responses = calls.map((r) => {
+    if (!r || r.jsonrpc !== '2.0' || !r.method) {
+      return { jsonrpc: '2.0', id: Object.prototype.hasOwnProperty.call(r || {}, 'id') ? r.id : null, error: { code: -32600, message: 'Invalid JSON-RPC 2.0 request' } };
     }
-
     try {
-      const params = request.params ?? {};
       let result;
-
-      switch (request.method) {
-        case 'echo':
-          result = { input: params, receivedAt: now() };
-          break;
-        case 'add':
-          result = Array.isArray(params)
-            ? params.reduce((sum, value) => sum + Number(value), 0)
-            : Number(params.a || 0) + Number(params.b || 0);
-          break;
-        case 'getUser':
-          result = {
-            id: String(params.id || 1),
-            name: 'Ada Lovelace',
-            email: 'ada@example.test'
-          };
-          break;
-        case 'introspect':
-          result = {
-            methods: ['echo', 'add', 'getUser', 'introspect'],
-            version: '2.0'
-          };
-          break;
-        case 'error':
-          throw Object.assign(new Error('Requested mock JSON-RPC error'), { code: params.code || -32000 });
-        default:
-          return {
-            jsonrpc: '2.0',
-            id: request.id,
-            error: { code: -32601, message: `Method not found: ${request.method}` }
-          };
+      switch (r.method) {
+        case 'echo': result = { input: r.params ?? {}, receivedAt: now() }; break;
+        case 'add': result = Array.isArray(r.params) ? r.params.reduce((s, v) => s + Number(v), 0) : Number(r.params?.a || 0) + Number(r.params?.b || 0); break;
+        case 'getUser': result = { id: String(r.params?.id || 1), name: 'Ada Lovelace', email: 'ada@example.test' }; break;
+        case 'introspect': result = { methods: ['echo', 'add', 'getUser', 'introspect'], version: '2.0' }; break;
+        case 'error': throw Object.assign(new Error('Requested mock JSON-RPC error'), { code: r.params?.code || -32000 });
+        default: return { jsonrpc: '2.0', id: r.id, error: { code: -32601, message: `Method not found: ${r.method}` } };
       }
-
-      return {
-        jsonrpc: '2.0',
-        id: request.id,
-        result
-      };
-    } catch (error) {
-      return {
-        jsonrpc: '2.0',
-        id: request.id,
-        error: {
-          code: error.code || -32603,
-          message: error.message
-        }
-      };
+      return { jsonrpc: '2.0', id: r.id, result };
+    } catch (e) {
+      return { jsonrpc: '2.0', id: r.id, error: { code: e.code || -32603, message: e.message } };
     }
   }).filter(Boolean);
-
   return Array.isArray(payload) ? responses : responses[0];
-}
+};
 
-function attachEchoSocket(socket, path) {
-  const crypto = require('crypto');
-  const clientId = crypto.randomUUID();
-
-  socket.on('message', (data, isBinary) => {
-    const payload = isBinary
-      ? { encoding: 'base64', size: data.length, content: data.toString('base64') }
-      : (() => {
-          const text = data.toString();
-          try {
-            return JSON.parse(text);
-          } catch {
-            return text;
-          }
-        })();
-
-    const response = {
-      type: 'echo',
-      clientId,
-      path,
-      receivedAt: now(),
-      isBinary,
-      payload
-    };
-
-    socket.send(JSON.stringify(response));
-  });
-}
-
-wss.on('connection', (socket, req) => {
-  if (socket.mockPath === '/ws/chat') {
-    const crypto = require('crypto');
-    const clientId = crypto.randomUUID();
-    let messagesSent = 0;
-
-    socket.send(JSON.stringify({
-      type: 'chat',
-      message: 'Connected to Hailstorm mock chat',
-      lastMessage: null,
-      messagesSent: 0
-    }));
-
-    socket.on('message', (data) => {
-      messagesSent += 1;
-
-      let parsed;
-      try {
-        parsed = JSON.parse(data.toString());
-      } catch {
-        parsed = data.toString();
-      }
-
-      const message = {
-        type: 'broadcast',
-        from: clientId,
-        path: socket.mockPath,
-        receivedAt: now(),
-        payload: data.toString()
-      };
-
-      wss.clients.forEach(client => {
-        if (client.readyState === client.OPEN && client !== socket && client.mockPath === '/ws/chat') {
-          client.send(JSON.stringify(message));
-        }
-      });
-
-      socket.send(JSON.stringify({
-        type: 'chat',
-        message: typeof parsed === 'object' && parsed.message
-          ? parsed.message
-          : data.toString(),
-        lastMessage: data.toString(),
-        messagesSent,
-        deliveredTo: [...wss.clients].filter(client => client.readyState === client.OPEN && client.mockPath === '/ws/chat').length - 1
-      }));
-    });
-    return;
-  }
-
-  attachEchoSocket(socket, socket.mockPath || '/ws');
+// === OAuth ===
+const createTokenResponse = (req) => ({
+  access_token: 'hailstorm-oauth-token',
+  token_type: 'Bearer',
+  expires_in: 3600,
+  scope: req.body?.scope || 'read write',
+  grant_type: req.body?.grant_type || req.body?.grantType || 'client_credentials',
+  issued_at: now()
 });
 
-server.on('upgrade', (req, socket, head) => {
-  const url = new URL(req.url || '/', `http://${req.headers.host || '127.0.0.1'}`);
-  if (url.pathname !== '/ws' && url.pathname !== '/ws/chat') {
-    socket.destroy();
-    return;
-  }
+// === Stores ===
+const usersStore = new Map();
+let userIdCounter = 1;
+usersStore.set(1, { id: 1, name: 'Jane Doe', email: 'jane@example.com', createdAt: now() });
 
-  wss.handleUpgrade(req, socket, head, ws => {
-    ws.mockPath = url.pathname;
-    wss.emit('connection', ws, req);
-  });
-});
-
-// HTTP Mock endpoints
+// === HTTP Routes ===
 app.all('/http/auth/basic', requireBasicAuth, (req, res) => respondHttp(req, res));
 app.all('/http/auth/bearer', requireBearerAuth, (req, res) => respondHttp(req, res));
 app.all('/http/auth/apikey', requireApiKey, (req, res) => respondHttp(req, res));
+
 app.all('/http/auth/ntlm', (req, res) => {
-  if (!getHeader(req, 'authorization')) {
-    res.set('WWW-Authenticate', 'NTLM');
-    res.status(401).json({ error: 'NTLM challenge. This mock verifies that the NTLM header is sent.' });
-    return;
-  }
+  if (!req.headers.authorization) return res.set('WWW-Authenticate', 'NTLM').status(401).json({ error: 'NTLM challenge. This mock verifies that the NTLM header is sent.' });
   respondHttp(req, res);
 });
+
 app.get('/http/auth/client-certificate', (req, res) => respondHttp(req, res, 200));
 app.post('/http/form-data', upload.any(), rateLimit, (req, res) => respondHttp(req, res));
 app.all('/http/raw', express.raw({ type: '*/*', limit: '5mb' }), rateLimit, (req, res) => respondHttp(req, res));
 app.all('/http/binary', express.raw({ type: '*/*', limit: '5mb' }), rateLimit, (req, res) => respondHttp(req, res));
 
 app.all('/http/status/:code', (req, res) => {
-  const statusCode = Number(req.params.code);
-  if (!Number.isInteger(statusCode) || statusCode < 100 || statusCode > 599) {
-    res.status(400).json({ error: 'Status code must be between 100 and 599' });
-    return;
-  }
-  respondHttp(req, res, statusCode);
+  const code = Number(req.params.code);
+  if (!Number.isInteger(code) || code < 100 || code > 599) return res.status(400).json({ error: 'Status code must be between 100 and 599' });
+  respondHttp(req, res, code);
 });
 
 app.all('/http/delay/:ms', (req, res) => {
-  const delay = Number(req.params.ms);
-  if (!Number.isFinite(delay) || delay < 0 || delay > 30000) {
-    res.status(400).json({ error: 'Delay must be between 0 and 30000 ms' });
-    return;
-  }
-  setTimeout(() => respondHttp(req, res), delay);
+  const d = Number(req.params.ms);
+  if (!Number.isFinite(d) || d < 0 || d > 30000) return res.status(400).json({ error: 'Delay must be between 0 and 30000 ms' });
+  setTimeout(() => respondHttp(req, res), d);
 });
 
-app.all('/http/error', (req, res) => {
-  res.status(500).json({
-    error: 'Intentional mock server error',
-    method: req.method,
-    path: req.path,
-    body: getRequestBody(req),
-    receivedAt: now()
-  });
-});
-
+app.all('/http/error', (req, res) => res.status(500).json({ error: 'Intentional mock server error', method: req.method, path: req.path, body: getRequestBody(req), receivedAt: now() }));
 app.all('/http/*', rateLimit, (req, res) => respondHttp(req, res));
 
-// GraphQL endpoints
+// === GraphQL Routes ===
 app.all('/graphql', (req, res) => {
   const body = req.body || {};
-  const query = typeof body === 'string' ? body : body.query || '';
-  const variables = typeof body === 'string' ? {} : body.variables || {};
-  const operationName = typeof body === 'string' ? '' : body.operationName || '';
-  res.json(runGraphqlQuery(query, variables, operationName));
+  res.json(runGraphqlQuery(typeof body === 'string' ? body : body.query || '', typeof body === 'string' ? {} : body.variables || {}, typeof body === 'string' ? '' : body.operationName || ''));
 });
 
-app.post('/graphql/errors', (req, res) => {
-  res.status(200).json({
-    errors: [
-      {
-        message: 'Mock GraphQL resolver error',
-        locations: [{ line: 1, column: 1 }],
-        path: ['user']
-      }
-    ]
-  });
-});
+app.post('/graphql/errors', (req, res) => res.status(200).json({ errors: [{ message: 'Mock GraphQL resolver error', locations: [{ line: 1, column: 1 }], path: ['user'] }] }));
 
-// JSON-RPC endpoint
-app.post('/json-rpc', rateLimit, (req, res) => {
-  res.json(handleJsonRpcRequest(req.body));
-});
+// === JSON-RPC Routes ===
+app.post('/json-rpc', rateLimit, (req, res) => res.json(handleJsonRpcRequest(req.body)));
 
-// OAuth endpoints
-app.post(['/oauth/token', '/oauth2/token'], rateLimit, (req, res) => {
-  res.json(createTokenResponse(req));
-});
+// === OAuth Routes ===
+app.post(['/oauth/token', '/oauth2/token'], rateLimit, (req, res) => res.json(createTokenResponse(req)));
 
-// Users endpoints (from mock-server)
-app.get('/users', rateLimit, (req, res) => {
-  const users = Array.from(usersStore.values());
-  res.json(users);
-});
+// === Users Routes ===
+app.get('/users', rateLimit, (req, res) => res.json(Array.from(usersStore.values())));
 
 app.post('/users', rateLimit, (req, res) => {
-  const { name, email } = req.body;
-
-  if (!name || !email) {
-    return res.status(400).json({ error: 'Name and email are required' });
-  }
-
-  const newUser = {
-    id: ++userIdCounter,
-    name,
-    email,
-    createdAt: new Date().toISOString()
-  };
-
+  const { name, email } = req.body || {};
+  if (!name || !email) return res.status(400).json({ error: 'Name and email are required' });
+  const newUser = { id: ++userIdCounter, name, email, createdAt: now() };
   usersStore.set(newUser.id, newUser);
   res.status(201).json(newUser);
 });
 
-// File upload endpoint
+// === File Upload ===
 app.post('/upload', rateLimit, upload.single('file'), (req, res) => {
-  const { description } = req.body;
+  const { description } = req.body || {};
   const file = req.file;
-
-  if (!file) {
-    return res.status(400).json({ error: 'No file uploaded' });
-  }
-
-  const uploadResult = {
-    success: true,
-    filename: file.originalname,
-    size: file.size,
-    description: description || 'No description provided',
-    uploadedAt: new Date().toISOString()
-  };
-
-  res.status(200).json({
-    message: 'File uploaded successfully',
-    data: uploadResult
-  });
+  if (!file) return res.status(400).json({ error: 'No file uploaded' });
+  res.status(200).json({ message: 'File uploaded successfully', data: { filename: file.originalname, size: file.size, description: description || 'No description provided', uploadedAt: now() } });
 });
 
-// RPS management
+// === Rate Limit Management ===
 app.post('/rps/:requestId', (req, res) => {
   const { requestId } = req.params;
   const { rps } = req.body;
-
-  if (typeof rps !== 'number' || rps < 0) {
-    return res.status(400).json({ error: 'RPS must be a non-negative number' });
-  }
-
-  if (!tokenBuckets.has(requestId)) {
-    tokenBuckets.set(requestId, new TokenBucket(rps));
-  } else {
-    tokenBuckets.get(requestId).setRps(rps);
-  }
-
+  if (typeof rps !== 'number' || rps < 0) return res.status(400).json({ error: 'RPS must be a non-negative number' });
+  if (!tokenBuckets.has(requestId)) tokenBuckets.set(requestId, new TokenBucket(rps));
+  else tokenBuckets.get(requestId).setRps(rps);
   res.json({ requestId, rps, message: 'RPS updated successfully' });
 });
 
 app.get('/rps', (req, res) => {
   const status = {};
-  for (const [requestId, bucket] of tokenBuckets.entries()) {
-    status[requestId] = {
-      rps: bucket.rps,
-      tokens: bucket.tokens,
-      capacity: bucket.capacity,
-      lastRefill: new Date(bucket.lastRefill).toISOString()
-    };
+  for (const [id, b] of tokenBuckets.entries()) {
+    status[id] = { rps: b.rps, tokens: b.tokens, capacity: b.capacity, lastRefill: new Date(b.lastRefill).toISOString() };
   }
   res.json(status);
 });
 
-// Health check
+// === Health check ===
 app.get('/health', (req, res) => {
   const rateLimitInfo = {};
-  for (const [requestId, bucket] of tokenBuckets.entries()) {
-    rateLimitInfo[requestId] = {
-      rps: bucket.rps,
-      tokens: Math.round(bucket.tokens * 100) / 100,
-      capacity: bucket.capacity
-    };
-  }
-
-  res.json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    usersCount: usersStore.size,
-    rateLimiting: rateLimitInfo
-  });
+  for (const [id, b] of tokenBuckets.entries()) rateLimitInfo[id] = { rps: b.rps, tokens: Math.round(b.tokens * 100) / 100, capacity: b.capacity };
+  res.json({ status: 'OK', timestamp: now(), usersCount: usersStore.size, rateLimiting: rateLimitInfo });
 });
 
-// Root endpoint
-app.get('/', (req, res) => {
-  res.json({
-    name: 'Hailstorm Mock Server',
-    endpoints: {
-      http: '/http/*',
-      basicAuth: '/http/auth/basic',
-      bearerAuth: '/http/auth/bearer',
-      apiKey: '/http/auth/apikey',
-      ntlm: '/http/auth/ntlm',
-      clientCertificate: '/http/auth/client-certificate',
-      form: '/http/form-data',
-      raw: '/http/raw',
-      binary: '/http/binary',
-      status: '/http/status/:code',
-      delay: '/http/delay/:ms',
-      error: '/http/error',
-      graphql: '/graphql',
-      jsonRpc: '/json-rpc',
-      users: '/users',
-      upload: '/upload',
-      websocket: 'ws://127.0.0.1:4010/ws',
-      websocketChat: 'ws://127.0.0.1:4010/ws/chat',
-      oauthToken: '/oauth/token',
-      oauth2Token: '/oauth2/token',
-      rateLimiting: '/rps'
-    }
-  });
+// === Root ===
+app.get('/', (req, res) => res.json({
+  name: 'Hailstorm Mock Server',
+  endpoints: {
+    http: '/http/*', basicAuth: '/http/auth/basic', bearerAuth: '/http/auth/bearer', apiKey: '/http/auth/apikey',
+    ntlm: '/http/auth/ntlm', clientCertificate: '/http/auth/client-certificate', form: '/http/form-data',
+    raw: '/http/raw', binary: '/http/binary', status: '/http/status/:code', delay: '/http/delay/:ms',
+    error: '/http/error', graphql: '/graphql', jsonRpc: '/json-rpc', users: '/users', upload: '/upload',
+    websocket: 'ws://127.0.0.1:4010/ws', websocketChat: 'ws://127.0.0.1:4010/ws/chat',
+    oauthToken: '/oauth/token', oauth2Token: '/oauth2/token', rateLimiting: '/rps'
+  }
+}));
+
+// === WebSocket ===
+const server = http.createServer(app);
+const wss = new WebSocketServer({ noServer: true, perMessageDeflate: false });
+
+wss.on('connection', (socket, req) => {
+  if (socket.mockPath === '/ws/chat') {
+    const crypto = require('crypto');
+    const clientId = crypto.randomUUID();
+    let sent = 0;
+    socket.send(JSON.stringify({ type: 'chat', message: 'Connected to Hailstorm mock chat', lastMessage: null, messagesSent: 0 }));
+    socket.on('message', (data) => {
+      sent++;
+      let parsed;
+      try { parsed = JSON.parse(data.toString()); } catch { parsed = data.toString(); }
+      const broadcast = [...wss.clients].filter((c) => c.readyState === c.OPEN && c.mockPath === '/ws/chat');
+      broadcast.forEach((client) => {
+        if (client !== socket) client.send(JSON.stringify({ type: 'broadcast', from: clientId, path: socket.mockPath, receivedAt: now(), payload: data.toString() }));
+      });
+      socket.send(JSON.stringify({
+        type: 'chat', message: typeof parsed === 'object' && parsed.message ? parsed.message : data.toString(),
+        lastMessage: data.toString(), messagesSent: sent, deliveredTo: broadcast.length - 1
+      }));
+    });
+  } else {
+    const crypto = require('crypto');
+    const clientId = crypto.randomUUID();
+    socket.on('message', (data, isBinary) => {
+      const payload = isBinary ? { encoding: 'base64', size: data.length, content: data.toString('base64') } : (() => { try { return JSON.parse(data.toString()); } catch { return data.toString(); } })();
+      socket.send(JSON.stringify({ type: 'echo', clientId, path: socket.mockPath || '/ws', receivedAt: now(), isBinary, payload }));
+    });
+  }
+});
+
+server.on('upgrade', (req, socket, head) => {
+  const url = new URL(req.url || '/', `http://${req.headers.host || '127.0.0.1'}`);
+  if (url.pathname !== '/ws' && url.pathname !== '/ws/chat') return socket.destroy();
+  wss.handleUpgrade(req, socket, head, (ws) => { ws.mockPath = url.pathname; wss.emit('connection', ws, req); });
 });
 
 server.listen(PORT, HOST, () => {
@@ -642,6 +332,4 @@ server.listen(PORT, HOST, () => {
   console.log(`WebSocket endpoints: ws://${HOST}:${PORT}/ws and ws://${HOST}:${PORT}/ws/chat`);
 });
 
-process.on('SIGINT', () => {
-  server.close(() => process.exit(0));
-});
+process.on('SIGINT', () => server.close(() => process.exit(0)));
