@@ -63,16 +63,25 @@ export const useCollectionsStore = defineStore('collections', {
       return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     },
 
-    addCollection() {
-      const collection: Collection = {
-        id: this.generateId('coll'),
-        name: 'New Collection',
-        items: [],
-        variables: []
-      };
-      this.collections.push(collection);
-      this.saveCollections();
-    },
+async addCollection() {
+       const collectionId = this.generateId('coll');
+       let workspaceLocation = '';
+       try {
+         const homeDir = window.api?.getHomeDirectory ? await window.api.getHomeDirectory() : null;
+         workspaceLocation = homeDir ? `${homeDir}/hailstorm/${collectionId}` : '';
+       } catch (err) {
+         logger.debug('[COLLECTIONS] Could not get home directory:', err);
+       }
+       const collection: Collection = {
+         id: collectionId,
+         name: 'New Collection',
+         items: [],
+         variables: [],
+         workspaceLocation
+       };
+       this.collections.push(collection);
+       this.saveCollections();
+     },
 
     updateCollection(collection: Collection) {
       const index = this.collections.findIndex(c => c.id === collection.id);
@@ -87,19 +96,20 @@ export const useCollectionsStore = defineStore('collections', {
       this.saveCollections();
     },
 
-    duplicateCollection(id: string) {
-      const collection = this.collections.find(c => c.id === id);
-      if (collection) {
-        const duplicated: Collection = {
-          id: this.generateId('coll'),
-          name: `${collection.name} (copy)`,
-          items: JSON.parse(JSON.stringify(collection.items)),
-          variables: JSON.parse(JSON.stringify(collection.variables))
-        };
-        this.collections.push(duplicated);
-        this.saveCollections();
-      }
-    },
+duplicateCollection(id: string) {
+       const collection = this.collections.find(c => c.id === id);
+       if (collection) {
+         const duplicated: Collection = {
+           id: this.generateId('coll'),
+           name: `${collection.name} (copy)`,
+           items: JSON.parse(JSON.stringify(collection.items)),
+           variables: JSON.parse(JSON.stringify(collection.variables)),
+           workspaceLocation: collection.workspaceLocation
+         };
+         this.collections.push(duplicated);
+         this.saveCollections();
+       }
+     },
 
     addFolder(targetId: string, targetType: 'collection' | 'folder' = 'collection') {
       const folder: Folder = {

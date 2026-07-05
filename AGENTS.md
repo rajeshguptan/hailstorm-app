@@ -43,7 +43,7 @@ Useful commands:
 ## Agent guidance
 - Refer to the AGENTS.md file in each subfolder. 
 - Prefer small, targeted changes that preserve the existing Electron/Vue architecture.
-- Add or update tests when changing request execution, collection behavior, runner behavior, secrets, environments, or stats.
+- Add or update tests when changing request execution, collection behavior, runner behavior, secrets, environments, or stats. Only run relevant tests. Not all the tests.
 - After every change, check if AGENTS.md needs updating.
 
 ## Accessibility (ADA/WCAG Compliance)

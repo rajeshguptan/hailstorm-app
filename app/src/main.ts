@@ -159,14 +159,18 @@ ipcMain.handle('get-dev-tools-enabled', () => devToolsEnabled);
     }
   });
 
-  ipcMain.handle('send-console-log', (_event, log: { level: number; message: string; line: number; sourceId: string }) => {
-    if (mainWindow) {
-      mainWindow.webContents.send('console-log', {
-        ...log,
-        timestamp: Date.now()
-      });
-    }
-  });
+ipcMain.handle('send-console-log', (_event, log: { level: number; message: string; line: number; sourceId: string }) => {
+     if (mainWindow) {
+       mainWindow.webContents.send('console-log', {
+         ...log,
+         timestamp: Date.now()
+       });
+     }
+   });
+
+   ipcMain.handle('get-home-directory', () => {
+     return app.getPath('home');
+   });
 
 // Set up OAuth callback before app is ready
 setupOAuthCallback();

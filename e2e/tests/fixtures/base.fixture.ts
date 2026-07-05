@@ -48,20 +48,25 @@ await page.addScriptTag({
             return Promise.resolve({ output: 'Mock shell output', error: '' });
           },
 
-          // File operations
-          importCollection: () => {
-            console.log('[MOCK API] importCollection');
-            return Promise.resolve(JSON.stringify({
-              id: 'imported-collection',
-              name: 'Imported Collection',
-              items: [{
-                id: 'imported-request',
-                name: 'Imported Request',
-                method: 'GET',
-                url: 'https://httpbin.org/get'
-              }]
-            }));
-          },
+// File operations
+           importCollection: () => {
+             console.log('[MOCK API] importCollection');
+             return Promise.resolve(JSON.stringify({
+               id: 'imported-collection',
+               name: 'Imported Collection',
+               items: [{
+                 id: 'imported-request',
+                 name: 'Imported Request',
+                 method: 'GET',
+                 url: 'https://httpbin.org/get'
+               }]
+             }));
+           },
+
+           selectWorkspace: () => {
+             console.log('[MOCK API] selectWorkspace');
+             return Promise.resolve('/home/testuser/hailstorm');
+           },
 
           // Load testing APIs
           initializeLoadTesting: () => {
@@ -279,11 +284,16 @@ selectDatafileDialog: (filters) => {
              return Promise.resolve('info');
            },
  
-           setLogLevel: (level) => {
-             console.log('[MOCK API] setLogLevel:', level);
-             return Promise.resolve();
-           }
-         };
+setLogLevel: (level) => {
+              console.log('[MOCK API] setLogLevel:', level);
+              return Promise.resolve();
+            },
+
+            getHomeDirectory: () => {
+              console.log('[MOCK API] getHomeDirectory');
+              return Promise.resolve('/home/testuser');
+            }
+          };
 
         // Mock Electron dialog
         window.electron = {

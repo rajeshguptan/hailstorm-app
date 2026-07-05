@@ -378,10 +378,10 @@ function toggleSideListMenu() {
   sideListMenuOpen.value = !sideListMenuOpen.value;
 }
 
-function runSideListAction(action: () => void) {
-  action();
-  sideListMenuOpen.value = false;
-}
+async function runSideListAction(action: () => Promise<void> | void) {
+   await action();
+   sideListMenuOpen.value = false;
+ }
 
 type CollectionImportType = 'postman' | 'openapi' | 'test';
 
@@ -579,11 +579,11 @@ async function importCollection(importType: CollectionImportType = 'postman') {
         try {
           const text = await file.text();
           const data = JSON.parse(text);
-          if (importType === 'openapi') {
-            importOpenAPISpec(data);
-          } else {
-            importCollectionData(data);
-          }
+if (importType === 'openapi') {
+       await importOpenAPISpec(data);
+     } else {
+       await importCollectionData(data);
+     }
         } catch (err) {
           console.error('Failed to import:', err);
         }
@@ -596,9 +596,9 @@ async function importCollection(importType: CollectionImportType = 'postman') {
     if (!content) return;
     const data = JSON.parse(content);
     if (importType === 'openapi') {
-      importOpenAPISpec(data);
+      await importOpenAPISpec(data);
     } else {
-      importCollectionData(data);
+      await importCollectionData(data);
     }
   } catch (err) {
     console.error('Import error:', err);
@@ -674,113 +674,147 @@ function normalizeCollectionVariables(variables: any[] = []): any[] {
   }));
 }
 
-function importCollectionData(data: any) {
-  if (!data) return;
+async function importCollectionData(data: any) {
+   if (!data) return;
 
-  const processItems = (items: any[]): any[] => {
-    return items.map((item: any) => {
-      const newItem = { ...item };
+   const processItems = (items: any[]): any[] => {
+     return items.map((item: any) => {
+       const newItem = { ...item };
 
-      if (newItem.request && typeof newItem.request === 'object') {
-        const requestData = newItem.request;
-        newItem.method = requestData.method || 'GET';
-        newItem.url = convertPostmanUrl(requestData.url) || '';
-        newItem.headers = convertPostmanHeaders(requestData.header) || [];
-        newItem.body = convertPostmanBody(requestData.body);
-        newItem.auth = requestData.auth;
-        newItem.preRequestScript = requestData.preRequestScript;
-        newItem.testScript = requestData.testScript;
-        newItem.variables = requestData.variables;
-        newItem.flavors = requestData.flavors;
-        delete newItem.request;
-      }
+       if (newItem.request && typeof newItem.request === 'object') {
+         const requestData = newItem.request;
+         newItem.method = requestData.method || 'GET';
+         newItem.url = convertPostmanUrl(requestData.url) || '';
+         newItem.headers = convertPostmanHeaders(requestData.header) || [];
+         newItem.body = convertPostmanBody(requestData.body);
+         newItem.auth = requestData.auth;
+         newItem.preRequestScript = requestData.preRequestScript;
+         newItem.testScript = requestData.testScript;
+         newItem.variables = requestData.variables;
+         newItem.flavors = requestData.flavors;
+         delete newItem.request;
+       }
 
-      if (!newItem.id) {
-        newItem.id = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      }
+       if (!newItem.id) {
+         newItem.id = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+       }
 
-      if (newItem.item && Array.isArray(newItem.item)) {
-        newItem.items = processItems(newItem.item);
-        delete newItem.item;
-      }
+       if (newItem.item && Array.isArray(newItem.item)) {
+         newItem.items = processItems(newItem.item);
+         delete newItem.item;
+       }
 
-      return newItem;
-    });
-  };
-  const processCollection = (c: any) => ({
-    ...c,
-    items: processItems(c.items || []),
-    variables: normalizeCollectionVariables(c.variables || c.variable || [])
-  });
-
-  if (data.collection) {
-    collectionsStore.collections.push(processCollection(data.collection));
-    collectionsStore.saveCollections();
-  } else if (data.collections) {
-    collectionsStore.collections.push(...data.collections.map(processCollection));
-    collectionsStore.saveCollections();
-  } else if (Array.isArray(data)) {
-    collectionsStore.collections.push(...data.map(processCollection));
-    collectionsStore.saveCollections();
-  } else if (data.info && data.item) {
-    const processedItems = processItems(data.item);
-    collectionsStore.collections.push({
-      id: `coll_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      name: data.info.name || 'Imported Collection',
-      items: processedItems,
-      variables: normalizeCollectionVariables(data.variable || [])
-    });
-    collectionsStore.saveCollections();
-  }
-}
-
-function importOpenAPISpec(spec: any) {
-  if (!spec || !spec.info) {
-    console.error('Invalid OpenAPI spec - missing info');
-    return;
-  }
-
-  const baseUrl = getBaseServerUrl(spec);
-  const tagGroups: Record<string, any[]> = {};
-  const untaggedRequests: any[] = [];
-
-  for (const [path, pathItem] of Object.entries(spec.paths || {})) {
-    for (const [method, operation] of Object.entries(pathItem as any)) {
-      if (method === 'parameters') continue;
-
-      const request = createRequestFromOperation(path, method.toUpperCase(), operation as any, spec, baseUrl);
-      const tags = (operation as any).tags || [];
-      if (tags.length > 0) {
-        const tag = tags[0];
-        if (!tagGroups[tag]) tagGroups[tag] = [];
-        tagGroups[tag].push(request);
-      } else {
-        untaggedRequests.push(request);
-      }
-    }
-  }
-
-  const collection: any = {
-    id: `coll_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    name: spec.info.title || 'OpenAPI Import',
-    description: spec.info.description,
-    items: [],
-    variables: []
-  };
-
-  for (const [tag, requests] of Object.entries(tagGroups)) {
-    const folder: any = {
-      id: `fol_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      name: tag,
-      items: requests
+       return newItem;
+     });
+   };
+const processCollection = (c: any) => {
+      const id = c.id || `coll_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      return {
+        ...c,
+        id,
+        items: processItems(c.items || []),
+        variables: normalizeCollectionVariables(c.variables || c.variable || [])
+      };
     };
-    collection.items.push(folder);
-  }
 
-  collection.items.push(...untaggedRequests);
-  collectionsStore.collections.push(collection);
-  collectionsStore.saveCollections();
-}
+    let workspaceLocation = '';
+    try {
+      const homeDir = await window.api.getHomeDirectory();
+      workspaceLocation = homeDir ? `${homeDir}/hailstorm/` : '';
+    } catch (err) {
+      console.debug('Could not get home directory:', err);
+    }
+
+    if (data.collection) {
+      const coll = processCollection(data.collection);
+      coll.workspaceLocation = `${workspaceLocation}${coll.id}`;
+      collectionsStore.collections.push(coll);
+      collectionsStore.saveCollections();
+    } else if (data.collections) {
+      const processed = data.collections.map(processCollection);
+      processed.forEach(coll => {
+        coll.workspaceLocation = `${workspaceLocation}${coll.id}`;
+      });
+      collectionsStore.collections.push(...processed);
+      collectionsStore.saveCollections();
+    } else if (Array.isArray(data)) {
+      const processed = data.map(processCollection);
+      processed.forEach(coll => {
+        coll.workspaceLocation = `${workspaceLocation}${coll.id}`;
+      });
+      collectionsStore.collections.push(...processed);
+      collectionsStore.saveCollections();
+    } else if (data.info && data.item) {
+     const processedItems = processItems(data.item);
+     const newId = `coll_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+     collectionsStore.collections.push({
+       id: newId,
+       name: data.info.name || 'Imported Collection',
+       items: processedItems,
+       variables: normalizeCollectionVariables(data.variable || []),
+       workspaceLocation: `${workspaceLocation}${newId}`
+     });
+     collectionsStore.saveCollections();
+   }
+ }
+
+async function importOpenAPISpec(spec: any) {
+   if (!spec || !spec.info) {
+     console.error('Invalid OpenAPI spec - missing info');
+     return;
+   }
+
+   const baseUrl = getBaseServerUrl(spec);
+   const tagGroups: Record<string, any[]> = {};
+   const untaggedRequests: any[] = [];
+
+   for (const [path, pathItem] of Object.entries(spec.paths || {})) {
+     for (const [method, operation] of Object.entries(pathItem as any)) {
+       if (method === 'parameters') continue;
+
+       const request = createRequestFromOperation(path, method.toUpperCase(), operation as any, spec, baseUrl);
+       const tags = (operation as any).tags || [];
+       if (tags.length > 0) {
+         const tag = tags[0];
+         if (!tagGroups[tag]) tagGroups[tag] = [];
+         tagGroups[tag].push(request);
+       } else {
+         untaggedRequests.push(request);
+       }
+     }
+   }
+
+   let workspaceLocation = '';
+   try {
+     const homeDir = await window.api.getHomeDirectory();
+     workspaceLocation = homeDir ? `${homeDir}/hailstorm/` : '';
+   } catch (err) {
+     console.debug('Could not get home directory:', err);
+   }
+
+   const newId = `coll_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+   const collection: any = {
+     id: newId,
+     name: spec.info.title || 'OpenAPI Import',
+     description: spec.info.description,
+     items: [],
+     variables: [],
+     workspaceLocation: `${workspaceLocation}${newId}`
+   };
+
+   for (const [tag, requests] of Object.entries(tagGroups)) {
+     const folder: any = {
+       id: `fol_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+       name: tag,
+       items: requests
+     };
+     collection.items.push(folder);
+   }
+
+   collection.items.push(...untaggedRequests);
+   collectionsStore.collections.push(collection);
+   collectionsStore.saveCollections();
+ }
 
 function getBaseServerUrl(spec: any): string {
   if (!spec.servers || spec.servers.length === 0) return '';

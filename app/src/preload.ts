@@ -362,13 +362,17 @@ getDevToolsEnabled: async (): Promise<boolean> => {
      return await ipcRenderer.invoke('get-log-level');
    },
  
-   setLogLevel: async (level: import('./types').LogLevel): Promise<void> => {
-     return await ipcRenderer.invoke('set-log-level', level);
-   },
+setLogLevel: async (level: import('./types').LogLevel): Promise<void> => {
+      return await ipcRenderer.invoke('set-log-level', level);
+    },
 
-openDevTools: async (): Promise<void> => {
-     return await ipcRenderer.invoke('open-dev-tools');
-   },
+    openDevTools: async (): Promise<void> => {
+      return await ipcRenderer.invoke('open-dev-tools');
+    },
+
+    getHomeDirectory: async (): Promise<string> => {
+      return await ipcRenderer.invoke('get-home-directory');
+    },
 
    getSecretValue: async (secretRef: string): Promise<string | null> => {
      return await ipcRenderer.invoke('get-secret-value', secretRef);
