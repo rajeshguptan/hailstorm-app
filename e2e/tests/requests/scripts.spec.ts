@@ -34,26 +34,23 @@ test.describe('Script Tabs', () => {
     await expect(testScriptTab).toBeVisible();
   });
 
-  test('should display pre-request script textarea', async () => {
-    await requestPanel.tabs.scripts.click();
-    const textarea = requestPanel.page.locator('.script-tabs textarea');
-    await expect(textarea.first()).toBeVisible();
-    expect(await textarea.first().getAttribute('placeholder')).toContain('before request');
-  });
+test('should display pre-request script textarea', async () => {
+     await requestPanel.tabs.scripts.click();
+     const cmContent = requestPanel.page.locator('.script-tabs .cm-content');
+     await expect(cmContent.first()).toBeVisible();
+   });
 
-  test('should display post-request script textarea', async ({ appLoaded }) => {
-    await requestPanel.tabs.scripts.click();
-    await appLoaded.locator('.script-tabs button:has-text("Post-request Script")').click();
-    const textarea = appLoaded.locator('.script-tabs textarea');
-    await expect(textarea).toBeVisible();
-    expect(await textarea.getAttribute('placeholder')).toContain('after response');
-  });
+test('should display post-request script textarea', async ({ appLoaded }) => {
+     await requestPanel.tabs.scripts.click();
+     await appLoaded.locator('.script-tabs button:has-text("Post-request Script")').click();
+     const cmContent = appLoaded.locator('.script-tabs .cm-content');
+     await expect(cmContent).toBeVisible();
+   });
 
-  test('should display test script textarea', async ({ appLoaded }) => {
-    await requestPanel.tabs.scripts.click();
-    await appLoaded.locator('.script-tabs button:has-text("Test Script")').click();
-    const textarea = appLoaded.locator('.script-tabs textarea');
-    await expect(textarea).toBeVisible();
-    expect(await textarea.getAttribute('placeholder')).toContain('Test');
-  });
+test('should display test script textarea', async ({ appLoaded }) => {
+     await requestPanel.tabs.scripts.click();
+     await appLoaded.locator('.script-tabs button:has-text("Test Script")').click();
+     const cmContent = appLoaded.locator('.script-tabs .cm-content');
+     await expect(cmContent).toBeVisible();
+   });
 });

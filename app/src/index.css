@@ -4,6 +4,124 @@
 @tailwind components;
 @tailwind utilities;
 
+/* CodeMirror base styles - light mode default */
+.cm-editor {
+  height: 100%;
+  outline: none;
+}
+
+.cm-focused {
+  outline: none;
+}
+
+.cm-scroller {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+.cm-content {
+  padding: 0.5rem;
+  min-height: 100%;
+}
+
+/* Light mode styling - explicit overrides */
+.cm-editor,
+.cm-editor .cm-scroller,
+.cm-editor .cm-content {
+  background-color: #ffffff !important;
+  color: #18181b !important;
+}
+
+.cm-editor .cm-gutters {
+  background-color: #f4f4f5 !important;
+  border-right: 1px solid #e4e4e7 !important;
+}
+
+.cm-editor .cm-activeLine {
+  background-color: #f4f4f5 !important;
+}
+
+.cm-editor .cm-line {
+  color: #18181b !important;
+}
+
+/* CodeMirror syntax highlighting - light mode */
+.cm-editor .cm-keyword {
+  color: #8b5cf6 !important;
+}
+
+.cm-editor .cm-variable {
+  color: #3b82f6 !important;
+}
+
+.cm-editor .cm-variable-2 {
+  color: #10b981 !important;
+}
+
+.cm-editor .cm-variable-3 {
+  color: #06b6d4 !important;
+}
+
+.cm-editor .cm-property {
+  color: #eab308 !important;
+}
+
+.cm-editor .cm-operator {
+  color: #f43f5e !important;
+}
+
+.cm-editor .cm-comment {
+  color: #6b7280 !important;
+}
+
+.cm-editor .cm-string {
+  color: #10b981 !important;
+}
+
+.cm-editor .cm-string-2 {
+  color: #06b6d4 !important;
+}
+
+.cm-editor .cm-meta {
+  color: #6b7280 !important;
+}
+
+.cm-editor .cm-qualifier {
+  color: #8b5cf6 !important;
+}
+
+.cm-editor .cm-builtin {
+  color: #06b6d4 !important;
+}
+
+.cm-editor .cm-number {
+  color: #f59e0b !important;
+}
+
+.cm-editor .cm-atom {
+  color: #ec4899 !important;
+}
+
+/* CodeMirror dark theme - override when .cm-theme-one-dark is present */
+.cm-theme-one-dark,
+.cm-theme-one-dark .cm-scroller,
+.cm-theme-one-dark .cm-content {
+  background-color: #27272a !important;
+  color: #f4f4f5 !important;
+}
+
+.cm-theme-one-dark .cm-gutters {
+  background-color: #18181b !important;
+  border: none !important;
+}
+
+.cm-theme-one-dark .cm-activeLine {
+  background-color: #3f3f46 !important;
+}
+
+.cm-theme-one-dark .cm-activeLineGutter {
+  background-color: #3f3f46 !important;
+}
+
 * {
   box-sizing: border-box;
 }

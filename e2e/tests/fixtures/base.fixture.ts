@@ -10,61 +10,61 @@ export const test = base.extend({
     await page.goto('http://localhost:5173/');
 
     // Enhanced Electron API mocking for comprehensive testing
-await page.addScriptTag({
-       content: `
-         window.api = {
-           // HTTP Request functionality
-makeRequest: ({ method, url, headers, body, rps, requestId }) => {
-              console.log('[MOCK API] makeRequest:', { method, url, headers, body, rps, requestId });
-              return new Promise((resolve) => {
-                setTimeout(() => {
-// Handle invalid URLs
-                   if (/^GET |^POST |^PUT |^DELETE |^PATCH |^HEAD /i.test(url)) {
-                     resolve({
-                       status: 0,
-                       statusText: 'Error',
-                       headers: {},
-                       data: '',
-                       time: 0,
-                       error: 'Invalid URL: method should be selected from dropdown, not typed in URL field'
-                     });
-                     return;
-                   }
-                   // Handle unsupported protocols
-                   if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                     resolve({
-                       status: 0,
-                       statusText: 'Error',
-                       headers: {},
-                       data: '',
-                       time: 0,
-                       error: 'Unsupported protocol: Only http and https are supported.'
-                     });
-                     return;
-                   }
-                  // Simulate different responses based on URL
-                  if (url.includes('status/404')) {
-                    resolve({ status: 404, statusText: 'Not Found', headers: {}, data: '{"error": "Not Found"}', time: 150 });
-                  } else if (url.includes('bearer') && (!headers || !headers.Authorization || !headers.Authorization.includes('Bearer'))) {
-                    resolve({ status: 401, statusText: 'Unauthorized', headers: {}, data: '{"error": "Unauthorized"}', time: 100 });
-                  } else {
-                    resolve({
-                      status: 200,
-                      statusText: 'OK',
-                      headers: { 'content-type': 'application/json' },
-                      data: JSON.stringify({
-                        method,
-                        url,
-                        headers,
-                        body: body ? JSON.parse(body) : null,
-                        timestamp: Date.now()
-                      }),
-                      time: Math.random() * 200 + 50
-                    });
-                  }
-                }, Math.random() * 100 + 50); // Random delay 50-150ms
-              });
-            },
+    await page.addScriptTag({
+      content: `
+        window.api = {
+          // HTTP Request functionality
+          makeRequest: ({ method, url, headers, body, rps, requestId }) => {
+            console.log('[MOCK API] makeRequest:', { method, url, headers, body, rps, requestId });
+            return new Promise((resolve) => {
+              setTimeout(() => {
+                // Handle invalid URLs
+                if (/^GET |^POST |^PUT |^DELETE |^PATCH |^HEAD /i.test(url)) {
+                  resolve({
+                    status: 0,
+                    statusText: 'Error',
+                    headers: {},
+                    data: '',
+                    time: 0,
+                    error: 'Invalid URL: method should be selected from dropdown, not typed in URL field'
+                  });
+                  return;
+                }
+                // Handle unsupported protocols
+                if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                  resolve({
+                    status: 0,
+                    statusText: 'Error',
+                    headers: {},
+                    data: '',
+                    time: 0,
+                    error: 'Unsupported protocol: Only http and https are supported.'
+                  });
+                  return;
+                }
+                // Simulate different responses based on URL
+                if (url.includes('status/404')) {
+                  resolve({ status: 404, statusText: 'Not Found', headers: {}, data: '{"error": "Not Found"}', time: 150 });
+                } else if (url.includes('bearer') && (!headers || !headers.Authorization || !headers.Authorization.includes('Bearer'))) {
+                  resolve({ status: 401, statusText: 'Unauthorized', headers: {}, data: '{"error": "Unauthorized"}', time: 100 });
+                } else {
+                  resolve({
+                    status: 200,
+                    statusText: 'OK',
+                    headers: { 'content-type': 'application/json' },
+                    data: JSON.stringify({
+                      method,
+                      url,
+                      headers,
+                      body: body ? JSON.parse(body) : null,
+                      timestamp: Date.now()
+                    }),
+                    time: Math.random() * 200 + 50
+                  });
+                }
+              }, Math.random() * 100 + 50); // Random delay 50-150ms
+            });
+          },
 
           // Shell command execution
           runShell: (command) => {
@@ -72,25 +72,25 @@ makeRequest: ({ method, url, headers, body, rps, requestId }) => {
             return Promise.resolve({ output: 'Mock shell output', error: '' });
           },
 
-// File operations
-           importCollection: () => {
-             console.log('[MOCK API] importCollection');
-             return Promise.resolve(JSON.stringify({
-               id: 'imported-collection',
-               name: 'Imported Collection',
-               items: [{
-                 id: 'imported-request',
-                 name: 'Imported Request',
-                 method: 'GET',
-                 url: 'https://httpbin.org/get'
-               }]
-             }));
-           },
+          // File operations
+          importCollection: () => {
+            console.log('[MOCK API] importCollection');
+            return Promise.resolve(JSON.stringify({
+              id: 'imported-collection',
+              name: 'Imported Collection',
+              items: [{
+                id: 'imported-request',
+                name: 'Imported Request',
+                method: 'GET',
+                url: 'https://httpbin.org/get'
+              }]
+            }));
+          },
 
-           selectWorkspace: () => {
-             console.log('[MOCK API] selectWorkspace');
-             return Promise.resolve('/home/testuser/hailstorm');
-           },
+          selectWorkspace: () => {
+            console.log('[MOCK API] selectWorkspace');
+            return Promise.resolve('/home/testuser/hailstorm');
+          },
 
           // Load testing APIs
           initializeLoadTesting: () => {
@@ -122,20 +122,20 @@ makeRequest: ({ method, url, headers, body, rps, requestId }) => {
             });
           },
 
-getLoadTestRunStats: function(runId) {
-             console.log('[MOCK API] getLoadTestRunStats:', runId);
-             return Promise.resolve((window.__mockLoadTest && window.__mockLoadTest.stats) || {
-               runId: runId,
-               totalRequests: 10,
-               successfulRequests: 9,
-               failedRequests: 1,
-               errorRate: 10,
-               avgResponseTime: 150,
-               minResponseTime: 50,
-               maxResponseTime: 300,
-               requestsPerSecond: 6.67
-             });
-           },
+          getLoadTestRunStats: (runId) => {
+            console.log('[MOCK API] getLoadTestRunStats:', runId);
+            return Promise.resolve((window.__mockLoadTest && window.__mockLoadTest.stats) || {
+              runId: runId,
+              totalRequests: 10,
+              successfulRequests: 9,
+              failedRequests: 1,
+              errorRate: 10,
+              avgResponseTime: 150,
+              minResponseTime: 50,
+              maxResponseTime: 300,
+              requestsPerSecond: 6.67
+            });
+          },
 
           getLoadTestTimeSeriesData: (runId, startTime, endTime) => {
             console.log('[MOCK API] getLoadTestTimeSeriesData:', runId, startTime, endTime);
@@ -146,17 +146,17 @@ getLoadTestRunStats: function(runId) {
             ]);
           },
 
-getLoadTestTimeSeriesDataByRequest: function(runId, startTime, endTime) {
+          getLoadTestTimeSeriesDataByRequest: (runId, startTime, endTime) => {
             console.log('[MOCK API] getLoadTestTimeSeriesDataByRequest:', runId, startTime, endTime);
             return Promise.resolve([
               { requestName: 'GET Request', timestamp: Date.now() - 60000, requests: 5, errors: 0, avgResponseTime: 120, p50ResponseTime: 100, p75ResponseTime: 110, p90ResponseTime: 120, p95ResponseTime: 130, p99ResponseTime: 150 },
-              { requestName: 'POST Request', timestamp: Date.now() - 60000, requests: 3, errors: 0, avgResponseTime: 90, p50ResponseTime: 80, p75ResponseTime: 85, p90ResponseTime: 90, p95ResponseTime: 95, p99ResponseTime: 100 },
+              { requestName: 'POST Request', timestamp: Date.now() - 60000, requests: 3, errors: 0, avgResponseTime: 90, p50ResponseTime: 80, p75ResponseTime: 85, p90ResponseTime: 90, p95ResponseTime: 95, p99ResponseTime: 90 },
               { requestName: 'GET Request', timestamp: Date.now() - 30000, requests: 4, errors: 1, avgResponseTime: 180, p50ResponseTime: 150, p75ResponseTime: 170, p90ResponseTime: 180, p95ResponseTime: 190, p99ResponseTime: 200 },
               { requestName: 'POST Request', timestamp: Date.now() - 30000, requests: 2, errors: 0, avgResponseTime: 85, p50ResponseTime: 80, p75ResponseTime: 82, p90ResponseTime: 85, p95ResponseTime: 88, p99ResponseTime: 90 }
             ]);
           },
 
-          getLoadTestTimeSeriesDataByStatus: function(runId, startTime, endTime) {
+          getLoadTestTimeSeriesDataByStatus: (runId, startTime, endTime) => {
             console.log('[MOCK API] getLoadTestTimeSeriesDataByStatus:', runId, startTime, endTime);
             return Promise.resolve([
               { statusCode: 200, timestamp: Date.now() - 60000, requests: 5, avgResponseTime: 120, p50ResponseTime: 100, p75ResponseTime: 110, p90ResponseTime: 120, p95ResponseTime: 130, p99ResponseTime: 150 },
@@ -199,7 +199,7 @@ getLoadTestTimeSeriesDataByRequest: function(runId, startTime, endTime) {
             return Promise.resolve();
           },
 
-runLoadTest: async function(params) {
+          runLoadTest: async (params) => {
             console.log('[MOCK API] runLoadTest:', params);
             var callbacks = (window.__mockLoadTest && window.__mockLoadTest.callbacks) || [];
             var runId = params.runId || 'mock-run-' + Date.now();
@@ -256,7 +256,7 @@ runLoadTest: async function(params) {
             return { run: { id: runId, status: 'completed' }, results: [] };
           },
 
-          stopLoadTest: async function() {
+          stopLoadTest: async () => {
             console.log('[MOCK API] stopLoadTest');
             if (window.__mockLoadTest) {
               window.__mockLoadTest.release();
@@ -264,7 +264,7 @@ runLoadTest: async function(params) {
             return Promise.resolve();
           },
 
-          onLoadTestStatsUpdate: function(callback) {
+          onLoadTestStatsUpdate: (callback) => {
             if (!window.__mockLoadTest) {
               window.__mockLoadTest = { callbacks: [], running: false, completed: false };
             }
@@ -294,30 +294,30 @@ runLoadTest: async function(params) {
             });
           },
 
-selectDatafileDialog: (filters) => {
-             console.log('[MOCK API] selectDatafileDialog:', filters);
-             return Promise.resolve({
-               canceled: false,
-               filePaths: ['/mock/path/data.csv']
-             });
-           },
- 
-           // Logging APIs
-           getLogLevel: () => {
-             console.log('[MOCK API] getLogLevel');
-             return Promise.resolve('info');
-           },
- 
-setLogLevel: (level) => {
-              console.log('[MOCK API] setLogLevel:', level);
-              return Promise.resolve();
-            },
+          selectDatafileDialog: (filters) => {
+            console.log('[MOCK API] selectDatafileDialog:', filters);
+            return Promise.resolve({
+              canceled: false,
+              filePaths: ['/mock/path/data.csv']
+            });
+          },
 
-            getHomeDirectory: () => {
-              console.log('[MOCK API] getHomeDirectory');
-              return Promise.resolve('/home/testuser');
-            }
-          };
+          // Logging APIs
+          getLogLevel: () => {
+            console.log('[MOCK API] getLogLevel');
+            return Promise.resolve('info');
+          },
+
+          setLogLevel: (level) => {
+            console.log('[MOCK API] setLogLevel:', level);
+            return Promise.resolve();
+          },
+
+          getHomeDirectory: () => {
+            console.log('[MOCK API] getHomeDirectory');
+            return Promise.resolve('/home/testuser');
+          }
+        };
 
         // Mock Electron dialog
         window.electron = {

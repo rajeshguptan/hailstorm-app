@@ -150,8 +150,13 @@ export class RequestPanel {
     if (await scriptTab.isVisible()) {
       await scriptTab.click();
     }
-    const textarea = this.page.locator('.script-tabs textarea');
-    await textarea.fill(content);
+    const cmContent = this.page.locator('.script-tabs .cm-content');
+    if (await cmContent.isVisible()) {
+      await cmContent.fill(content);
+    } else {
+      const textarea = this.page.locator('.script-tabs textarea');
+      await textarea.fill(content);
+    }
   }
 
   async waitForResponse(): Promise<void> {

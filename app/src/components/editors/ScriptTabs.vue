@@ -7,41 +7,44 @@
         @click="activeSubTab = tab.id"
         class="px-4 py-2 border-b-2 transition-colors text-sm"
         :class="activeSubTab === tab.id ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'"
+        role="tab"
+        :aria-selected="activeSubTab === tab.id"
       >
         {{ tab.name }}
       </button>
     </div>
 
-<div class="flex-1 overflow-auto pt-3">
-       <div v-if="activeSubTab === 'pre-request'" class="h-full">
-         <textarea
-           v-model="modelValue.preRequestScript"
-           class="w-full h-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-mono text-sm resize-none"
-           placeholder="// Runs before request is sent"
-         ></textarea>
-       </div>
+    <div class="flex-1 overflow-auto pt-3" role="tabpanel">
+      <ScriptEditor
+        v-if="activeSubTab === 'pre-request'"
+        :model-value="modelValue.preRequestScript || ''"
+        placeholder="// Runs before request is sent"
+        script-type="pre-request"
+        @update:modelValue="modelValue.preRequestScript = $event"
+      />
 
-       <div v-if="activeSubTab === 'post-request'" class="h-full">
-         <textarea
-           v-model="modelValue.postRequestScript"
-           class="w-full h-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-mono text-sm resize-none"
-           placeholder="// Runs after response is received"
-         ></textarea>
-       </div>
+      <ScriptEditor
+        v-if="activeSubTab === 'post-request'"
+        :model-value="modelValue.postRequestScript || ''"
+        placeholder="// Runs after response is received"
+        script-type="post-request"
+        @update:modelValue="modelValue.postRequestScript = $event"
+      />
 
-       <div v-if="activeSubTab === 'test'" class="h-full">
-         <textarea
-           v-model="modelValue.testScript"
-           class="w-full h-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-mono text-sm resize-none"
-           placeholder="// Test the response"
-         ></textarea>
-       </div>
-     </div>
+      <ScriptEditor
+        v-if="activeSubTab === 'test'"
+        :model-value="modelValue.testScript || ''"
+        placeholder="// Test the response"
+        script-type="test"
+        @update:modelValue="modelValue.testScript = $event"
+      />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import ScriptEditor from './ScriptEditor.vue';
 
 interface ScriptTabsModel {
   preRequestScript?: string;

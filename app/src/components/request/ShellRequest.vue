@@ -10,20 +10,22 @@
     </div>
 
     <!-- Tab Navigation -->
-    <div class="flex border-b border-zinc-200 dark:border-zinc-700">
+    <div class="flex border-b border-zinc-200 dark:border-zinc-700" role="tablist">
       <button
         v-for="tab in tabs"
         :key="tab.id"
         @click="activeTab = tab.id"
         class="px-4 py-2 border-b-2 transition-colors text-sm"
         :class="activeTab === tab.id ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'"
+        role="tab"
+        :aria-selected="activeTab === tab.id"
       >
         {{ tab.name }}
       </button>
     </div>
 
     <!-- Tab Content -->
-    <div class="flex-1 overflow-auto p-3">
+    <div class="flex-1 overflow-auto p-3" role="tabpanel">
       <div v-if="activeTab === 'script'" class="h-full">
         <textarea
           v-model="request.url"
@@ -32,21 +34,21 @@
         ></textarea>
       </div>
 
-      <div v-if="activeTab === 'pre-request'" class="h-full">
-        <textarea
-          v-model="request.preRequestScript"
-          class="w-full h-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white font-mono text-sm resize-none"
-          placeholder="// Pre-request script runs before shell command"
-        ></textarea>
-      </div>
+      <ScriptEditor
+        v-if="activeTab === 'pre-request'"
+        :model-value="request.preRequestScript || ''"
+        placeholder="// Pre-request script runs before shell command"
+        script-type="pre-request"
+        @update:model-value="request.preRequestScript = $event"
+      />
 
-      <div v-if="activeTab === 'post-request'" class="h-full">
-        <textarea
-          v-model="request.postRequestScript"
-          class="w-full h-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white font-mono text-sm resize-none"
-          placeholder="// Parse shell output and set environment variables&#10;// Example: hs.setEnv('userId', hs.output.trim().split(/\s+/)[0])"
-        ></textarea>
-      </div>
+      <ScriptEditor
+        v-if="activeTab === 'post-request'"
+        :model-value="request.postRequestScript || ''"
+        placeholder="// Parse shell output and set environment variables&#10;// Example: hs.setEnv('userId', hs.output.trim().split(/\s+/)[0])"
+        script-type="post-request"
+        @update:model-value="request.postRequestScript = $event"
+      />
     </div>
   </div>
 </template>
@@ -56,6 +58,7 @@ import { ref, computed } from 'vue';
 import { useRequestsStore } from '../../stores/requests';
 import { useResponseStore } from '../../stores/response';
 import { useEnvironmentsStore } from '../../stores/environments';
+import ScriptEditor from '../editors/ScriptEditor.vue';
 
 const requestsStore = useRequestsStore();
 const responseStore = useResponseStore();
