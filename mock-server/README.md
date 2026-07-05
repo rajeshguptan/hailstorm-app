@@ -9,6 +9,21 @@ npm start
 
 The server listens on `http://127.0.0.1:4010` by default and includes endpoints for HTTP methods/status/delay/auth, GraphQL, JSON-RPC, OAuth, WebSocket, and rate limiting.
 
+## Architecture
+
+The server is organized into modular components:
+
+| Module | File | Description |
+| --- | --- | --- |
+| `server.js` | Entry point - HTTP server, WebSocket setup, route registration |
+| `middleware/auth.js` | Authentication middleware (basic, bearer, API key) |
+| `middleware/rate-limit.js` | Token bucket rate limiting |
+| `handlers/http.js` | HTTP, GraphQL, JSON-RPC, OAuth response handlers |
+| `stores/users.js` | In-memory users data store |
+| `routes/index.js` | All route definitions |
+| `websocket/handlers.js` | WebSocket echo and chat handlers |
+| `utils/helpers.js` | Shared utility functions |
+
 ## Setup
 
 Install dependencies:

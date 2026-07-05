@@ -29,6 +29,12 @@ export const useUIStore = defineStore('ui', {
     recentRequestCount: parseInt(localStorage.getItem('recentRequestCount') || '6'),
 
     requestModified: false as boolean,
+
+    otelSettings: {
+      enabled: false,
+      endpoint: '',
+      userId: '',
+    } as import('../types').OpenTelemetrySettings,
   }),
 
   getters: {
@@ -72,12 +78,20 @@ export const useUIStore = defineStore('ui', {
       this.copiedRequest = null;
     },
 
-    setRequestModified(modified: boolean) {
-      this.requestModified = modified;
-    },
+setRequestModified(modified: boolean) {
+       this.requestModified = modified;
+     },
 
-    clearRequestModified() {
-      this.requestModified = false;
-    }
-  }
+     clearRequestModified() {
+       this.requestModified = false;
+     },
+
+     setOtelSettings(settings: { enabled: boolean; endpoint: string; userId: string }) {
+       this.otelSettings = { ...this.otelSettings, ...settings };
+     },
+
+     clearOtelSettings() {
+       this.otelSettings = { enabled: false, endpoint: '', userId: '' };
+     }
+   }
 });

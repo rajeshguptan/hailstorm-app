@@ -165,18 +165,33 @@ export function setupDialogHandlers() {
 }
 
 export function setupLoadTestHandlers() {
-  ipcMain.handle('initialize-load-testing', async () => {
-    console.log('[EXECUTION_ENGINE] initializeLoadTesting called');
-    try {
-      await loadTestingService.initialize();
-      console.log('[EXECUTION_ENGINE] initializeLoadTesting completed');
-    } catch (error: any) {
-      console.error('[EXECUTION_ENGINE] initializeLoadTesting error:', error.message);
-      throw error;
-    }
-  });
+   ipcMain.handle('initialize-load-testing', async () => {
+     console.log('[EXECUTION_ENGINE] initializeLoadTesting called');
+     try {
+       await loadTestingService.initialize();
+       console.log('[EXECUTION_ENGINE] initializeLoadTesting completed');
+     } catch (error: any) {
+       console.error('[EXECUTION_ENGINE] initializeLoadTesting error:', error.message);
+       throw error;
+     }
+   });
 
-  ipcMain.handle('start-load-test-run', async (_event, runConfig) => {
+   ipcMain.handle('get-secret-value', async (_event, secretRef: string) => {
+     try {
+       const { useSecretsStore } = await import('../stores/secrets');
+       const secretsStore = useSecretsStore();
+       const secret = secretsStore.secrets.find(s => s.name === secretRef || s.id === secretRef);
+       if (secret && secretsStore.isUnlocked) {
+         return secret.value;
+       }
+       return null;
+     } catch (error: any) {
+       console.error('[EXECUTION_ENGINE] getSecretValue error:', error.message);
+       return null;
+     }
+   });
+
+   ipcMain.handle('start-load-test-run', async (_event, runConfig) => {
     console.log('[EXECUTION_ENGINE] startLoadTestRun called', runConfig);
     try {
       const run = await loadTestingService.startRun(runConfig);
@@ -568,99 +583,110 @@ export function setupLoadTestExecutionHandlers() {
   });
 
 ipcMain.handle('run-load-test', async (_event, params: {
-    config: any;
-    collections: any[];
-    environments: any[];
-    secrets: any[];
-    isSecretsUnlocked: boolean;
-    activeEnvironmentId?: string | null;
-    runId?: string;
-    runRepeated?: boolean;
-  }) => {
-    console.log('[EXECUTION_ENGINE] runLoadTest called');
-    const { config, collections, environments, secrets, isSecretsUnlocked, activeEnvironmentId, runId: existingRunId } = params;
+     config: any;
+     collections: any[];
+     environments: any[];
+     secrets: any[];
+     isSecretsUnlocked: boolean;
+     activeEnvironmentId?: string | null;
+     runId?: string;
+     runRepeated?: boolean;
+     otelSettings?: { enabled: boolean; endpoint: string; userId: string };
+   }) => {
+     console.log('[EXECUTION_ENGINE] runLoadTest called');
+     const { config, collections, environments, secrets, isSecretsUnlocked, activeEnvironmentId, runId: existingRunId, otelSettings } = params;
 
-    let runId = existingRunId;
-    let newRun: LoadTestRun | null = null;
-    let runStartTime = 0;
-    const runDurationMs = config.runRepeated && config.duration && config.duration > 0 
-      ? config.duration * 1000 
-      : 0;
+     // Update OTel exporter config if provided
+     if (otelSettings) {
+       const { otelExporter } = await import('./otelExporter');
+       otelExporter.updateConfig(otelSettings);
+     }
 
-    if (!runId) {
-      newRun = await loadTestingService.startRun({
-        name: config.name,
-        collectionId: config.collectionId,
-        collectionName: config.collectionName || '',
-        selectedRequests: config.selectedRequests || [],
-        runMode: 'parallel',
-        delay: 0,
-        runRepeated: config.runRepeated || false,
-        iterations: config.iterations || 1,
-        duration: config.duration || 0
-      });
-      runId = newRun.id;
-      runStartTime = newRun.startTime;
-    } else {
-      // Get the existing run's start time for duration check
-      const existingRun = await loadTestingService.getRunStats(runId);
-      if (existingRun) {
-        runStartTime = existingRun.startTime;
-      }
-    }
+     let runId = existingRunId;
+     let newRun: LoadTestRun | null = null;
+     let runStartTime = 0;
+     const runDurationMs = config.runRepeated && config.duration && config.duration > 0 
+       ? config.duration * 1000 
+       : 0;
 
-    console.log('[EXECUTION_ENGINE] runLoadTest started with runId:', runId);
+     if (!runId) {
+       newRun = await loadTestingService.startRun({
+         name: config.name,
+         collectionId: config.collectionId,
+         collectionName: config.collectionName || '',
+         selectedRequests: config.selectedRequests || [],
+         runMode: 'parallel',
+         delay: 0,
+         runRepeated: config.runRepeated || false,
+         iterations: config.iterations || 1,
+         duration: config.duration || 0
+       });
+       runId = newRun.id;
+       runStartTime = newRun.startTime;
+     } else {
+       // Get the existing run's start time for duration check
+       const existingRun = await loadTestingService.getRunStats(runId);
+       if (existingRun) {
+         runStartTime = existingRun.startTime;
+       }
+     }
 
-    const engine = await getRunnerEngine();
-    const rpsConfigs = config.requestConfigs || {};
-    const results: any[] = [];
+     console.log('[EXECUTION_ENGINE] runLoadTest started with runId:', runId);
 
-    await engine.executeLoadTest(
-      config,
-      collections,
-      environments,
-      secrets,
-      isSecretsUnlocked,
-      rpsConfigs,
-      async (result) => {
-        results.push(result);
+     const engine = await getRunnerEngine();
+     const rpsConfigs = config.requestConfigs || {};
+     const results: any[] = [];
 
-        // Check if duration has elapsed before recording or sending stats
-        if (runDurationMs > 0 && (Date.now() - runStartTime) >= runDurationMs) {
-          return;
-        }
+     // Set up secret resolver for OTel
+     const secretsMap = new Map(secrets.map((s: any) => [s.name, s.value]));
+     engine.setSecretResolver(async (ref: string) => secretsMap.get(ref) || null);
 
-        await loadTestingService.recordRequest(runId, {
-          requestId: result.requestId || 'unknown',
-          requestName: result.requestName,
-          method: result.method,
-          url: result.url || '',
-          status: result.status,
-          latency: result.time,
-          responseSize: 0,
-          timestamp: Date.now(),
-          shouldCaptureFullDetail: result.status >= 500,
-        });
+     await engine.executeLoadTest(
+       config,
+       collections,
+       environments,
+       secrets,
+       isSecretsUnlocked,
+       rpsConfigs,
+       async (result) => {
+         results.push(result);
 
-        const stats = await loadTestingService.getRunStats(runId);
-        if (stats && !_event.sender.isDestroyed()) {
-          stats.lastLatency = result.time;
-          stats.lastStatus = result.status;
-          stats.lastRequestName = result.requestName;
-          _event.sender.send('load-test-stats-update', { runId, stats });
-        }
-      },
-      activeEnvironmentId
-    );
+         // Check if duration has elapsed before recording or sending stats
+         if (runDurationMs > 0 && (Date.now() - runStartTime) >= runDurationMs) {
+           return;
+         }
 
-    console.log('[EXECUTION_ENGINE] runLoadTest completed');
+         await loadTestingService.recordRequest(runId, {
+           requestId: result.requestId || 'unknown',
+           requestName: result.requestName,
+           method: result.method,
+           url: result.url || '',
+           status: result.status,
+           latency: result.time,
+           responseSize: 0,
+           timestamp: Date.now(),
+           shouldCaptureFullDetail: result.status >= 500,
+         });
 
-    if (newRun) {
-      await loadTestingService.endRun(runId);
-    }
+         const stats = await loadTestingService.getRunStats(runId);
+         if (stats && !_event.sender.isDestroyed()) {
+           stats.lastLatency = result.time;
+           stats.lastStatus = result.status;
+           stats.lastRequestName = result.requestName;
+           _event.sender.send('load-test-stats-update', { runId, stats });
+         }
+       },
+       activeEnvironmentId
+     );
 
-    return { run: newRun, results };
-  });
+     console.log('[EXECUTION_ENGINE] runLoadTest completed');
+
+     if (newRun) {
+       await loadTestingService.endRun(runId);
+     }
+
+     return { run: newRun, results };
+   });
 }
 
 export function initializeExecutionEngine() {

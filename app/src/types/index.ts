@@ -363,6 +363,13 @@ export interface SubSetting {
   icon: string;
 }
 
+export interface OpenTelemetrySettings {
+  enabled: boolean;
+  endpoint: string;
+  userId: string;
+  headers?: Record<string, string>;
+}
+
 export type LogLevel = 'error' | 'warn' | 'info' | 'verbose' | 'debug' | 'silly';
 
 export type SidebarView = 'collections' | 'history' | 'secrets' | 'stats' | 'runner' | 'console' | 'docs' | 'settings';

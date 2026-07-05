@@ -64,41 +64,41 @@ interface SecretsStoreData {
 }
 
 async function executeDepRequest(
-   request: any,
-   seVars: VariableData[],
-   reqVars: VariableData[],
-   secrets: { name: string; value: string }[] | undefined,
-   collectionVars: VariableData[],
-   parentAuth?: Auth | undefined,
+    request: any,
+    seVars: VariableData[],
+    reqVars: VariableData[],
+    secrets: { name: string; value: string }[] | undefined,
+    collectionVars: VariableData[],
+    parentAuth?: Auth | undefined,
 ): Promise<ExecutedRequest> {
-   let url = substituteAll(request.url, seVars, reqVars, secrets, collectionVars);
-   let body = request.body && request.body.type !== 'none' && request.body.content
-     ? substituteAll(request.body.content, seVars, reqVars, secrets, collectionVars)
-     : undefined;
+    let url = substituteAll(request.url, seVars, reqVars, secrets, collectionVars);
+    let body = request.body && request.body.type !== 'none' && request.body.content
+      ? substituteAll(request.body.content, seVars, reqVars, secrets, collectionVars)
+      : undefined;
 
-   const headers: Record<string, string> = {};
+    const headers: Record<string, string> = {};
 
-   // Handle SHELL requests
-   if (request.method === 'SHELL') {
-     let shellResult: { output: string; error: string };
-     try {
-       const { stdout, stderr } = await execAsync(url, { timeout: 30000 });
-       shellResult = { output: stdout, error: stderr };
-     } catch (err: any) {
-       shellResult = { output: '', error: err.message };
-     }
-     
-     return {
-       id: request.id,
-       name: request.name,
-       status: shellResult.error ? 1 : 0,
-       statusText: shellResult.error ? shellResult.error : 'Success',
-       time: 0,
-       error: shellResult.error,
-     };
-   }
+    // Handle SHELL requests
+    if (request.method === 'SHELL') {
+      let shellResult: { output: string; error: string };
+      try {
+        const { stdout, stderr } = await execAsync(url, { timeout: 30000 });
+        shellResult = { output: stdout, error: stderr };
+      } catch (err: any) {
+        shellResult = { output: '', error: err.message };
+      }
+      
+      return {
+        id: request.id,
+        name: request.name,
+        status: shellResult.error ? 1 : 0,
+        statusText: shellResult.error ? shellResult.error : 'Success',
+        time: 0,
+        error: shellResult.error,
+      };
+    }
 
-   const effectiveAuth = request.auth?.type === 'inherit' ? parentAuth : request.auth;
+    const effectiveAuth = request.auth?.type === 'inherit' ? parentAuth : request.auth;
    if (effectiveAuth) {
       applyAuthAndHeaders({ headers, url }, effectiveAuth, seVars, reqVars, secrets, collectionVars);
    }
@@ -353,8 +353,8 @@ export async function sendRequest(context: SendRequestContext, rps: number = 0, 
     return mainRequest.auth;
   };
 
-  // Handle SHELL requests
-  if (mainRequest.method === 'SHELL') {
+// Handle SHELL requests
+   if (mainRequest.method === 'SHELL') {
     const command = substituteAll(mainRequest.url, seVars, requestVars, accessibleSecrets, mainCollectionVars);
     
     let shellResult: { output: string; error: string };

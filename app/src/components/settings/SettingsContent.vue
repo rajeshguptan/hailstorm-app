@@ -147,8 +147,57 @@
             >
           </div>
         </div>
-      </div>
-      
+</div>
+        <div v-else-if="activeSection === 'otel'" class="max-w-xl">
+          <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-1">OpenTelemetry</h3>
+          <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">Configure OpenTelemetry exporter for load test metrics</p>
+          
+          <div class="space-y-4">
+            <div class="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
+              <div>
+                <div class="font-medium text-zinc-900 dark:text-white">Enable OpenTelemetry Exporter</div>
+                <div class="text-sm text-zinc-500 dark:text-zinc-400">Send load test metrics to an OpenTelemetry collector</div>
+              </div>
+              <button 
+                class="w-12 h-6 rounded-full transition-colors"
+                :class="otel.enabled ? 'bg-blue-500' : 'bg-zinc-300 dark:bg-zinc-600'"
+                @click="otel.enabled = !otel.enabled; updateOtelSettings()"
+              >
+                <div 
+                  class="w-5 h-5 bg-white rounded-full shadow transform transition-transform"
+                  :class="otel.enabled ? 'translate-x-6' : 'translate-x-0.5'"
+                ></div>
+              </button>
+            </div>
+            
+            <div v-if="otel.enabled">
+              <div>
+                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Endpoint</label>
+                <input 
+                  type="text"
+                  v-model="otel.endpoint"
+                  @change="updateOtelSettings"
+                  class="w-full px-3 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white"
+                  placeholder="http://localhost:4318/v1/traces"
+                >
+                <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">OTLP HTTP endpoint for traces</p>
+              </div>
+              
+              <div class="mt-4">
+                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">User ID</label>
+                <input 
+                  type="text"
+                  v-model="otel.userId"
+                  @change="updateOtelSettings"
+                  class="w-full px-3 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white"
+                  placeholder="user-id or {{secret.variable}}"
+                >
+                <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Identifier for the load test runner (can reference secrets via variable substitution)</p>
+              </div>
+            </div>
+          </div>
+        </div>
+  
       <div v-else-if="activeSection === 'secrets'" class="max-w-xl">
         <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Secrets Encryption</h3>
         <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">Manage encryption settings for secrets</p>
@@ -393,6 +442,7 @@ const appItems = [
 ];
 
 const advancedItems = [
+   { id: 'otel', label: 'OpenTelemetry' },
    { id: 'secrets', label: 'Secrets' },
    { id: 'developer-tools', label: 'Developer Tools' },
    { id: 'logging', label: 'Logging' },
@@ -469,54 +519,72 @@ async function loadDevToolsSetting() {
 }
 
 watch(devToolsEnabled, async (enabled) => {
-  localStorage.setItem(DEVTOOLS_STORAGE_KEY, String(enabled));
-  await window.api.setDevToolsEnabled(enabled);
-});
-
-onMounted(() => {
-   loadDevToolsSetting();
-   loadLogLevel();
+   localStorage.setItem(DEVTOOLS_STORAGE_KEY, String(enabled));
+   await window.api.setDevToolsEnabled(enabled);
  });
 
-function toggleDevTools() {
-  devToolsEnabled.value = !devToolsEnabled.value;
-}
+ const showSetKeyModal = ref(false);
+ const showChangeKeyModal = ref(false);
+ const currentEncryptionKey = ref('');
+ const newEncryptionKey = ref('');
 
-// Encryption key modal state
-const showSetKeyModal = ref(false);
-const showChangeKeyModal = ref(false);
-const currentEncryptionKey = ref('');
-const newEncryptionKey = ref('');
+ // Encryption key functions
+ function setEncryptionKey() {
+   if (newEncryptionKey.value.trim()) {
+     secretsStore.setEncryptionKey(newEncryptionKey.value.trim());
+     closeModals();
+   }
+ }
 
-// Encryption key functions
-function setEncryptionKey() {
-  if (newEncryptionKey.value.trim()) {
-    secretsStore.setEncryptionKey(newEncryptionKey.value.trim());
-    closeModals();
-  }
-}
+ function changeEncryptionKey() {
+   if (currentEncryptionKey.value.trim() && newEncryptionKey.value.trim()) {
+     const success = secretsStore.changeEncryptionKey(
+       currentEncryptionKey.value.trim(),
+       newEncryptionKey.value.trim()
+     );
+     if (success) {
+       closeModals();
+     } else {
+       console.error('Invalid current encryption key');
+     }
+   }
+ }
 
-function changeEncryptionKey() {
-  if (currentEncryptionKey.value.trim() && newEncryptionKey.value.trim()) {
-    const success = secretsStore.changeEncryptionKey(
-      currentEncryptionKey.value.trim(),
-      newEncryptionKey.value.trim()
-    );
-    if (success) {
-      closeModals();
-    } else {
-      // Could show error message
-      console.error('Invalid current encryption key');
-    }
-  }
-}
+ function closeModals() {
+   showSetKeyModal.value = false;
+   showChangeKeyModal.value = false;
+   currentEncryptionKey.value = '';
+   newEncryptionKey.value = '';
+ }
 
-function closeModals() {
-  showSetKeyModal.value = false;
-  showChangeKeyModal.value = false;
-  currentEncryptionKey.value = '';
-  newEncryptionKey.value = '';
-}
+ const otel = ref({
+   enabled: false,
+   endpoint: '',
+   userId: '',
+ });
+
+ function updateOtelSettings() {
+   uiStore.setOtelSettings({
+     enabled: otel.value.enabled,
+     endpoint: otel.value.endpoint,
+     userId: otel.value.userId,
+   });
+ }
+
+ onMounted(() => {
+   loadDevToolsSetting();
+   loadLogLevel();
+   const stored = localStorage.getItem('hailstorm:otel');
+   if (stored) {
+     const parsed = JSON.parse(stored);
+     otel.value = { ...otel.value, ...parsed };
+   }
+ });
+
+ watch(otel, (val) => {
+   localStorage.setItem('hailstorm:otel', JSON.stringify(val));
+   updateOtelSettings();
+ }, { deep: true });
 
 
-</script>
+ </script>

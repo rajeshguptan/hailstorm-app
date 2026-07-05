@@ -45,16 +45,17 @@ export interface SendRequestResult {
 }
 
 export type RunLoadTestParams = {
-  config: any;
-  collections: any[];
-  environments: any[];
-  secrets: any[];
-  isSecretsUnlocked: boolean;
-  activeEnvironmentId?: string | null;
-  runId?: string;
-  requestConfigs?: Record<string, { rps: number; datafile?: string }>;
-  runRepeated?: boolean;
-};
+   config: any;
+   collections: any[];
+   environments: any[];
+   secrets: any[];
+   isSecretsUnlocked: boolean;
+   activeEnvironmentId?: string | null;
+   runId?: string;
+   requestConfigs?: Record<string, { rps: number; datafile?: string }>;
+   runRepeated?: boolean;
+   otelSettings?: { enabled: boolean; endpoint: string; userId: string };
+ };
 
 const api = {
   makeRequest: async (options: import('./types').RequestOptions): Promise<import('./types').ResponseData> => {
@@ -365,11 +366,15 @@ getDevToolsEnabled: async (): Promise<boolean> => {
      return await ipcRenderer.invoke('set-log-level', level);
    },
 
-  openDevTools: async (): Promise<void> => {
-    return await ipcRenderer.invoke('open-dev-tools');
-  },
+openDevTools: async (): Promise<void> => {
+     return await ipcRenderer.invoke('open-dev-tools');
+   },
 
-  // ─── OAuth Token Management ───────────────────────────────────────────────────
+   getSecretValue: async (secretRef: string): Promise<string | null> => {
+     return await ipcRenderer.invoke('get-secret-value', secretRef);
+   },
+
+   // ─── OAuth Token Management ───────────────────────────────────────────────────
   saveOAuthToken: async (requestId: string, token: string, expiry?: number): Promise<void> => {
     await ipcRenderer.invoke('save-oauth-token', { requestId, token, expiry });
   },

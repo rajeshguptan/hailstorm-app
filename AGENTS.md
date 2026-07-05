@@ -19,11 +19,11 @@ Hailstorm is a local-first Electron + Vue 3 API client for API development, test
 
 ## Current feature notes
 
-- Request types: HTTP, GraphQL, JSON-RPC, WebSocket, and shell.
+- Request types: HTTP, GraphQL, JSON-RPC, WebSocket, and query.
 - Collection/folder context menus support add, duplicate, copy, paste, rename, delete, and request-type-specific creation.
 - JSON-RPC requests are stored as POST requests with `isJsonRpc`, JSON body content, and an RPC badge in the collection tree.
 - WebSocket requests use `isWebSocket` and route through the WebSocket execution path.
-- Shell requests use method `SHELL`, with the command stored in the URL field.
+- Query requests use method `QUERY`, with the query string stored in the URL field.
 - Environments provide variable substitution for collection, request, environment, and secret values.
 - Secrets list items show only secret names. The Secrets detail environment dropdown is populated from `environmentsStore`.
 - The Runner supports run configurations, selected requests, per-request RPS, repeated duration-based runs, and request datafile metadata.

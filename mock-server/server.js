@@ -268,6 +268,23 @@ app.get('/rps', (req, res) => {
   res.json(status);
 });
 
+// === OpenTelemetry Collector Endpoint ===
+const otelTraces = [];
+
+app.post('/otel/v1/traces', (req, res) => {
+  const traceData = req.body;
+  otelTraces.push({
+    receivedAt: now(),
+    ...traceData
+  });
+  console.log('[OTEL_MOCK] Received trace:', traceData.resource?.attributes?.find?.(a => a.key === 'run.name')?.value?.stringValue || 'unknown');
+  res.status(200).json({ success: true });
+});
+
+app.get('/otel/v1/traces', (req, res) => {
+  res.json(otelTraces);
+});
+
 // === Health check ===
 app.get('/health', (req, res) => {
   const rateLimitInfo = {};
@@ -284,7 +301,8 @@ app.get('/', (req, res) => res.json({
     raw: '/http/raw', binary: '/http/binary', status: '/http/status/:code', delay: '/http/delay/:ms',
     error: '/http/error', graphql: '/graphql', jsonRpc: '/json-rpc', users: '/users', upload: '/upload',
     websocket: 'ws://127.0.0.1:4010/ws', websocketChat: 'ws://127.0.0.1:4010/ws/chat',
-    oauthToken: '/oauth/token', oauth2Token: '/oauth2/token', rateLimiting: '/rps'
+    oauthToken: '/oauth/token', oauth2Token: '/oauth2/token', rateLimiting: '/rps',
+    otel: '/otel/v1/traces'
   }
 }));
 

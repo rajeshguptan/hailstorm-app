@@ -17,7 +17,7 @@ This document compares major Postman capabilities with the current Hailstorm imp
 
 | Feature | Status | Notes |
 | --- | --- | --- |
-| HTTP methods | Implemented | GET, POST, PUT, PATCH, DELETE, and shell method support. |
+| HTTP methods | Implemented | GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, and query method support. |
 | URL and query parameters | Implemented | Headers, URL, and query parameters are editable. |
 | Request headers | Implemented | Enabled/disabled header variables are supported. |
 | Request body types | Implemented | None, form data, URL encoded, raw, binary, JSON, XML, text, and GraphQL payloads. |
@@ -46,7 +46,7 @@ This document compares major Postman capabilities with the current Hailstorm imp
 | GraphQL | Implemented | GraphQL body type, query, variables, and operation name support. |
 | JSON-RPC | Implemented | Stored as POST JSON requests with `isJsonRpc` and RPC badge. |
 | WebSocket | Implemented | WebSocket requests use `isWebSocket` and route through WebSocket execution. |
-| Shell commands | Implemented | `SHELL` method executes local commands from the URL/command field. |
+| Shell commands | Not implemented | No current implementation for shell command execution. |
 | gRPC | Not implemented | No current implementation. |
 | Socket.IO | Not implemented | No current implementation. |
 | MQTT | Not implemented | No current implementation. |
