@@ -140,4 +140,46 @@ test.describe('Request Execution', () => {
     const status = await requestPanel.getResponseStatus();
     expect(status).toContain('200');
   });
+
+  test('should handle invalid URL with method prefix', async () => {
+    await collectionsPanel.addRequestToCollection('Test Collection', 'Invalid URL Request');
+    await requestPanel.setMethod('GET');
+    await requestPanel.setUrl('GET https://fake-json-api.mock.beeceptor.com/users');
+
+    await requestPanel.sendRequest();
+
+    const status = await requestPanel.getResponseStatus();
+    expect(status).toContain('0');
+    const body = await requestPanel.getResponseBody();
+    expect(body).toContain('method should be selected from dropdown');
+  });
+
+  test('should handle unsupported protocol', async () => {
+    await collectionsPanel.addRequestToCollection('Test Collection', 'Unsupported Protocol Request');
+    await requestPanel.setMethod('GET');
+    await requestPanel.setUrl('tttp://api.restful-api.dev/objects');
+
+    await requestPanel.sendRequest();
+
+    const status = await requestPanel.getResponseStatus();
+    expect(status).toContain('0');
+    const body = await requestPanel.getResponseBody();
+    expect(body).toContain('Unsupported protocol');
+  });
+
+  test('should show Send button again after error', async () => {
+    await collectionsPanel.addRequestToCollection('Test Collection', 'Error Request');
+    await requestPanel.setMethod('GET');
+    await requestPanel.setUrl('GET https://example.com/invalid');
+
+    await requestPanel.setUrl('GET https://example.com/invalid');
+    await requestPanel.sendRequest();
+
+    const status = await requestPanel.getResponseStatus();
+    expect(status).toContain('0');
+
+    // Verify button is clickable again (Send text should be visible)
+    const sendBtn = requestPanel.sendBtn;
+    await expect(sendBtn).toHaveText('Send');
+  });
 });

@@ -14,33 +14,57 @@ await page.addScriptTag({
        content: `
          window.api = {
            // HTTP Request functionality
-           makeRequest: ({ method, url, headers, body, rps, requestId }) => {
-             console.log('[MOCK API] makeRequest:', { method, url, headers, body, rps, requestId });
-             return new Promise((resolve) => {
-               setTimeout(() => {
-                 // Simulate different responses based on URL
-                 if (url.includes('status/404')) {
-                   resolve({ status: 404, statusText: 'Not Found', headers: {}, data: '{"error": "Not Found"}', time: 150 });
-                 } else if (url.includes('bearer') && (!headers || !headers.Authorization || !headers.Authorization.includes('Bearer'))) {
-                   resolve({ status: 401, statusText: 'Unauthorized', headers: {}, data: '{"error": "Unauthorized"}', time: 100 });
-                 } else {
-                   resolve({
-                     status: 200,
-                     statusText: 'OK',
-                     headers: { 'content-type': 'application/json' },
-                     data: JSON.stringify({
-                       method,
-                       url,
-                       headers,
-                       body: body ? JSON.parse(body) : null,
-                       timestamp: Date.now()
-                     }),
-                     time: Math.random() * 200 + 50
-                   });
-                 }
-               }, Math.random() * 100 + 50); // Random delay 50-150ms
-             });
-           },
+makeRequest: ({ method, url, headers, body, rps, requestId }) => {
+              console.log('[MOCK API] makeRequest:', { method, url, headers, body, rps, requestId });
+              return new Promise((resolve) => {
+                setTimeout(() => {
+// Handle invalid URLs
+                   if (/^GET |^POST |^PUT |^DELETE |^PATCH |^HEAD /i.test(url)) {
+                     resolve({
+                       status: 0,
+                       statusText: 'Error',
+                       headers: {},
+                       data: '',
+                       time: 0,
+                       error: 'Invalid URL: method should be selected from dropdown, not typed in URL field'
+                     });
+                     return;
+                   }
+                   // Handle unsupported protocols
+                   if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                     resolve({
+                       status: 0,
+                       statusText: 'Error',
+                       headers: {},
+                       data: '',
+                       time: 0,
+                       error: 'Unsupported protocol: Only http and https are supported.'
+                     });
+                     return;
+                   }
+                  // Simulate different responses based on URL
+                  if (url.includes('status/404')) {
+                    resolve({ status: 404, statusText: 'Not Found', headers: {}, data: '{"error": "Not Found"}', time: 150 });
+                  } else if (url.includes('bearer') && (!headers || !headers.Authorization || !headers.Authorization.includes('Bearer'))) {
+                    resolve({ status: 401, statusText: 'Unauthorized', headers: {}, data: '{"error": "Unauthorized"}', time: 100 });
+                  } else {
+                    resolve({
+                      status: 200,
+                      statusText: 'OK',
+                      headers: { 'content-type': 'application/json' },
+                      data: JSON.stringify({
+                        method,
+                        url,
+                        headers,
+                        body: body ? JSON.parse(body) : null,
+                        timestamp: Date.now()
+                      }),
+                      time: Math.random() * 200 + 50
+                    });
+                  }
+                }, Math.random() * 100 + 50); // Random delay 50-150ms
+              });
+            },
 
           // Shell command execution
           runShell: (command) => {

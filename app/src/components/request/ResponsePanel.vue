@@ -1,10 +1,10 @@
 <template>
   <div class="response-panel bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white flex-1 flex flex-col overflow-hidden" role="region" aria-label="Response viewer">
     <div class="response-status p-2 border-b border-zinc-200 dark:border-zinc-700 flex items-center gap-2" aria-live="polite">
-      <span v-if="store.response" :class="store.response.status >= 200 && store.response.status < 300 ? 'text-green-500 font-bold' : 'text-red-500 font-bold'">
+      <span v-if="store.response" :class="store.response.status >= 200 && store.response.status < 300 ? 'text-green-500 font-bold' : store.response.status === 0 ? 'text-red-500 font-bold' : 'text-yellow-500 font-bold'">
         {{ store.response.status }}
       </span>
-      <span v-if="store.response" :class="store.response.status >= 200 && store.response.status < 300 ? 'text-green-600' : 'text-red-600'">
+      <span v-if="store.response" :class="store.response.status >= 200 && store.response.status < 300 ? 'text-green-600' : store.response.status === 0 ? 'text-red-600' : 'text-yellow-600'">
         {{ store.response.statusText }}
       </span>
       <span v-else class="text-zinc-400 dark:text-zinc-500">Ready to send request</span>
@@ -40,6 +40,9 @@ const store = useResponseStore();
 
 const responseBody = computed(() => {
   if (!store.response) return 'Response will appear here';
+  if (store.response.status === 0 && store.response.error) {
+    return store.response.error;
+  }
   try {
     const parsed = JSON.parse(store.response.data);
     return JSON.stringify(parsed, null, 2);
