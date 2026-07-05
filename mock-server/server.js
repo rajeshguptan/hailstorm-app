@@ -9,7 +9,6 @@ const HOST = process.env.HOST || '127.0.0.1';
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
-const tokenBuckets = new Map();
 
 // === Base Middleware ===
 app.use((req, res, next) => {
@@ -95,48 +94,6 @@ const requireApiKey = (req, res, next) => {
   res.status(401).json({ error: 'Missing or invalid API key. Use x-api-key: hailstorm-api-key or ?api_key=hailstorm-api-key' });
 };
 
-// === Rate Limiting ===
-class TokenBucket {
-  constructor(rps) {
-    this.capacity = rps;
-    this.tokens = rps;
-    this.rps = rps;
-    this.lastRefill = Date.now();
-  }
-
-  refill() {
-    const t = Date.now();
-    const e = (t - this.lastRefill) / 1000;
-    this.tokens = Math.min(this.capacity, this.tokens + e * this.rps);
-    this.lastRefill = t;
-  }
-
-  consume() {
-    this.refill();
-    return this.tokens >= 1 ? (this.tokens -= 1, true) : false;
-  }
-
-  setRps(r) {
-    this.rps = r;
-    this.capacity = r;
-    this.tokens = Math.min(this.tokens, this.capacity);
-  }
-}
-
-const rateLimit = (req, res, next) => {
-  const id = req.headers['x-request-id'] || req.path;
-  const rps = parseFloat(req.headers['x-rps']) || 0;
-  if (!rps || rps <= 0) return next();
-  if (!tokenBuckets.has(id)) tokenBuckets.set(id, new TokenBucket(rps));
-  const b = tokenBuckets.get(id);
-  if (b.rps !== rps) b.setRps(rps);
-  if (b.consume()) {
-    res.set({ 'X-RateLimit-Limit': b.capacity.toString(), 'X-RateLimit-Remaining': Math.floor(b.tokens).toString(), 'X-RateLimit-Reset': Math.ceil((b.lastRefill + 1000) / 1000).toString() });
-    return next();
-  }
-  res.status(429).json({ error: 'Rate limit exceeded', retryAfter: Math.ceil(1 / rps), currentRps: rps });
-};
-
 // === GraphQL ===
 const runGraphqlQuery = (query = '', variables = {}, operationName = '') => {
   const q = query.replace(/\s+/g, ' ');
@@ -198,9 +155,9 @@ app.all('/http/auth/ntlm', (req, res) => {
 });
 
 app.get('/http/auth/client-certificate', (req, res) => respondHttp(req, res, 200));
-app.post('/http/form-data', upload.any(), rateLimit, (req, res) => respondHttp(req, res));
-app.all('/http/raw', express.raw({ type: '*/*', limit: '5mb' }), rateLimit, (req, res) => respondHttp(req, res));
-app.all('/http/binary', express.raw({ type: '*/*', limit: '5mb' }), rateLimit, (req, res) => respondHttp(req, res));
+app.post('/http/form-data', upload.any(), (req, res) => respondHttp(req, res));
+app.all('/http/raw', express.raw({ type: '*/*', limit: '5mb' }), (req, res) => respondHttp(req, res));
+app.all('/http/binary', express.raw({ type: '*/*', limit: '5mb' }), (req, res) => respondHttp(req, res));
 
 app.all('/http/status/:code', (req, res) => {
   const code = Number(req.params.code);
@@ -215,7 +172,7 @@ app.all('/http/delay/:ms', (req, res) => {
 });
 
 app.all('/http/error', (req, res) => res.status(500).json({ error: 'Intentional mock server error', method: req.method, path: req.path, body: getRequestBody(req), receivedAt: now() }));
-app.all('/http/*', rateLimit, (req, res) => respondHttp(req, res));
+app.all('/http/*', (req, res) => respondHttp(req, res));
 
 // === GraphQL Routes ===
 app.all('/graphql', (req, res) => {
@@ -226,15 +183,15 @@ app.all('/graphql', (req, res) => {
 app.post('/graphql/errors', (req, res) => res.status(200).json({ errors: [{ message: 'Mock GraphQL resolver error', locations: [{ line: 1, column: 1 }], path: ['user'] }] }));
 
 // === JSON-RPC Routes ===
-app.post('/json-rpc', rateLimit, (req, res) => res.json(handleJsonRpcRequest(req.body)));
+app.post('/json-rpc', (req, res) => res.json(handleJsonRpcRequest(req.body)));
 
 // === OAuth Routes ===
-app.post(['/oauth/token', '/oauth2/token'], rateLimit, (req, res) => res.json(createTokenResponse(req)));
+app.post(['/oauth/token', '/oauth2/token'], (req, res) => res.json(createTokenResponse(req)));
 
 // === Users Routes ===
-app.get('/users', rateLimit, (req, res) => res.json(Array.from(usersStore.values())));
+app.get('/users', (req, res) => res.json(Array.from(usersStore.values())));
 
-app.post('/users', rateLimit, (req, res) => {
+app.post('/users', (req, res) => {
   const { name, email } = req.body || {};
   if (!name || !email) return res.status(400).json({ error: 'Name and email are required' });
   const newUser = { id: ++userIdCounter, name, email, createdAt: now() };
@@ -243,29 +200,11 @@ app.post('/users', rateLimit, (req, res) => {
 });
 
 // === File Upload ===
-app.post('/upload', rateLimit, upload.single('file'), (req, res) => {
+app.post('/upload', upload.single('file'), (req, res) => {
   const { description } = req.body || {};
   const file = req.file;
   if (!file) return res.status(400).json({ error: 'No file uploaded' });
   res.status(200).json({ message: 'File uploaded successfully', data: { filename: file.originalname, size: file.size, description: description || 'No description provided', uploadedAt: now() } });
-});
-
-// === Rate Limit Management ===
-app.post('/rps/:requestId', (req, res) => {
-  const { requestId } = req.params;
-  const { rps } = req.body;
-  if (typeof rps !== 'number' || rps < 0) return res.status(400).json({ error: 'RPS must be a non-negative number' });
-  if (!tokenBuckets.has(requestId)) tokenBuckets.set(requestId, new TokenBucket(rps));
-  else tokenBuckets.get(requestId).setRps(rps);
-  res.json({ requestId, rps, message: 'RPS updated successfully' });
-});
-
-app.get('/rps', (req, res) => {
-  const status = {};
-  for (const [id, b] of tokenBuckets.entries()) {
-    status[id] = { rps: b.rps, tokens: b.tokens, capacity: b.capacity, lastRefill: new Date(b.lastRefill).toISOString() };
-  }
-  res.json(status);
 });
 
 // === OpenTelemetry Collector Endpoint ===
@@ -287,9 +226,7 @@ app.get('/otel/v1/traces', (req, res) => {
 
 // === Health check ===
 app.get('/health', (req, res) => {
-  const rateLimitInfo = {};
-  for (const [id, b] of tokenBuckets.entries()) rateLimitInfo[id] = { rps: b.rps, tokens: Math.round(b.tokens * 100) / 100, capacity: b.capacity };
-  res.json({ status: 'OK', timestamp: now(), usersCount: usersStore.size, rateLimiting: rateLimitInfo });
+  res.json({ status: 'OK', timestamp: now(), usersCount: usersStore.size });
 });
 
 // === Root ===
@@ -301,7 +238,7 @@ app.get('/', (req, res) => res.json({
     raw: '/http/raw', binary: '/http/binary', status: '/http/status/:code', delay: '/http/delay/:ms',
     error: '/http/error', graphql: '/graphql', jsonRpc: '/json-rpc', users: '/users', upload: '/upload',
     websocket: 'ws://127.0.0.1:4010/ws', websocketChat: 'ws://127.0.0.1:4010/ws/chat',
-    oauthToken: '/oauth/token', oauth2Token: '/oauth2/token', rateLimiting: '/rps',
+    oauthToken: '/oauth/token', oauth2Token: '/oauth2/token',
     otel: '/otel/v1/traces'
   }
 }));
