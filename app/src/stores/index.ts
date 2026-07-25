@@ -104,9 +104,12 @@ async loadFromLocalStorage() {
             for (const coll of collectionsData) {
               if (coll.workspaceLocation) {
                 try {
-                  const loadedCollection = await window.api.loadCollectionFromFiles(coll.name, coll.workspaceLocation);
-                  if (loadedCollection) {
-                    collectionsStore.collections.push(loadedCollection);
+                  const loadedData = await window.api.loadCollectionFromFiles(coll.name, coll.workspaceLocation);
+                  if (loadedData && loadedData.collection) {
+                    collectionsStore.collections.push(loadedData.collection);
+                    if (loadedData.environments) {
+                      environmentsStore.environments = loadedData.environments;
+                    }
                   } else {
                     const { workspaceLocation, ...collWithoutWorkspace } = coll;
                     collectionsStore.collections.push(collWithoutWorkspace);

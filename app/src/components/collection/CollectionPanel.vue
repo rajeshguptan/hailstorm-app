@@ -50,21 +50,20 @@
               <input
                 v-model="editingCollection.workspaceLocation"
                 class="flex-1 px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                placeholder="Select workspace directory..."
-                readonly
+                placeholder="Select workspace directory (or type path directly)..."
               >
               <button
                 @click="selectWorkspaceLocation"
                 class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded"
               >
                 Browse
-              </button>
-            </div>
-            <p class="text-xs text-zinc-500 mt-1">
-              Collections and requests will be saved as files in this directory
-            </p>
-          </div>
-        </div>
+</button>
+             </div>
+             <p class="text-xs text-zinc-500 mt-1">
+               Collections and requests will be saved as files in this directory. You can type a path directly or use Browse to select a folder.
+             </p>
+           </div>
+         </div>
 
         <!-- Description Tab -->
         <div v-if="activeTab === 'description'" class="p-4">
@@ -378,13 +377,19 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { useAppStore } from '../../stores';
 import { useCollectionsStore } from '../../stores/collections';
 import { useEnvironmentsStore } from '../../stores/environments';
+import { useRunnerStore } from '../../stores/runner';
+import { useUIStore } from '../../stores/ui';
+import { useSettingsStore } from '../../stores/settings';
 import MarkdownDescription from '../editors/MarkdownDescription.vue';
 import ScriptTabs from '../editors/ScriptTabs.vue';
-import type { Collection, Auth } from '../../types';
+import type { Collection, Auth, GlobalConfig } from '../../types';
 
 const appStore = useAppStore();
 const collectionsStore = useCollectionsStore();
 const environmentsStore = useEnvironmentsStore();
+const runnerStore = useRunnerStore();
+const uiStore = useUIStore();
+const settingsStore = useSettingsStore();
 
 const activeTab = ref('properties');
 
@@ -474,6 +479,71 @@ const selectWorkspaceLocation = async () => {
 const saveCollection = async () => {
   if (selectedCollection.value) {
     collectionsStore.updateCollection(editingCollection.value);
+    
+    // Build global config with all settings
+    const globalConfig: GlobalConfig = {};
+    
+    // Save workspace location to global config if set
+    if (editingCollection.value.workspaceLocation) {
+      try {
+        const homeDir = await window.api.getHomeDirectory();
+        globalConfig.collectionWorkspace = editingCollection.value.workspaceLocation.replace(homeDir, '~');
+      } catch (error) {
+        console.error('Failed to get home directory:', error);
+      }
+    }
+    
+    // Save UI settings to global config
+    globalConfig.ui = {
+      activeSidebar: uiStore.activeSidebar,
+      sidebarTitle: uiStore.sidebarTitle,
+      theme: localStorage.getItem('theme') || 'system'
+    };
+    
+    // Save network settings to global config
+    globalConfig.settings = {
+      network: {
+        timeout: parseInt(localStorage.getItem('network:timeout') || '30000'),
+        maxSize: parseInt(localStorage.getItem('network:maxResponseSize') || '50'),
+        followRedirects: localStorage.getItem('network:followRedirects') !== 'false',
+        sslVerify: localStorage.getItem('network:sslVerification') !== 'false'
+      },
+      proxy: {
+        url: localStorage.getItem('proxy:url') || '',
+        username: localStorage.getItem('proxy:username') || '',
+        password: localStorage.getItem('proxy:password') || ''
+      },
+      logging: {
+        level: (localStorage.getItem('hailstorm:logLevel') || 'info') as import('../../types').LogLevel
+      },
+      otlp: { ...uiStore.otelSettings }
+    };
+    
+    // Save devTools setting
+    const devTools = localStorage.getItem('hailstorm:devToolsEnabled') === 'true';
+    
+    // Save global config to disk
+    try {
+      await window.api.saveGlobalConfig(globalConfig);
+    } catch (error) {
+      console.error('Failed to save global config:', error);
+    }
+    
+    // Save to workspace if location is set
+    if (editingCollection.value.workspaceLocation) {
+      try {
+        const environments = environmentsStore.environments || [];
+        const runConfigs = runnerStore.runConfigs || [];
+        await window.api.saveCollectionToFiles(
+          editingCollection.value,
+          editingCollection.value.workspaceLocation,
+          environments,
+          runConfigs
+        );
+      } catch (error) {
+        console.error('Failed to save collection to workspace:', error);
+      }
+    }
   }
 };
 

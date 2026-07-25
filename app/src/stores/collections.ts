@@ -64,24 +64,33 @@ export const useCollectionsStore = defineStore('collections', {
     },
 
 async addCollection() {
-       const collectionId = this.generateId('coll');
-       let workspaceLocation = '';
-       try {
-         const homeDir = window.api?.getHomeDirectory ? await window.api.getHomeDirectory() : null;
-         workspaceLocation = homeDir ? `${homeDir}/hailstorm/${collectionId}` : '';
-       } catch (err) {
-         logger.debug('[COLLECTIONS] Could not get home directory:', err);
-       }
-       const collection: Collection = {
-         id: collectionId,
-         name: 'New Collection',
-         items: [],
-         variables: [],
-         workspaceLocation
-       };
-       this.collections.push(collection);
-       this.saveCollections();
-     },
+        const collectionId = this.generateId('coll');
+        let workspaceLocation = '';
+        try {
+          const globalConfig = window.api?.getGlobalConfig ? await window.api.getGlobalConfig() : null;
+          if (globalConfig?.collectionWorkspace) {
+            const homeDir = window.api?.getHomeDirectory ? await window.api.getHomeDirectory() : null;
+            if (homeDir) {
+              const workspaceBase = globalConfig.collectionWorkspace.replace('~', homeDir);
+              workspaceLocation = `${workspaceBase}/${collectionId}`;
+            }
+          } else {
+            const homeDir = window.api?.getHomeDirectory ? await window.api.getHomeDirectory() : null;
+            workspaceLocation = homeDir ? `${homeDir}/hailstorm/${collectionId}` : '';
+          }
+        } catch (err) {
+          logger.debug('[COLLECTIONS] Could not get home directory:', err);
+        }
+        const collection: Collection = {
+          id: collectionId,
+          name: 'New Collection',
+          items: [],
+          variables: [],
+          workspaceLocation
+        };
+        this.collections.push(collection);
+        this.saveCollections();
+      },
 
     updateCollection(collection: Collection) {
       const index = this.collections.findIndex(c => c.id === collection.id);

@@ -377,3 +377,20 @@ export type SidebarView = 'collections' | 'history' | 'secrets' | 'stats' | 'run
 
 export type RequestTab = 'params' | 'auth' | 'headers' | 'body' | 'variables' | 'scripts' | 'description';
 export type ResponseTab = 'body' | 'headers' | 'tests';
+
+export interface GlobalConfig {
+  collectionWorkspace?: string;
+  settings?: {
+    theme?: string;
+    fontSize?: { ui?: number; code?: number; editor?: number };
+    network?: { timeout?: number; maxSize?: number; followRedirects?: boolean; sslVerify?: boolean };
+    proxy?: { url?: string; username?: string; password?: string };
+    shortcuts?: string;
+    logging?: { level?: LogLevel };
+    otlp?: OpenTelemetrySettings;
+  };
+  ui?: {
+    activeSidebar?: SidebarView;
+    sidebarTitle?: string;
+  };
+}

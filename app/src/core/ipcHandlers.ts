@@ -1,4 +1,5 @@
 import { ipcMain, dialog } from 'electron';
+import { app } from 'electron';
 import { exec } from 'child_process';
 import fs from 'fs';
 import path from 'node:path';
@@ -6,7 +7,12 @@ import type { RunnerEngine } from './runnerEngine';
 import { loadTestingService } from './loadTestingService';
 import { sendRequest } from './requestExecutor';
 import { sanitizeFilename } from './httpExecutor';
-import type { LoadTestRun } from '../types';
+import type { LoadTestRun, Environment, RunConfig } from '../types';
+import { 
+  saveCollectionToWorkspace as saveToWorkspace,
+  loadCollectionFromWorkspace as loadFromWorkspace,
+  saveRunStatsToWorkspace
+} from './workspaceStorage';
 
 const oauthStates = new Map<string, { codeVerifier: string; timestamp: number }>();
 
@@ -89,50 +95,14 @@ export function setupDialogHandlers() {
     }
   });
 
-  ipcMain.handle('save-collection-to-files', async (_event, collection, workspacePath) => {
+  ipcMain.handle('save-collection-to-files', async (_event, collection, workspacePath, environments = [], runConfigs = []) => {
     console.log('[EXECUTION_ENGINE] saveCollectionToFiles called for collection:', collection.name, 'workspace:', workspacePath);
     try {
-      const collectionDir = path.join(workspacePath, sanitizeFilename(collection.name));
-      await fs.promises.mkdir(collectionDir, { recursive: true });
-
-      const collectionMeta = {
-        id: collection.id,
-        name: collection.name,
-        description: collection.description,
-        workspaceLocation: collection.workspaceLocation,
-        preRequestScript: collection.preRequestScript,
-        postRequestScript: collection.postRequestScript,
-        testScript: collection.testScript,
-        auth: collection.auth,
-        variables: collection.variables
-      };
-
-      const metaPath = path.join(collectionDir, 'collection.json');
-      await fs.promises.writeFile(metaPath, JSON.stringify(collectionMeta, null, 2), 'utf-8');
-
-      const saveItems = async (items, currentPath) => {
-        for (const item of items) {
-          if (item.method) {
-            const requestPath = path.join(currentPath, `${sanitizeFilename(item.name)}.json`);
-            await fs.promises.writeFile(requestPath, JSON.stringify(item, null, 2), 'utf-8');
-          } else {
-            const folderPath = path.join(currentPath, sanitizeFilename(item.name));
-            await fs.promises.mkdir(folderPath, { recursive: true });
-            if (item.items) {
-              await saveItems(item.items, folderPath);
-            }
-          }
-        }
-      };
-
-      if (collection.items) {
-        await saveItems(collection.items, collectionDir);
-      }
-
-      console.log('[EXECUTION_ENGINE] saveCollectionToFiles completed');
-      return true;
-    } catch (err) {
-      console.error('[EXECUTION_ENGINE] saveCollectionToFiles error:', err);
+      const result = saveToWorkspace(collection, workspacePath, environments, runConfigs);
+      console.log('[EXECUTION_ENGINE] saveCollectionToFiles result:', result.success);
+      return result.success;
+    } catch (err: any) {
+      console.error('[EXECUTION_ENGINE] saveCollectionToFiles error:', err.message);
       return false;
     }
   });
@@ -141,22 +111,29 @@ export function setupDialogHandlers() {
     console.log('[EXECUTION_ENGINE] loadCollectionFromFiles received', { collectionName, workspacePath });
 
     try {
-      const collectionPath = path.join(workspacePath, 'collections', `${collectionName}.json`);
-      if (!fs.existsSync(collectionPath)) {
-        console.log('[EXECUTION_ENGINE] Collection file not found, returning null:', collectionPath);
+      const opencollectionPath = path.join(workspacePath, 'opencollection.yml');
+      if (!fs.existsSync(opencollectionPath)) {
+        console.log('[EXECUTION_ENGINE] opencollection.yml not found, falling back to collections dir');
+        const legacyPath = path.join(workspacePath, 'collections', `${collectionName}.json`);
+        if (!fs.existsSync(legacyPath)) {
+          return null;
+        }
+        const collectionData = fs.readFileSync(legacyPath, 'utf-8');
+        return JSON.parse(collectionData);
+      }
+
+      const result = loadFromWorkspace(workspacePath);
+      if (result.error) {
+        console.log('[EXECUTION_ENGINE] loadCollectionFromFiles error:', result.error);
         return null;
       }
 
-      const collectionData = fs.readFileSync(collectionPath, 'utf-8');
-      const collection = JSON.parse(collectionData);
-
-      const filesDir = path.join(workspacePath, 'files');
-      if (fs.existsSync(filesDir)) {
-        // Load files referenced in the collection
-      }
-
       console.log('[EXECUTION_ENGINE] loadCollectionFromFiles completed');
-      return collection;
+      return {
+        collection: result.collection,
+        environments: result.environments,
+        runConfigs: result.runConfigs
+      };
     } catch (error: any) {
       console.error('[EXECUTION_ENGINE] loadCollectionFromFiles error:', error.message);
       return null;
@@ -681,13 +658,59 @@ ipcMain.handle('run-load-test', async (_event, params: {
 
      console.log('[EXECUTION_ENGINE] runLoadTest completed');
 
-     if (newRun) {
-       await loadTestingService.endRun(runId);
-     }
+      if (newRun) {
+        await loadTestingService.endRun(runId);
+      }
 
-     return { run: newRun, results };
-   });
+      return { run: newRun, results };
+    });
+
+    ipcMain.handle('save-run-stats-to-workspace', async (_event, workspacePath, runStats) => {
+      console.log('[EXECUTION_ENGINE] saveRunStatsToWorkspace called');
+      try {
+        const result = saveRunStatsToWorkspace(workspacePath, runStats);
+        console.log('[EXECUTION_ENGINE] saveRunStatsToWorkspace result:', result.success);
+        return result;
+      } catch (error: any) {
+        console.error('[EXECUTION_ENGINE] saveRunStatsToWorkspace error:', error.message);
+        return { success: false, error: error.message };
+      }
+    });
+  }
+
+export function getGlobalConfig(): { collectionWorkspace: string } | null {
+  try {
+    const configPath = path.join(app.getPath('home'), 'hailstorm', 'config.json');
+    if (fs.existsSync(configPath)) {
+      const configData = fs.readFileSync(configPath, 'utf-8');
+      return JSON.parse(configData);
+    }
+    return null;
+  } catch (error) {
+    console.error('[EXECUTION_ENGINE] Failed to read global config:', error);
+    return null;
+  }
 }
+
+ipcMain.handle('get-global-config', () => {
+  return getGlobalConfig();
+});
+
+ipcMain.handle('save-global-config', (_event, config: { collectionWorkspace: string }) => {
+  try {
+    const configPath = path.join(app.getPath('home'), 'hailstorm', 'config.json');
+    const configDir = path.dirname(configPath);
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true });
+    }
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+    console.log('[EXECUTION_ENGINE] Global config saved:', configPath);
+    return { success: true };
+  } catch (error: any) {
+    console.error('[EXECUTION_ENGINE] Failed to save global config:', error.message);
+    return { success: false, error: error.message };
+  }
+});
 
 export function initializeExecutionEngine() {
   console.log('[EXECUTION_ENGINE] Initializing core execution engine...');

@@ -106,10 +106,10 @@ const api = {
     }
   },
 
-  saveCollectionToFiles: async (collection: any, workspacePath: string): Promise<boolean> => {
+  saveCollectionToFiles: async (collection: any, workspacePath: string, environments?: any[], runConfigs?: any[]): Promise<boolean> => {
     console.log('[PRELOAD] saveCollectionToFiles called');
     try {
-      const result = await ipcRenderer.invoke('save-collection-to-files', collection, workspacePath);
+      const result = await ipcRenderer.invoke('save-collection-to-files', collection, workspacePath, environments, runConfigs);
       console.log('[PRELOAD] saveCollectionToFiles result:', result);
       return result;
     } catch (error) {
@@ -423,13 +423,13 @@ setLogLevel: async (level: import('./types').LogLevel): Promise<void> => {
   },
 
 // Console log capture
-   onConsoleLog: (callback: (log: { level: number; message: string; line: number; sourceId: string; timestamp: number }) => void) => {
-     ipcRenderer.on('console-log', (_event, log) => callback(log));
-   },
+  onConsoleLog: (callback: (log: { level: number; message: string; line: number; sourceId: string; timestamp: number }) => void) => {
+    ipcRenderer.on('console-log', (_event, log) => callback(log));
+  },
 
-   sendConsoleLog: async (log: { level: number; message: string; line: number; sourceId: string }): Promise<void> => {
-     await ipcRenderer.invoke('send-console-log', log);
-   },
+  sendConsoleLog: async (log: { level: number; message: string; line: number; sourceId: string }): Promise<void> => {
+    await ipcRenderer.invoke('send-console-log', log);
+  },
 
   // Feedback
   submitFeedback: async (feedback: { feedback: string; type: string; email: string }): Promise<{ success: boolean }> => {
@@ -439,6 +439,37 @@ setLogLevel: async (level: import('./types').LogLevel): Promise<void> => {
       return result;
     } catch (error) {
       console.error('[PRELOAD] submitFeedback failed', error);
+      throw error;
+    }
+  },
+
+  saveRunStatsToWorkspace: async (workspacePath: string, runStats: { runId: string; stats: any }): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const result = await ipcRenderer.invoke('save-run-stats-to-workspace', workspacePath, runStats);
+      console.log('[PRELOAD] saveRunStatsToWorkspace succeeded');
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] saveRunStatsToWorkspace failed', error);
+      throw error;
+    }
+  },
+
+  getGlobalConfig: async (): Promise<{ collectionWorkspace: string } | null> => {
+    try {
+      const result = await ipcRenderer.invoke('get-global-config');
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] getGlobalConfig failed', error);
+      throw error;
+    }
+  },
+
+  saveGlobalConfig: async (config: import('./types').GlobalConfig): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const result = await ipcRenderer.invoke('save-global-config', config);
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] saveGlobalConfig failed', error);
       throw error;
     }
   }

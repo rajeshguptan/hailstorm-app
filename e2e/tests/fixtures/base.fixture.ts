@@ -313,11 +313,28 @@ export const test = base.extend({
             return Promise.resolve();
           },
 
-          getHomeDirectory: () => {
-            console.log('[MOCK API] getHomeDirectory');
-            return Promise.resolve('/home/testuser');
-          }
-        };
+getHomeDirectory: () => {
+             console.log('[MOCK API] getHomeDirectory');
+             return Promise.resolve('/home/testuser');
+           },
+
+           getCurrentCollection: () => {
+             console.log('[MOCK API] getCurrentCollection');
+             return null;
+           },
+
+           saveCollectionToFiles: (collection, workspacePath, environments, runConfigs) => {
+             console.log('[MOCK API] saveCollectionToFiles:', collection.name, workspacePath);
+             // This is a mock - actual file saving happens in the main process
+             return Promise.resolve(true);
+           },
+
+           saveRunStatsToWorkspace: (workspacePath, runStats) => {
+             console.log('[MOCK API] saveRunStatsToWorkspace:', workspacePath);
+             // This is a mock - actual file saving happens in the main process
+             return Promise.resolve({ success: true });
+           }
+         };
 
         // Mock Electron dialog
         window.electron = {

@@ -19,6 +19,13 @@ export function useTheme() {
   function setTheme(newTheme: Theme) {
     theme.value = newTheme;
     applyTheme();
+    // Save to global config
+    const globalConfig: import('../types').GlobalConfig = {
+      settings: {
+        theme: newTheme
+      }
+    };
+    window.api.saveGlobalConfig(globalConfig).catch(() => {});
   }
 
   function loadTheme() {

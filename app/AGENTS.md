@@ -54,6 +54,31 @@ This guide is for agents working in the Hailstorm Electron + Vue 3 application. 
 - Load-test persistence and metrics live in `core/loadTestingService.ts`.
 - The Stats panel renders live and completed run data in `components/StatsPanel.vue`.
 
+## Workspace File Storage
+
+Collections can be saved to a workspace directory with the following structure:
+
+```
+workspace/
+├── opencollection.yml       # Collection metadata (YAML format)
+├── environments.yml          # Environment configurations (YAML format)
+├── collectionRunner/
+│   ├── runConfig/
+│   │   └── config.yml        # Run configurations (YAML format)
+│   └── runStats/
+│       └── summary_mmddyyyyHHMM.json  # Load test run summaries
+└── requests/
+    ├── private/              # Private requests (isPrivate: true)
+    │   └── *.yml             # Request files (YAML format)
+    └── shared/               # Shared requests (isPrivate: false)
+        └── *.yml             # Request files (YAML format)
+```
+
+- File-based storage is handled in `core/workspaceStorage.ts`.
+- The `saveCollectionToWorkspace` function creates the directory structure and saves collection data as YAML.
+- Requests are split into `private` and `shared` directories based on the `isPrivate` flag.
+- Load test stats are saved to `collectionRunner/runStats/` with timestamp-based filenames.
+
 ## Coding conventions
 
 - Use Vue 3 Composition API with `<script setup lang="ts">`.

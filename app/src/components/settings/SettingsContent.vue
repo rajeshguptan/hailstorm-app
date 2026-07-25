@@ -463,6 +463,21 @@ const network = ref({ timeout: 30000, maxResponseSize: 50, followRedirects: true
 
 const proxy = ref({ url: '', username: '', password: '' });
 
+watch(network, (val) => {
+  localStorage.setItem('network:timeout', String(val.timeout));
+  localStorage.setItem('network:maxResponseSize', String(val.maxResponseSize));
+  localStorage.setItem('network:followRedirects', String(val.followRedirects));
+  localStorage.setItem('network:sslVerification', String(val.sslVerification));
+  saveSettingsToGlobalConfig();
+}, { deep: true });
+
+watch(proxy, (val) => {
+  localStorage.setItem('proxy:url', val.url);
+  localStorage.setItem('proxy:username', val.username);
+  localStorage.setItem('proxy:password', val.password);
+  saveSettingsToGlobalConfig();
+}, { deep: true });
+
 const shortcuts = [
     { action: 'Send Request', keys: 'Ctrl + Enter' },
     { action: 'New Request', keys: 'Ctrl + N' },
@@ -495,9 +510,10 @@ const shortcuts = [
   }
  
 watch(logLevel, async (level) => {
-   localStorage.setItem(LOG_LEVEL_STORAGE_KEY, level);
-   await window.api.setLogLevel(level);
- });
+    localStorage.setItem(LOG_LEVEL_STORAGE_KEY, level);
+    await window.api.setLogLevel(level);
+    saveSettingsToGlobalConfig();
+  });
  
  function updateLogLevel(level: string) {
    logLevel.value = level;
@@ -519,9 +535,10 @@ async function loadDevToolsSetting() {
 }
 
 watch(devToolsEnabled, async (enabled) => {
-   localStorage.setItem(DEVTOOLS_STORAGE_KEY, String(enabled));
-   await window.api.setDevToolsEnabled(enabled);
- });
+    localStorage.setItem(DEVTOOLS_STORAGE_KEY, String(enabled));
+    await window.api.setDevToolsEnabled(enabled);
+    saveSettingsToGlobalConfig();
+  });
 
  const showSetKeyModal = ref(false);
  const showChangeKeyModal = ref(false);
@@ -581,10 +598,38 @@ watch(devToolsEnabled, async (enabled) => {
    }
  });
 
- watch(otel, (val) => {
-   localStorage.setItem('hailstorm:otel', JSON.stringify(val));
-   updateOtelSettings();
- }, { deep: true });
+watch(otel, (val) => {
+    localStorage.setItem('hailstorm:otel', JSON.stringify(val));
+    updateOtelSettings();
+    saveSettingsToGlobalConfig();
+  }, { deep: true });
 
+  const saveSettingsToGlobalConfig = async () => {
+    const globalConfig: import('../../types').GlobalConfig = {
+      settings: {
+        theme: localStorage.getItem('theme') || 'system',
+        network: {
+          timeout: parseInt(localStorage.getItem('network:timeout') || '30000'),
+          maxSize: parseInt(localStorage.getItem('network:maxResponseSize') || '50'),
+          followRedirects: localStorage.getItem('network:followRedirects') !== 'false',
+          sslVerify: localStorage.getItem('network:sslVerification') !== 'false'
+        },
+        proxy: {
+          url: localStorage.getItem('proxy:url') || '',
+          username: localStorage.getItem('proxy:username') || '',
+          password: localStorage.getItem('proxy:password') || ''
+        },
+        logging: {
+          level: (localStorage.getItem('hailstorm:logLevel') || 'info') as import('../../types').LogLevel
+        },
+        otlp: { ...uiStore.otelSettings }
+      }
+    };
+    try {
+      await window.api.saveGlobalConfig(globalConfig);
+    } catch (error) {
+      console.error('Failed to save settings to global config:', error);
+    }
+  };
 
- </script>
+  </script>
