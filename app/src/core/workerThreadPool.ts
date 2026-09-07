@@ -37,13 +37,22 @@ export class WorkerThreadPool {
       worker.on('message', this.handleWorkerMessage.bind(this));
       worker.on('error', (err) => console.error('[THREADPOOL] Worker error:', err));
       this.idleWorkers.push(worker);
+      this.workers.push(worker);
     }
     console.log(`[THREADPOOL] Initialized with ${this.threadCount} workers`);
   }
 
-  private handleWorkerMessage(message: { id: string; result?: any; error?: string }) {
-    // For now, we'll use a simpler approach - just re-add worker to idle pool
-    this.idleWorkers.push(this.workers.find(w => w.threadId === message.id));
+interface WorkerMessage {
+  taskId: string;
+  result?: any;
+  error?: string;
+}
+
+  private handleWorkerMessage(message: WorkerMessage) {
+    const worker = this.workers.find(w => w.threadId === message.taskId);
+    if (worker) {
+      this.idleWorkers.push(worker);
+    }
   }
 
   async execute(task: ThreadPoolTask): Promise<any> {
@@ -65,7 +74,7 @@ export class WorkerThreadPool {
   ) {
     const timeout = setTimeout(() => reject(new Error('Task timeout')), 30000);
 
-    worker.once('message', (result) => {
+    worker.once('message', (result: WorkerMessage) => {
       clearTimeout(timeout);
       this.idleWorkers.push(worker);
       if (this.taskQueue.length > 0) {
@@ -73,10 +82,10 @@ export class WorkerThreadPool {
         this.runTask(worker, next.task, next.resolve, next.reject);
       }
       if (result.error) reject(new Error(result.error));
-      else resolve(result.data);
+      else resolve(result.result);
     });
 
-    worker.postMessage({ ...task });
+    worker.postMessage({ ...task, taskId: String(worker.threadId) });
   }
 
   terminate() {

@@ -1,6 +1,6 @@
 import { ipcMain, dialog } from 'electron';
 import { app } from 'electron';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import fs from 'fs';
 import path from 'node:path';
 import type { RunnerEngine } from './runnerEngine';
@@ -13,6 +13,38 @@ import {
   loadCollectionFromWorkspace as loadFromWorkspace,
   saveRunStatsToWorkspace
 } from './workspaceStorage';
+
+function parseCommandToArgs(command: string): string[] {
+  const args: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  let quoteChar = '';
+
+  for (let i = 0; i < command.length; i++) {
+    const char = command[i];
+
+    if ((char === '"' || char === "'") && !inQuotes) {
+      inQuotes = true;
+      quoteChar = char;
+    } else if (char === quoteChar && inQuotes) {
+      inQuotes = false;
+      quoteChar = '';
+    } else if (char === ' ' && !inQuotes) {
+      if (current) {
+        args.push(current);
+        current = '';
+      }
+    } else {
+      current += char;
+    }
+  }
+
+  if (current) {
+    args.push(current);
+  }
+
+  return args;
+}
 
 const oauthStates = new Map<string, { codeVerifier: string; timestamp: number }>();
 
@@ -29,7 +61,8 @@ export function setupHttpHandlers() {
   ipcMain.handle('run-shell', async (_event, command) => {
     console.log('[EXECUTION_ENGINE] runShell received', { command });
     return new Promise((resolve) => {
-      exec(command, { timeout: 30000 }, (error: any, stdout: string, stderr: string) => {
+      const args = parseCommandToArgs(command);
+      execFile(command, args, { timeout: 30000 }, (error: any, stdout: string, stderr: string) => {
         if (error) {
           console.log('[EXECUTION_ENGINE] runShell error', error.message);
           resolve({ output: '', error: error.message });
@@ -502,11 +535,14 @@ export function setupExternalHandlers() {
 }
 
 export function setupFeedbackHandlers() {
-  const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY || 'patE1GcBJhqUz3Rnm.f8cc6c625a1a18afab605613ce49c3d22a0acb0427d8e038139408b2774c39a4';
-  
+  const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
+  if (!AIRTABLE_API_KEY) {
+    console.warn('[EXECUTION_ENGINE] AIRTABLE_API_KEY not configured; feedback submission disabled');
+  }
+
   ipcMain.handle('submit-feedback', async (_event, feedback: { feedback: string; type: string; email: string }) => {
     if (!AIRTABLE_API_KEY) {
-      throw new Error('Airtable API key not configured');
+      throw new Error('Feedback is not configured');
     }
     
     try {

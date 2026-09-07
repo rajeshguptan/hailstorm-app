@@ -2,10 +2,42 @@ import type { SendRequestContext, SendRequestResult, Auth } from '../types';
 import { substituteAll } from './authHandler';
 import { makeHttpRequest } from './httpClient';
 import { flatRequests } from './httpExecutor';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+
+function parseCommandToArgs(command: string): string[] {
+  const args: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  let quoteChar = '';
+
+  for (let i = 0; i < command.length; i++) {
+    const char = command[i];
+
+    if ((char === '"' || char === "'") && !inQuotes) {
+      inQuotes = true;
+      quoteChar = char;
+    } else if (char === quoteChar && inQuotes) {
+      inQuotes = false;
+      quoteChar = '';
+    } else if (char === ' ' && !inQuotes) {
+      if (current) {
+        args.push(current);
+        current = '';
+      }
+    } else {
+      current += char;
+    }
+  }
+
+  if (current) {
+    args.push(current);
+  }
+
+  return args;
+}
 
 interface VariableData {
   key: string;
@@ -82,7 +114,11 @@ async function executeDepRequest(
     if (request.method === 'SHELL') {
       let shellResult: { output: string; error: string };
       try {
-        const { stdout, stderr } = await execAsync(url, { timeout: 30000 });
+        const args = parseCommandToArgs(url);
+        if (args.length === 0) {
+          throw new Error('Empty command');
+        }
+        const { stdout, stderr } = await execFileAsync(args[0], args.slice(1), { timeout: 30000 });
         shellResult = { output: stdout, error: stderr };
       } catch (err: any) {
         shellResult = { output: '', error: err.message };
@@ -359,7 +395,11 @@ export async function sendRequest(context: SendRequestContext, rps: number = 0, 
     
     let shellResult: { output: string; error: string };
     try {
-      const { stdout, stderr } = await execAsync(command, { timeout: 30000 });
+      const args = parseCommandToArgs(command);
+      if (args.length === 0) {
+        throw new Error('Empty command');
+      }
+      const { stdout, stderr } = await execFileAsync(args[0], args.slice(1), { timeout: 30000 });
       shellResult = { output: stdout, error: stderr };
     } catch (err: any) {
       shellResult = { output: '', error: err.message };

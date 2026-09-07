@@ -32,12 +32,12 @@ if (!parentPort) {
   throw new Error('Runner worker must be loaded via worker_threads');
 }
 
-parentPort.on('message', async (task: WorkerRequest) => {
+parentPort.on('message', async (task: { taskId: string; id: string; method: string; url: string; headers: Record<string, string>; body?: string; rps?: number }) => {
   try {
     const result = await executeHttpRequest(task);
-    parentPort!.postMessage({ id: task.id, data: result });
+    parentPort!.postMessage({ taskId: task.taskId, result });
   } catch (err: any) {
-    parentPort!.postMessage({ id: task.id, error: err.message });
+    parentPort!.postMessage({ taskId: task.taskId, error: err.message });
   }
 });
 

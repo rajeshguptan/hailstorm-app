@@ -5,7 +5,9 @@ import fs from 'fs';
 import type { Auth } from '../types';
 import { TokenBucket } from './httpExecutor';
 
-const tokenBuckets = new Map<string, TokenBucket>();
+const tokenBuckets = new Map<string, { bucket: TokenBucket; lastUsed: number }>();
+const TOKEN_BUCKET_EXPIRY_MS = 10 * 60 * 1000;
+let tokenBucketGCInterval: ReturnType<typeof setInterval> | null = null;
 
 export async function makeHttpRequest(options: {
   method: string;
@@ -25,22 +27,35 @@ export async function makeHttpRequest(options: {
 }> {
   return new Promise(async (resolve) => {
     const startTime = Date.now();
+    if (!tokenBucketGCInterval) {
+      tokenBucketGCInterval = setInterval(() => {
+        const now = Date.now();
+        for (const [key, entry] of tokenBuckets.entries()) {
+          if (now - entry.lastUsed > TOKEN_BUCKET_EXPIRY_MS) {
+            tokenBuckets.delete(key);
+          }
+        }
+      }, 60_000);
+    }
 
     if (options.rps && options.rps > 0 && options.requestId) {
       const requestId = options.requestId;
 
-      if (!tokenBuckets.has(requestId)) {
-        tokenBuckets.set(requestId, new TokenBucket(options.rps));
+      const entry = tokenBuckets.get(requestId);
+      if (entry) {
+        entry.lastUsed = Date.now();
+      } else {
+        tokenBuckets.set(requestId, { bucket: new TokenBucket(options.rps), lastUsed: Date.now() });
       }
 
-      const bucket = tokenBuckets.get(requestId)!;
+      const tokenEntry = tokenBuckets.get(requestId)!;
 
-      if (bucket.rps !== options.rps) {
-        bucket.setRps(options.rps);
+      if (tokenEntry.bucket.rps !== options.rps) {
+        tokenEntry.bucket.setRps(options.rps);
       }
 
-      await bucket.consumeWait();
-      console.log(`[RATE LIMIT] ${requestId}: TOKEN CONSUMED (${bucket.tokens.toFixed(2)} tokens remaining)`);
+      await tokenEntry.bucket.consumeWait();
+      console.log(`[RATE LIMIT] ${requestId}: TOKEN CONSUMED (${tokenEntry.bucket.tokens.toFixed(2)} tokens remaining)`);
     }
 
     let parsedUrl: URL;

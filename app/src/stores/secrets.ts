@@ -45,11 +45,6 @@ export const useSecretsStore = defineStore('secrets', () => {
     showEncryptionModal.value = false;
   }
 
-  function checkEncryptionKey(): boolean {
-    const storedKey = localStorage.getItem('hailstorm_encryption_key');
-    return !!storedKey;
-  }
-
   function unlock(key: string): boolean {
     const storedKey = localStorage.getItem('hailstorm_encryption_key');
     if (storedKey === key) {
