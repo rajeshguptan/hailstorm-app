@@ -432,7 +432,7 @@ setLogLevel: async (level: import('./types').LogLevel): Promise<void> => {
   },
 
   // Feedback
-  submitFeedback: async (feedback: { feedback: string; type: string; email: string }): Promise<{ success: boolean }> => {
+  submitFeedback: async (feedback: { feedback: string; type: string; email: string; screenshots?: { name: string; data: string }[] }): Promise<{ success: boolean }> => {
     try {
       const result = await ipcRenderer.invoke('submit-feedback', feedback);
       console.log('[PRELOAD] submitFeedback succeeded');
@@ -472,7 +472,43 @@ setLogLevel: async (level: import('./types').LogLevel): Promise<void> => {
       console.error('[PRELOAD] saveGlobalConfig failed', error);
       throw error;
     }
-  }
+  },
+
+  validateLicense: async (licenseKey: string): Promise<import('./types').LicenseValidationResult> => {
+    console.log('[PRELOAD] validateLicense called');
+    try {
+      const result = await ipcRenderer.invoke('validate-license', licenseKey);
+      console.log('[PRELOAD] validateLicense result:', result.valid ? 'valid' : 'invalid');
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] validateLicense failed', error);
+      throw error;
+    }
+  },
+
+  getEmbeddedPublicKey: async (): Promise<string> => {
+    console.log('[PRELOAD] getEmbeddedPublicKey called');
+    try {
+      const result = await ipcRenderer.invoke('get-embedded-public-key');
+      console.log('[PRELOAD] getEmbeddedPublicKey succeeded');
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] getEmbeddedPublicKey failed', error);
+      throw error;
+    }
+  },
+
+  setLicensee: async (licensee: string | null): Promise<boolean> => {
+    console.log('[PRELOAD] setLicensee called', { licensee });
+    try {
+      const result = await ipcRenderer.invoke('set-licensee', licensee);
+      console.log('[PRELOAD] setLicensee succeeded');
+      return result;
+    } catch (error) {
+      console.error('[PRELOAD] setLicensee failed', error);
+      throw error;
+    }
+  },
 };
 
 contextBridge.exposeInMainWorld('api', api);

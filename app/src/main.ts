@@ -4,6 +4,7 @@ import started from 'electron-squirrel-startup';
 import log from 'electron-log/main';
 import { initializeExecutionEngine } from './core/executionEngine';
 import { existsSync } from 'node:fs';
+import { validateLicense, getEmbeddedPublicKey, getRevokedLicenses, setRevokedLicenses, revokeLicense } from './main/license';
 
 
 // These are injected by Electron Forge Vite plugin
@@ -61,6 +62,22 @@ initializeExecutionEngine();
 let devToolsEnabled = false;
 let mainWindow: BrowserWindow | null = null;
 let logLevel: import('./types').LogLevel = 'info';
+let currentLicensee: string | null = null;
+
+function updateWindowTitle() {
+  if (!mainWindow) return;
+  const baseTitle = 'Hailstorm - API Client';
+  if (currentLicensee) {
+    mainWindow.setTitle(`${baseTitle} (licensed to ${currentLicensee})`);
+  } else {
+    mainWindow.setTitle(`${baseTitle} (trial/unlicensed)`);
+  }
+}
+
+function setLicensee(licensee: string | null) {
+  currentLicensee = licensee;
+  updateWindowTitle();
+}
 
 function setLogLevel(level: import('./types').LogLevel) {
   logLevel = level;
@@ -136,6 +153,8 @@ function createWindow() {
     );
   }
 
+  // Update window title after window is created
+  updateWindowTitle();
 }
 
 ipcMain.handle('get-dev-tools-enabled', () => devToolsEnabled);
@@ -168,9 +187,38 @@ ipcMain.handle('send-console-log', (_event, log: { level: number; message: strin
      }
    });
 
-   ipcMain.handle('get-home-directory', () => {
-     return app.getPath('home');
-   });
+ipcMain.handle('get-home-directory', () => {
+      return app.getPath('home');
+    });
+
+  // License validation IPC handlers
+  ipcMain.handle('validate-license', (_event, licenseKey: string) => {
+    return validateLicense(licenseKey);
+  });
+
+  ipcMain.handle('get-embedded-public-key', () => {
+    return getEmbeddedPublicKey();
+  });
+
+  ipcMain.handle('set-licensee', (_event, licensee: string | null) => {
+    setLicensee(licensee);
+    return true;
+  });
+
+  // License revocation IPC handlers
+  ipcMain.handle('get-revoked-licenses', () => {
+    return getRevokedLicenses();
+  });
+
+  ipcMain.handle('set-revoked-licenses', (_event, list: Record<string, string>) => {
+    setRevokedLicenses(list);
+    return true;
+  });
+
+  ipcMain.handle('revoke-license', (_event, licenseId: string, reason?: string) => {
+    revokeLicense(licenseId, reason);
+    return true;
+  });
 
 // Set up OAuth callback before app is ready
 setupOAuthCallback();

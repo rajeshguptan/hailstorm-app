@@ -206,6 +206,7 @@ import { useCollectionsStore } from '../stores/collections';
 import { useRunnerStore } from '../stores/runner';
 import { useSecretsStore } from '../stores/secrets';
 import { useHistoryStore } from '../stores/history';
+import { useLicenseStore } from '../stores/license';
 import ContextMenu from '../components/base/ContextMenu.vue';
 import RenameModal from '../components/base/RenameModal.vue';
 import SecretsEncryptionModal from '../components/secrets/SecretsEncryptionModal.vue';
@@ -232,6 +233,7 @@ const collectionsStore = useCollectionsStore();
 const runnerStore = useRunnerStore();
 const secretsStore = useSecretsStore();
 const historyStore = useHistoryStore();
+const licenseStore = useLicenseStore();
 
 // Get the N most recent requests from history
 const recentRequests = computed(() => {

@@ -14,14 +14,16 @@
     "make": "electron-forge make",
     "make:all": "electron-forge make --arch=x64 && electron-forge make --arch=arm64",
     "publish": "electron-forge publish",
-    "lint": "eslint --ext .ts,.tsx ."
+    "lint": "eslint --ext .ts,.tsx .",
+    "generate-keys": "node ../scripts/generate-license.js generate-keys",
+    "generate-license": "node ../scripts/generate-license.js generate-license"
   },
   "keywords": [],
   "author": {
     "name": "Rajesh Gupta",
     "email": "rguptan@yahoo.com"
   },
-  "license": "MIT",
+  "license": "BSL-1.1",
   "devDependencies": {
     "@electron-forge/cli": "^7.11.1",
     "@electron-forge/maker-deb": "^7.11.1",

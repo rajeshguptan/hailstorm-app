@@ -540,12 +540,35 @@ export function setupFeedbackHandlers() {
     console.warn('[EXECUTION_ENGINE] AIRTABLE_API_KEY not configured; feedback submission disabled');
   }
 
-  ipcMain.handle('submit-feedback', async (_event, feedback: { feedback: string; type: string; email: string }) => {
+  ipcMain.handle('submit-feedback', async (_event, feedback: { 
+    feedback: string; 
+    type: string; 
+    email: string;
+    screenshots?: { name: string; data: string }[];
+  }) => {
     if (!AIRTABLE_API_KEY) {
       throw new Error('Feedback is not configured');
     }
     
     try {
+      const records: any[] = [{
+        fields: {
+          Feedback: feedback.feedback,
+          Type: feedback.type,
+          Status: 'Pending review',
+          Email: feedback.email
+        }
+      }];
+
+      // Handle screenshots - upload to Airtable as attachments
+      if (feedback.screenshots && feedback.screenshots.length > 0) {
+        const attachments = feedback.screenshots.map(screenshot => ({
+          filename: screenshot.name,
+          file: screenshot.data
+        }));
+        records[0].fields.Screenshot = attachments;
+      }
+
       const response = await fetch('https://api.airtable.com/v0/app3t7ozk8mGsgmrv/Feedback', {
         method: 'POST',
         headers: {
@@ -554,14 +577,7 @@ export function setupFeedbackHandlers() {
         },
         body: JSON.stringify({
           typecast: true,
-          records: [{
-            fields: {
-              Feedback: feedback.feedback,
-              Type: feedback.type,
-              Status: 'Pending review',
-              Email: feedback.email
-            }
-          }]
+          records
         })
       });
       

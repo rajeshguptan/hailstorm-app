@@ -393,4 +393,35 @@ export interface GlobalConfig {
     activeSidebar?: SidebarView;
     sidebarTitle?: string;
   };
+  license?: {
+    key?: string;
+    licensee?: string;
+    validatedAt?: number;
+  };
+}
+
+// ─── License Types ───────────────────────────────────────────────────────────
+
+export interface LicenseData {
+  licensee: string;
+  email: string;
+  issuedAt: number;
+  features: string[];
+  version: string;
+  seatCount: number;
+}
+
+export interface SignedLicense {
+  data: LicenseData;
+  signature: string;
+  publicKey: string;
+}
+
+export interface LicenseValidationResult {
+  valid: boolean;
+  licensee?: string;
+  email?: string;
+  features?: string[];
+  seatCount?: number;
+  error?: string;
 }

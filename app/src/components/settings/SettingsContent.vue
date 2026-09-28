@@ -198,7 +198,7 @@
           </div>
         </div>
   
-      <div v-else-if="activeSection === 'secrets'" class="max-w-xl">
+<div v-else-if="activeSection === 'secrets'" class="max-w-xl">
         <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Secrets Encryption</h3>
         <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">Manage encryption settings for secrets</p>
 
@@ -242,12 +242,105 @@
               <li>• The encryption key is required to access secrets</li>
               <li>• If you forget the key, secrets cannot be recovered</li>
               <li>• Store your encryption key securely</li>
-</ul>
-           </div>
-         </div>
-       </div>
- 
-       <div v-else-if="activeSection === 'developer-tools'" class="max-w-xl">
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="activeSection === 'license'" class="max-w-xl">
+        <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-1">License</h3>
+        <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">Manage your Hailstorm license</p>
+
+        <div class="space-y-6">
+          <div v-if="licenseStore.isLicensed" class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded">
+            <div class="flex items-center justify-between mb-2">
+              <div>
+                <span class="text-green-600 dark:text-green-400 mr-2">✓</span>
+                <span class="text-sm font-medium text-green-800 dark:text-green-200">Licensed to {{ licenseStore.licensee }}</span>
+              </div>
+              <span class="text-xs px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded">Active</span>
+            </div>
+            <div class="text-sm text-green-700 dark:text-green-300 space-y-1">
+              <div>Email: {{ licenseStore.email }}</div>
+              <div v-if="licenseStore.expiresAt">
+                Expires: {{ formatDate(licenseStore.expiresAt) }}
+                <span class="ml-2 px-2 py-0.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded">
+                  {{ licenseStore.daysUntilExpiry }} days left
+                </span>
+              </div>
+              <div v-else>License does not expire</div>
+            </div>
+            <div class="mt-4 flex gap-2">
+              <button @click="showLicenseDetails = true" class="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded">
+                View Details
+              </button>
+              <button @click="removeLicense" class="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 text-white rounded">
+                Remove License
+              </button>
+            </div>
+          </div>
+
+          <div v-else class="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+            <div class="flex items-center mb-2">
+              <span class="text-yellow-600 dark:text-yellow-400 mr-2">⚠</span>
+              <span class="text-sm font-medium text-yellow-800 dark:text-yellow-200">No Valid License</span>
+            </div>
+            <p class="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
+              Enter a license key to unlock all features.
+            </p>
+            <div class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">License Key</label>
+                <textarea
+                  v-model="licenseInput"
+                  rows="6"
+                  class="w-full px-3 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white font-mono text-xs"
+                  placeholder="Paste your license key here (JSON format)"
+                ></textarea>
+              </div>
+              <div class="flex gap-2">
+                <button @click="applyLicense" :disabled="licenseStore.isValidating || !licenseInput.trim()" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-zinc-300 disabled:cursor-not-allowed text-white rounded">
+                  <span v-if="licenseStore.isValidating">Validating...</span>
+                  <span v-else>Apply License</span>
+                </button>
+                <button @click="loadSampleLicense" class="px-4 py-2 border border-zinc-300 dark:border-zinc-600 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded">
+                  Load Sample
+                </button>
+              </div>
+              <div v-if="licenseStore.error" class="text-sm text-red-600 dark:text-red-400">
+                {{ licenseStore.error }}
+              </div>
+            </div>
+          </div>
+
+          <div class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+            <h4 class="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">License Information</h4>
+            <ul class="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+              <li>• Licenses are cryptographically signed and verified</li>
+              <li>• The public key is embedded in the application</li>
+              <li>• License includes licensee name, email, and expiration</li>
+              <li>• Contact sales@hailstorm.dev for licensing inquiries</li>
+            </ul>
+          </div>
+
+          <div class="p-4 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded">
+            <h4 class="text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-2">Embedded Public Key</h4>
+            <div class="relative">
+              <textarea
+                :value="embeddedPublicKey"
+                readonly
+                rows="4"
+                class="w-full px-3 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white font-mono text-xs resize-none"
+              ></textarea>
+              <button @click="copyPublicKey" class="absolute right-2 top-2 px-2 py-1 text-xs bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-300 dark:hover:bg-zinc-600 rounded">
+                Copy
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="activeSection === 'developer-tools'" class="max-w-xl">
          <h3 class="text-lg font-semibold text-zinc-900 dark:text-white mb-1">Developer Tools</h3>
          <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">Enable Electron DevTools for debugging the renderer process.</p>
  
@@ -426,8 +519,10 @@ import { ref, onMounted, watch } from 'vue';
 import { useTheme } from '../../composables/useTheme';
 import { useSecretsStore } from '../../stores/secrets';
 import { useUIStore } from '../../stores/ui';
+import { useLicenseStore } from '../../stores/license';
 
 const uiStore = useUIStore();
+const licenseStore = useLicenseStore();
 
 const activeSection = ref('theme');
 
@@ -444,14 +539,68 @@ const appItems = [
 const advancedItems = [
    { id: 'otel', label: 'OpenTelemetry' },
    { id: 'secrets', label: 'Secrets' },
+   { id: 'license', label: 'License' },
    { id: 'developer-tools', label: 'Developer Tools' },
    { id: 'logging', label: 'Logging' },
    { id: 'shortcuts', label: 'Shortcuts' },
    { id: 'about', label: 'About' },
-];
+ ];
 
 const { theme, setTheme } = useTheme();
 const secretsStore = useSecretsStore();
+
+const licenseInput = ref('');
+const showLicenseDetails = ref(false);
+const embeddedPublicKey = ref('');
+
+const formatDate = (timestamp: number): string => {
+  return new Date(timestamp).toLocaleDateString();
+};
+
+async function loadEmbeddedPublicKey() {
+  embeddedPublicKey.value = await licenseStore.getEmbeddedPublicKeyForDisplay();
+}
+
+async function applyLicense() {
+  if (!licenseInput.value.trim()) return;
+  try {
+    await licenseStore.validate(licenseInput.value.trim());
+    licenseInput.value = '';
+    showLicenseDetails.value = false;
+  } catch (error) {
+    console.error('License application failed:', error);
+  }
+}
+
+async function loadSampleLicense() {
+  try {
+    // Create a sample license structure (without actual cryptographic signature)
+    // This is for demonstration purposes only
+    const sampleLicense = {
+      data: {
+        licensee: 'Demo User',
+        email: 'demo@hailstorm.dev',
+        issuedAt: Date.now(),
+        expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000,
+        features: ['http', 'graphql', 'jsonrpc', 'websocket', 'grpc', 'shell', 'runner', 'loadtest', 'secrets', 'environments'],
+        version: '1.0.0',
+      },
+      signature: 'SAMPLE_SIGNATURE_NOT_VALID',
+      publicKey: embeddedPublicKey.value || await window.api.getEmbeddedPublicKey(),
+    };
+    licenseInput.value = JSON.stringify(sampleLicense, null, 2);
+  } catch (error) {
+    console.error('Failed to load sample license:', error);
+  }
+}
+
+function removeLicense() {
+  licenseStore.clearLicense();
+}
+
+function copyPublicKey() {
+  navigator.clipboard.writeText(embeddedPublicKey.value);
+}
 
 const themeOptions = [
   { value: 'light', label: 'Light', description: 'Clean light theme', icon: '☀️' },
@@ -540,6 +689,10 @@ watch(devToolsEnabled, async (enabled) => {
     saveSettingsToGlobalConfig();
   });
 
+  function toggleDevTools() {
+    devToolsEnabled.value = !devToolsEnabled.value;
+  }
+
  const showSetKeyModal = ref(false);
  const showChangeKeyModal = ref(false);
  const currentEncryptionKey = ref('');
@@ -588,15 +741,16 @@ watch(devToolsEnabled, async (enabled) => {
    });
  }
 
- onMounted(() => {
-   loadDevToolsSetting();
-   loadLogLevel();
-   const stored = localStorage.getItem('hailstorm:otel');
-   if (stored) {
-     const parsed = JSON.parse(stored);
-     otel.value = { ...otel.value, ...parsed };
-   }
- });
+onMounted(() => {
+    loadDevToolsSetting();
+    loadLogLevel();
+    loadEmbeddedPublicKey();
+    const stored = localStorage.getItem('hailstorm:otel');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      otel.value = { ...otel.value, ...parsed };
+    }
+  });
 
 watch(otel, (val) => {
     localStorage.setItem('hailstorm:otel', JSON.stringify(val));

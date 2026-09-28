@@ -37,6 +37,28 @@
             placeholder="your@email.com"
           />
         </div>
+        <div>
+          <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Screenshots (optional)</label>
+          <input
+            type="file"
+            multiple
+            accept="image/*"
+            @change="handleFileSelect"
+            class="w-full px-3 py-2 bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-white border border-zinc-300 dark:border-zinc-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <div v-if="selectedFiles.length > 0" class="mt-2 space-y-1">
+            <div v-for="(file, index) in selectedFiles" :key="index" class="flex items-center justify-between text-sm">
+              <span class="text-zinc-600 dark:text-zinc-400 truncate">{{ file.name }}</span>
+              <button
+                type="button"
+                @click="removeFile(index)"
+                class="text-red-500 hover:text-red-700 ml-2"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
         <div class="flex gap-2 pt-2">
           <button
             type="submit"
@@ -74,9 +96,21 @@ const form = ref({
   email: ''
 });
 
+const selectedFiles = ref<File[]>([]);
 const submitting = ref(false);
 const submitted = ref(false);
 const error = ref('');
+
+function handleFileSelect(event: Event) {
+  const target = event.target as HTMLInputElement;
+  if (target.files) {
+    selectedFiles.value = Array.from(target.files);
+  }
+}
+
+function removeFile(index: number) {
+  selectedFiles.value.splice(index, 1);
+}
 
 async function submitFeedback() {
   if (!form.value.feedback.trim()) return;
@@ -85,19 +119,39 @@ async function submitFeedback() {
   error.value = '';
   
   try {
+    const screenshotData = await Promise.all(
+      selectedFiles.value.map(async (f) => ({
+        name: f.name,
+        data: await readFileAsBase64(f)
+      }))
+    );
     await window.api.submitFeedback({
       feedback: form.value.feedback,
       type: form.value.type,
-      email: form.value.email
+      email: form.value.email,
+      screenshots: screenshotData
     });
     submitted.value = true;
     form.value.feedback = '';
     form.value.email = '';
+    selectedFiles.value = [];
   } catch (err: any) {
     error.value = err.message || 'Failed to submit feedback';
   } finally {
     submitting.value = false;
   }
+}
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 function resetForm() {

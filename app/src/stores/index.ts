@@ -9,6 +9,9 @@ import { useHistoryStore } from './history';
 import { useRunnerStore } from './runner';
 import { useSettingsStore } from './settings';
 import { useSecretsStore } from './secrets';
+import { useLicenseStore } from './license';
+
+export { useLicenseStore };
 
 export const useAppStore = defineStore('app', {
   state: () => ({
@@ -193,6 +196,9 @@ async loadFromLocalStorage() {
 
       async init() {
         await this.loadFromLocalStorage();
+        // Load saved license and notify main process
+        const licenseStore = useLicenseStore();
+        await licenseStore.loadSavedLicense();
         document.addEventListener('click', () => {
           const uiStore = useUIStore();
           uiStore.hideContextMenu();
